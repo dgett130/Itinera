@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../providers.dart';
 import '../../ui/itinera_theme.dart';
 import '../../ui/widgets.dart';
 import 'auth_providers.dart';
@@ -74,6 +75,44 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _logout() async {
     await ref.read(authServiceProvider).signOut();
     if (mounted) context.pop();
+  }
+
+  Future<void> _deleteAccount() async {
+    final warning = context.tokens.warning;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Elimina account'),
+        content: const Text(
+          'Questa azione è irreversibile: tutti i tuoi viaggi, i dati e la '
+          'condivisione verranno cancellati definitivamente. Continuare?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: warning),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Elimina'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+    try {
+      await ref.read(authServiceProvider).deleteAccount();
+      await ref.read(databaseProvider).clearSyncedData();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Account eliminato')),
+      );
+      router.go('/');
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Errore: $e')));
+    }
   }
 
   @override
@@ -224,6 +263,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               title: const Text('Esci'),
               subtitle: const Text('Termina la sessione su questo dispositivo'),
               onTap: _logout,
+            ),
+          ),
+          SectionHeader('Zona pericolosa'),
+          ItineraCard(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              leading:
+                  Icon(Icons.delete_forever_outlined, color: tokens.warning),
+              title: const Text('Elimina account'),
+              subtitle:
+                  const Text('Cancella definitivamente account e dati'),
+              onTap: _deleteAccount,
             ),
           ),
         ],

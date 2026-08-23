@@ -194,19 +194,9 @@ class SyncEngine {
     await _setState('local_owner', userId);
   }
 
-  /// Cancella tutte le tabelle sincronizzate + la coda e lo stato di sync.
-  /// L'ordine inverso rispetta le foreign key; `_outbox` viene svuotata per
-  /// ULTIMA nella stessa transazione, cosi' le delete accodate dai trigger
-  /// durante la pulizia non vengono mai spinte sul server.
-  Future<void> _wipeLocalData() async {
-    await db.transaction(() async {
-      for (final name in AppDatabase.syncedTables.reversed) {
-        await db.customStatement('DELETE FROM $name');
-      }
-      await db.customStatement('DELETE FROM _sync_state');
-      await db.customStatement('DELETE FROM _outbox');
-    });
-  }
+  /// Cancella la cache locale (tabelle sync + coda/stato). Vedi
+  /// [AppDatabase.clearSyncedData].
+  Future<void> _wipeLocalData() => db.clearSyncedData();
 
   // --- Bootstrap: accoda i dati locali gia' presenti (primo login) ----------
 

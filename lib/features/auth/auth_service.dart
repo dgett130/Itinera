@@ -57,6 +57,17 @@ class AuthService {
 
   Future<void> signOut() => _c.auth.signOut();
 
+  /// Cancella definitivamente l'account e tutti i dati sul server (RPC
+  /// `delete_account`, security definer), poi termina la sessione locale.
+  Future<void> deleteAccount() async {
+    await _c.rpc('delete_account');
+    try {
+      await _c.auth.signOut();
+    } catch (_) {
+      // l'utente non esiste piu': la sessione e' comunque da ripulire.
+    }
+  }
+
   static bool _googleReady = false;
 
   /// Accesso con Google **NATIVO**: mostra il popup di scelta account (niente

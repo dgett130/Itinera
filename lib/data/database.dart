@@ -149,6 +149,20 @@ class AppDatabase extends _$AppDatabase {
         'INSERT OR REPLACE INTO _app_prefs(key,value) VALUES(?,?)',
         [key, value],
       );
+
+  /// Svuota tutti i dati sincronizzati + coda/stato di sync (preserva le
+  /// preferenze locali come il tema). Usato al cambio account e alla
+  /// cancellazione account. Svuota `_outbox` per ULTIMA così le delete
+  /// accodate dai trigger non vengono spinte sul server.
+  Future<void> clearSyncedData() async {
+    await transaction(() async {
+      for (final name in syncedTables.reversed) {
+        await customStatement('DELETE FROM $name');
+      }
+      await customStatement('DELETE FROM _sync_state');
+      await customStatement('DELETE FROM _outbox');
+    });
+  }
 }
 
 LazyDatabase _openConnection() {
