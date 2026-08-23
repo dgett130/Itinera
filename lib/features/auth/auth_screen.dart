@@ -24,7 +24,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   bool _obscure = true;
   bool _loading = false;
   String? _error;
-  String? _info;
 
   @override
   void dispose() {
@@ -39,7 +38,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     setState(() {
       _loading = true;
       _error = null;
-      _info = null;
     });
     final auth = ref.read(authServiceProvider);
     try {
@@ -49,14 +47,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           password: _passCtrl.text,
           displayName: _nameCtrl.text,
         );
+        // La conferma via email e' disattivata: l'accesso e' immediato. Se per
+        // qualche motivo non arriva subito una sessione, la completo io.
         if (res.session == null) {
-          // Conferma via email richiesta dal progetto.
-          setState(() {
-            _info = 'Ti abbiamo inviato una email di conferma. '
-                'Confermala, poi accedi.';
-            _register = false;
-          });
-          return;
+          await auth.signIn(email: _emailCtrl.text, password: _passCtrl.text);
         }
       } else {
         await auth.signIn(email: _emailCtrl.text, password: _passCtrl.text);
@@ -161,14 +155,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   color: tokens.warning,
                 ),
               ],
-              if (_info != null) ...[
-                const SizedBox(height: 16),
-                _Banner(
-                  icon: Icons.mark_email_read_outlined,
-                  text: _info!,
-                  color: tokens.positive,
-                ),
-              ],
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: _loading ? null : _submit,
@@ -188,7 +174,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     : () => setState(() {
                           _register = !_register;
                           _error = null;
-                          _info = null;
                         }),
                 child: Text(_register
                     ? 'Hai gia\' un account? Accedi'
