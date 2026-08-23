@@ -176,22 +176,15 @@ class TransportRepository {
   // --- Viaggiatori ---
 
   Future<void> addTraveler(String tripId, String name) async {
-    await _db.transaction(() async {
-      final existing = await (_db.select(_db.travelers)
-            ..where((t) => t.tripId.equals(tripId)))
-          .get();
-      await _db.into(_db.travelers).insert(
-            TravelersCompanion.insert(
-              id: newId(),
-              tripId: tripId,
-              name: name,
-              sortOrder: Value(existing.length),
-            ),
-          );
-      // Le spese divise in parti uguali / per quota vanno ridistribuite tra i
-      // viaggiatori aggiornati.
-      await _rewriteVariableSplits(tripId);
-    });
+    final existing = await watchTravelers(tripId).first;
+    await _db.into(_db.travelers).insert(
+          TravelersCompanion.insert(
+            id: newId(),
+            tripId: tripId,
+            name: name,
+            sortOrder: Value(existing.length),
+          ),
+        );
   }
 
   Future<void> renameTraveler(String id, String name) async {
@@ -199,52 +192,8 @@ class TransportRepository {
         .write(TravelersCompanion(name: Value(name)));
   }
 
-  Future<void> deleteTraveler(String id, String tripId) async {
-    await _db.transaction(() async {
-      await (_db.delete(_db.travelers)..where((t) => t.id.equals(id))).go();
-      await _rewriteVariableSplits(tripId);
-    });
-  }
-
-  /// Ricalcola le quote delle spese a divisione "uguale"/"per quota" per il
-  /// viaggio, in base all'insieme corrente di viaggiatori. Le spese con
-  /// divisione personalizzata o non divise non vengono toccate.
-  Future<void> _rewriteVariableSplits(String tripId) async {
-    final travelers = await (_db.select(_db.travelers)
-          ..where((t) => t.tripId.equals(tripId)))
-        .get();
-    final expenses = await (_db.select(_db.costItems)
-          ..where((c) => c.tripId.equals(tripId)))
-        .get();
-    for (final e in expenses) {
-      if (e.splitMethod != SplitMethod.equal &&
-          e.splitMethod != SplitMethod.weighted) {
-        continue;
-      }
-      await (_db.delete(_db.costSplits)
-            ..where((s) => s.costItemId.equals(e.id)))
-          .go();
-      if (travelers.isEmpty) continue;
-      final shares = travelers
-          .map((t) => SplitShare(travelerId: t.id, weight: t.shareWeight))
-          .toList();
-      final split = CostSplitter.split(
-        amountCents: e.amountCents,
-        shares: shares,
-        method: e.splitMethod,
-        payerId: e.paidByTravelerId,
-      );
-      for (final entry in split.entries) {
-        await _db.into(_db.costSplits).insert(
-              CostSplitsCompanion.insert(
-                id: newId(),
-                costItemId: e.id,
-                travelerId: entry.key,
-                shareAmountCents: Value(entry.value),
-              ),
-            );
-      }
-    }
+  Future<void> deleteTraveler(String id) async {
+    await (_db.delete(_db.travelers)..where((t) => t.id.equals(id))).go();
   }
 
   // --- Veicoli ---

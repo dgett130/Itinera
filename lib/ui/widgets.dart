@@ -140,7 +140,7 @@ class StatTile extends StatelessWidget {
     final scheme = context.scheme;
     final c = accent ?? scheme.onSurface;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
