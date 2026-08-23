@@ -5,6 +5,7 @@ import '../../ui/itinera_theme.dart';
 import '../../ui/widgets.dart';
 import '../auth/auth_providers.dart';
 import '../friends/friends_providers.dart';
+import '../friends/user_search_sheet.dart';
 import 'members_providers.dart';
 import 'members_service.dart';
 
@@ -31,12 +32,16 @@ class MembersScreen extends ConsumerWidget {
         data: (members) {
           final isOwner =
               members.any((m) => m.userId == uid && m.isOwner);
+          final memberIds = {
+            for (final m in members)
+              if (m.userId != null) m.userId!
+          };
           return Scaffold(
             floatingActionButton: isOwner
                 ? FloatingActionButton.extended(
-                    onPressed: () => _invite(context, ref),
+                    onPressed: () => _invite(context, ref, memberIds),
                     icon: const Icon(Icons.person_add_alt),
-                    label: const Text('Invita'),
+                    label: const Text('Aggiungi'),
                   )
                 : null,
             body: ListView(
@@ -72,32 +77,33 @@ class MembersScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _invite(BuildContext context, WidgetRef ref) async {
-    final email = await showModalBottomSheet<String>(
+  Future<void> _invite(
+      BuildContext context, WidgetRef ref, Set<String> memberIds) async {
+    final members = ref.read(membersServiceProvider);
+    final friends = ref.read(friendsServiceProvider);
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: UserSearchSheet(
+          title: 'Aggiungi al viaggio',
+          actionLabel: 'Aggiungi',
+          excludedUserIds: memberIds,
+          onSelect: (u) async {
+            await members.addUser(tripId, u.userId);
+            // Se non e' gia' un amico, mando anche la richiesta di amicizia.
+            if (u.relation != 'friend') {
+              try {
+                await friends.sendRequest(u.userId);
+              } catch (_) {}
+            }
+            return '${u.display} aggiunto al viaggio.';
+          },
         ),
-        child: _InviteSheet(),
       ),
     );
-    if (email == null || !email.contains('@')) return;
-    try {
-      await ref.read(membersServiceProvider).invite(tripId, email);
-      ref.invalidate(tripMembersProvider(tripId));
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invito inviato a $email')),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
-      }
-    }
+    ref.invalidate(tripMembersProvider(tripId));
   }
 }
 
@@ -156,77 +162,6 @@ class _MemberTile extends StatelessWidget {
               tooltip: 'Rimuovi',
               onPressed: onRemove,
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InviteSheet extends ConsumerStatefulWidget {
-  @override
-  ConsumerState<_InviteSheet> createState() => _InviteSheetState();
-}
-
-class _InviteSheetState extends ConsumerState<_InviteSheet> {
-  final _emailCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _emailCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final friendsAsync = ref.watch(friendsProvider);
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SheetHeader('Invita al viaggio'),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _emailCtrl,
-            keyboardType: TextInputType.emailAddress,
-            autocorrect: false,
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              prefixIcon: Icon(Icons.alternate_email),
-            ),
-            onSubmitted: (v) => Navigator.pop(context, v.trim()),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton(
-              onPressed: () => Navigator.pop(context, _emailCtrl.text.trim()),
-              child: const Text('Invita'),
-            ),
-          ),
-          friendsAsync.maybeWhen(
-            data: (friends) {
-              if (friends.isEmpty) return const SizedBox.shrink();
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SectionHeader('Dai tuoi amici'),
-                  for (final f in friends)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.person_outline,
-                          color: context.tokens.accent),
-                      title: Text(f.display),
-                      subtitle: f.name != null ? Text(f.email) : null,
-                      onTap: () => Navigator.pop(context, f.email),
-                    ),
-                ],
-              );
-            },
-            orElse: () => const SizedBox.shrink(),
-          ),
-          const SizedBox(height: 12),
         ],
       ),
     );

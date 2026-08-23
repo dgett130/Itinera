@@ -9,8 +9,14 @@ final friendsServiceProvider = Provider<FriendsService>((ref) {
   return FriendsService(supabaseReady ? Supabase.instance.client : null);
 });
 
-/// Elenco amici dell'utente corrente.
-final friendsProvider = FutureProvider<List<Friend>>((ref) async {
+/// Amici accettati dell'utente corrente.
+final friendsProvider = FutureProvider<List<UserRef>>((ref) async {
   ref.watch(currentUserProvider); // ricarica al cambio utente
   return ref.watch(friendsServiceProvider).list();
+});
+
+/// Richieste di amicizia ricevute in sospeso.
+final friendRequestsProvider = FutureProvider<List<UserRef>>((ref) async {
+  ref.watch(currentUserProvider);
+  return ref.watch(friendsServiceProvider).requests();
 });

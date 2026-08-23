@@ -56,6 +56,24 @@ class AuthService {
 
   Future<void> signOut() => _c.auth.signOut();
 
+  /// Accesso con Google. Apre il flusso OAuth nel browser di sistema e torna
+  /// all'app via deep link (org.itinera://login-callback); supabase_flutter
+  /// intercetta il redirect e stabilisce la sessione. Il provider Google va
+  /// abilitato in Supabase (Authentication -> Providers).
+  Future<bool> signInWithGoogle() => _c.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: SupabaseConfig.authRedirect,
+        authScreenLaunchMode: LaunchMode.externalApplication,
+      );
+
+  /// Accesso con Apple. Richiede il provider Apple configurato in Supabase
+  /// (Service ID + chiave "Sign in with Apple").
+  Future<bool> signInWithApple() => _c.auth.signInWithOAuth(
+        OAuthProvider.apple,
+        redirectTo: SupabaseConfig.authRedirect,
+        authScreenLaunchMode: LaunchMode.externalApplication,
+      );
+
   Future<void> sendPasswordReset(String email) => _c.auth.resetPasswordForEmail(
         email.trim(),
         redirectTo: SupabaseConfig.authRedirect,

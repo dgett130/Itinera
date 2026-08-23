@@ -115,9 +115,34 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
   }
 
+  /// Avvia un accesso social (Google/Apple): apre il browser e torna via deep
+  /// link. La sessione la stabilisce supabase_flutter; il pop della pagina lo
+  /// gestisce il listener su currentUserProvider in [build].
+  Future<void> _oauth(Future<bool> Function() start) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await start();
+    } on AuthException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Errore di accesso: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final auth = ref.read(authServiceProvider);
+    // Dopo un accesso riuscito (anche social, che torna via deep link) chiudo
+    // la pagina se e' stata aperta da Impostazioni; alla radice ci pensa il gate.
+    ref.listen(currentUserProvider, (_, next) {
+      if (next != null && mounted && context.canPop()) context.pop();
+    });
     return Scaffold(
       appBar: AppBar(title: Text(_register ? 'Crea account' : 'Accedi')),
       body: SafeArea(
@@ -227,6 +252,32 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       )
                     : Icon(_register ? Icons.person_add : Icons.login),
                 label: Text(_register ? 'Registrati' : 'Accedi'),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(child: Divider(color: tokens.hairline)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('oppure',
+                        style: context.texts.bodySmall
+                            ?.copyWith(color: context.scheme.onSurfaceVariant)),
+                  ),
+                  Expanded(child: Divider(color: tokens.hairline)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed:
+                    _loading ? null : () => _oauth(auth.signInWithGoogle),
+                icon: const Icon(Icons.g_mobiledata, size: 28),
+                label: const Text('Continua con Google'),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : () => _oauth(auth.signInWithApple),
+                icon: const Icon(Icons.apple),
+                label: const Text('Continua con Apple'),
               ),
               const SizedBox(height: 12),
               TextButton(

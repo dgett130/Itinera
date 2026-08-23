@@ -57,6 +57,23 @@ class MembersService {
         .toList();
   }
 
+  /// Aggiunge un utente REALE (gia' registrato) al viaggio come editor attivo:
+  /// lo vedra' subito alla prossima sincronizzazione. Idempotente.
+  Future<void> addUser(String tripId, String userId) async {
+    await _c.from('trip_members').upsert(
+      {
+        'trip_id': tripId,
+        'user_id': userId,
+        'role': 'editor',
+        'status': 'active',
+      },
+      onConflict: 'trip_id,user_id',
+      ignoreDuplicates: true,
+    );
+  }
+
+  /// Invito legacy per email (utente non ancora registrato): reclamato al login
+  /// tramite claim_invites. Mantenuto per compatibilita'.
   Future<void> invite(String tripId, String email) async {
     await _c.from('trip_members').insert({
       'trip_id': tripId,
