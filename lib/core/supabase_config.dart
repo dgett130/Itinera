@@ -33,7 +33,8 @@ class SupabaseConfig {
   /// `--dart-define=GOOGLE_SERVER_CLIENT_ID=...`.
   static const String googleServerClientId = String.fromEnvironment(
     'GOOGLE_SERVER_CLIENT_ID',
-    defaultValue: '',
+    defaultValue:
+        '889380999925-t2bpop07ore9duvhkeqcd70aphr1rr5f.apps.googleusercontent.com',
   );
 
   /// Sono presenti delle credenziali (URL + chiave)?
