@@ -49,3 +49,9 @@ skills-lock.json
 .claude/
 android/build/
 android/.kotlin/
+
+# Android signing (MAI committare)
+android/key.properties
+key.properties
+*.jks
+*.keystore
