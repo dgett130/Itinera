@@ -73,16 +73,30 @@ class ItineraCard extends StatelessWidget {
     final tokens = context.tokens;
     final scheme = context.scheme;
     final radius = BorderRadius.circular(16);
-    Widget content = Padding(padding: padding, child: child);
+    Widget content;
 
     if (accentEdge != null) {
-      content = Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      // La barretta d'accento e' un elemento posizionato in uno Stack: lo Stack
+      // si dimensiona sul contenuto (non-positioned), evitando il collasso ad
+      // altezza zero che accadeva con un Row a cross-axis "stretch" dentro una
+      // lista ad altezza non vincolata.
+      content = Stack(
         children: [
-          Container(width: 4, color: accentEdge),
-          Expanded(child: content),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Padding(padding: padding, child: child),
+          ),
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 4,
+            child: ColoredBox(color: accentEdge!),
+          ),
         ],
       );
+    } else {
+      content = Padding(padding: padding, child: child);
     }
 
     return Material(
