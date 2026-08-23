@@ -566,14 +566,34 @@ class _EmptyPacking extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cats = ref.watch(packingCategoriesProvider).value ?? const [];
+    final bags = ref.watch(bagsProvider(tripId)).value ?? const [];
     return EmptyState(
       icon: Icons.checklist_rtl,
       title: 'Valigia vuota',
-      message: 'Parti da un modello o aggiungi il primo oggetto.',
-      action: FilledButton.icon(
-        onPressed: () => _showTemplatePicker(context, ref, tripId),
-        icon: const Icon(Icons.playlist_add),
-        label: const Text('Applica un modello'),
+      message: 'Aggiungi il primo oggetto o parti da un modello pronto.',
+      action: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FilledButton.icon(
+            onPressed: cats.isEmpty
+                ? null
+                : () => showPackingItemSheet(
+                      context,
+                      tripId: tripId,
+                      categories: cats,
+                      bags: bags,
+                    ),
+            icon: const Icon(Icons.add),
+            label: const Text('Aggiungi oggetto'),
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () => _showTemplatePicker(context, ref, tripId),
+            icon: const Icon(Icons.playlist_add),
+            label: const Text('Applica un modello'),
+          ),
+        ],
       ),
     );
   }

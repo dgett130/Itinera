@@ -35,7 +35,10 @@ class GeocodingService {
     if (q.length < 3) return const [];
     final uri = _endpoint.replace(queryParameters: {
       'q': q,
-      'lang': 'it',
+      // Photon supporta solo default/de/en/fr: 'default' restituisce i nomi
+      // nella lingua locale del luogo (per l'Italia => italiano). 'it' viene
+      // rifiutato con HTTP 400 e nessun suggerimento.
+      'lang': 'default',
       'limit': '$limit',
     });
     try {
@@ -67,7 +70,7 @@ class GeocodingService {
   /// Reverse geocoding: da coordinate a un'etichetta leggibile.
   Future<String?> reverse(double lat, double lon) async {
     final uri = Uri.parse('https://photon.komoot.io/reverse').replace(
-      queryParameters: {'lat': '$lat', 'lon': '$lon', 'lang': 'it'},
+      queryParameters: {'lat': '$lat', 'lon': '$lon', 'lang': 'default'},
     );
     try {
       final res = await _client

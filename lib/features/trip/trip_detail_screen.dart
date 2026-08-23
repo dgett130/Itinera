@@ -113,9 +113,8 @@ class _TripDetailBody extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 _StatsRow(trip: trip, l10n: l10n),
-                const SizedBox(height: 8),
-                SectionHeader('Stile del viaggio'),
-                _StyleSwitcher(trip: trip),
+                // Le tre sezioni operative subito sotto l'intestazione, cosi'
+                // sono visibili senza scorrere.
                 SectionHeader('Sezioni'),
                 _PackingModuleCard(tripId: tripId),
                 const SizedBox(height: 12),
@@ -131,6 +130,9 @@ class _TripDetailBody extends ConsumerWidget {
                     ),
                   ),
                 ],
+                // Personalizzazione estetica in coda (secondaria).
+                SectionHeader('Stile del viaggio'),
+                _StyleSwitcher(trip: trip),
               ],
             ),
           ),

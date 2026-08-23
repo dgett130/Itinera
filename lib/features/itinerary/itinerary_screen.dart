@@ -80,7 +80,17 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen> {
               label: const Text('Attività'),
             ),
       body: visibleDays.isEmpty
-          ? const _EmptyItinerary()
+          ? _EmptyItinerary(
+              onAdd: days.isEmpty
+                  ? null
+                  : () => showActivitySheet(
+                        context,
+                        tripId: widget.tripId,
+                        dayId: days.first.id,
+                        days: days,
+                        categories: categories,
+                      ),
+            )
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
               children: [
@@ -528,15 +538,23 @@ class _ActivityMenu extends ConsumerWidget {
 }
 
 class _EmptyItinerary extends StatelessWidget {
-  const _EmptyItinerary();
+  const _EmptyItinerary({this.onAdd});
+  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) {
-    return const EmptyState(
+    return EmptyState(
       icon: Icons.map_outlined,
-      title: 'Nessun giorno da mostrare',
-      message: 'Imposta le date del viaggio per generare i giorni, '
-          'oppure aggiungi un\'attività non programmata.',
+      title: 'Costruisci la tua tabella di marcia',
+      message: 'Imposta le date del viaggio per avere un giorno per ogni data, '
+          'oppure aggiungi subito un\'attività.',
+      action: onAdd == null
+          ? null
+          : FilledButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add),
+              label: const Text('Aggiungi attività'),
+            ),
     );
   }
 }
