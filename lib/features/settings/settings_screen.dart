@@ -9,10 +9,12 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/enums.dart';
 import '../../core/format.dart';
+import '../../core/supabase_config.dart';
 import '../../data/database.dart';
 import '../../providers.dart';
 import '../../ui/itinera_theme.dart';
 import '../../ui/widgets.dart';
+import '../auth/auth_providers.dart';
 
 /// Impostazioni: modalita', backup/ripristino, valori carburante.
 class SettingsScreen extends ConsumerWidget {
@@ -26,6 +28,8 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
         children: [
+          SectionHeader('Account'),
+          const _AccountCard(),
           if (settings != null) ...[
             SectionHeader('Modalità'),
             ItineraCard(
@@ -168,6 +172,79 @@ class SettingsScreen extends ConsumerWidget {
         SnackBar(content: Text('Errore nell\'importazione: $e')),
       );
     }
+  }
+}
+
+class _AccountCard extends ConsumerWidget {
+  const _AccountCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
+
+    if (!SupabaseConfig.hasCredentials || !supabaseReady) {
+      return ItineraCard(
+        child: Row(
+          children: [
+            Icon(Icons.cloud_off_outlined, color: context.scheme.onSurfaceVariant),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                'Account non disponibile su questo dispositivo.',
+                style: context.texts.bodyMedium
+                    ?.copyWith(color: context.scheme.onSurfaceVariant),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final user = ref.watch(currentUserProvider);
+    if (user == null) {
+      return ItineraCard(
+        padding: EdgeInsets.zero,
+        child: ListTile(
+          leading: Icon(Icons.account_circle_outlined, color: tokens.accent),
+          title: const Text('Accedi o registrati'),
+          subtitle: const Text('Sincronizza e condividi i tuoi viaggi'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/auth'),
+        ),
+      );
+    }
+
+    final profile = ref.watch(profileProvider).value;
+    final name = (profile?.displayName?.isNotEmpty == true)
+        ? profile!.displayName!
+        : (user.email ?? 'Account');
+    final initial = name.characters.first.toUpperCase();
+
+    return ItineraCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          ListTile(
+            leading: CircleAvatar(
+              backgroundColor: tokens.accent,
+              foregroundColor: tokens.onAccent,
+              child: Text(initial,
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+            ),
+            title: Text(name),
+            subtitle: user.email != null ? Text(user.email!) : null,
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/profile'),
+          ),
+          Divider(height: 1, color: tokens.hairline),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Esci'),
+            onTap: () => ref.read(authServiceProvider).signOut(),
+          ),
+        ],
+      ),
+    );
   }
 }
 
