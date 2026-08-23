@@ -9,6 +9,7 @@ class TripMember {
     required this.status,
     this.userId,
     this.email,
+    this.name,
   });
 
   final String id;
@@ -18,8 +19,26 @@ class TripMember {
   final String? userId;
   final String? email;
 
+  /// Nome visualizzato risolto dal profilo (per i membri con user_id).
+  final String? name;
+
   bool get isOwner => role == 'owner';
   bool get isPending => status == 'pending';
+
+  /// Etichetta migliore disponibile: nome profilo, poi email invito, poi generico.
+  String get label => (name != null && name!.isNotEmpty)
+      ? name!
+      : (email ?? 'Utente');
+
+  TripMember withName(String? n) => TripMember(
+        id: id,
+        tripId: tripId,
+        role: role,
+        status: status,
+        userId: userId,
+        email: email,
+        name: n,
+      );
 
   factory TripMember.fromMap(Map<String, dynamic> m) => TripMember(
         id: m['id'] as String,
@@ -52,9 +71,33 @@ class MembersService {
         .select()
         .eq('trip_id', tripId)
         .order('role', ascending: true);
-    return (data as List)
+    final members = (data as List)
         .map((m) => TripMember.fromMap(Map<String, dynamic>.from(m as Map)))
         .toList();
+    // Risolvo i nomi dai profili (RLS: i co-membri possono leggerseli).
+    final ids = [
+      for (final m in members)
+        if (m.userId != null) m.userId!
+    ];
+    if (ids.isNotEmpty) {
+      try {
+        final profs = await _c
+            .from('profiles')
+            .select('id, display_name')
+            .inFilter('id', ids);
+        final byId = {
+          for (final p in (profs as List))
+            (p as Map)['id'] as String: p['display_name'] as String?
+        };
+        for (var i = 0; i < members.length; i++) {
+          final n = byId[members[i].userId];
+          if (n != null) members[i] = members[i].withName(n);
+        }
+      } catch (_) {
+        // profilo non leggibile/offline: resta l'etichetta di fallback.
+      }
+    }
+    return members;
   }
 
   /// Aggiunge un utente REALE (gia' registrato) al viaggio come editor attivo:

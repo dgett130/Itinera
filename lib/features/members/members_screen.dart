@@ -120,7 +120,7 @@ class _MemberTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final label = member.email ?? 'Utente';
+    final label = member.label;
     final initial = label.characters.first.toUpperCase();
     return ItineraCard(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

@@ -273,12 +273,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 icon: const Icon(Icons.g_mobiledata, size: 28),
                 label: const Text('Continua con Google'),
               ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: _loading ? null : () => _oauth(auth.signInWithApple),
-                icon: const Icon(Icons.apple),
-                label: const Text('Continua con Apple'),
-              ),
+              // Login con Apple: pulsante rimosso finche' non e' disponibile un
+              // Apple Developer account. Il metodo AuthService.signInWithApple
+              // resta pronto per riattivarlo.
               const SizedBox(height: 12),
               TextButton(
                 onPressed: _loading
