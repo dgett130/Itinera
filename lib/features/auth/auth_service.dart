@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/supabase_config.dart';
@@ -56,18 +57,45 @@ class AuthService {
 
   Future<void> signOut() => _c.auth.signOut();
 
-  /// Accesso con Google. Apre il flusso OAuth nel browser di sistema e torna
-  /// all'app via deep link (org.itinera://login-callback); supabase_flutter
-  /// intercetta il redirect e stabilisce la sessione. Il provider Google va
-  /// abilitato in Supabase (Authentication -> Providers).
-  Future<bool> signInWithGoogle() => _c.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: SupabaseConfig.authRedirect,
-        authScreenLaunchMode: LaunchMode.externalApplication,
-      );
+  static bool _googleReady = false;
 
-  /// Accesso con Apple. Richiede il provider Apple configurato in Supabase
-  /// (Service ID + chiave "Sign in with Apple").
+  /// Accesso con Google **NATIVO**: mostra il popup di scelta account (niente
+  /// browser) tramite `google_sign_in`, poi scambia l'ID token con Supabase
+  /// (`signInWithIdToken`). Richiede su Google Cloud un client **Android**
+  /// (package + SHA-1, fa apparire il popup) e un client **Web** il cui ID va
+  /// in [SupabaseConfig.googleServerClientId] + nel provider Google di Supabase.
+  Future<void> signInWithGoogle() async {
+    final serverId = SupabaseConfig.googleServerClientId;
+    if (serverId.isEmpty) {
+      throw const AuthException(
+          'Google non ancora configurato (manca il Web client ID).');
+    }
+    final gsi = GoogleSignIn.instance;
+    if (!_googleReady) {
+      await gsi.initialize(serverClientId: serverId);
+      _googleReady = true;
+    }
+    final account = await gsi.authenticate();
+    final idToken = account.authentication.idToken;
+    if (idToken == null) {
+      throw const AuthException('Google non ha restituito un ID token.');
+    }
+    // Access token (facoltativo) per gli scope base, se gia' autorizzati.
+    String? accessToken;
+    try {
+      final authz = await account.authorizationClient
+          .authorizationForScopes(const ['email', 'profile']);
+      accessToken = authz?.accessToken;
+    } catch (_) {}
+    await _c.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+      accessToken: accessToken,
+    );
+  }
+
+  /// Accesso con Apple (browser + deep link). Richiede il provider Apple
+  /// configurato in Supabase. Attualmente non esposto in UI (manca Apple Dev).
   Future<bool> signInWithApple() => _c.auth.signInWithOAuth(
         OAuthProvider.apple,
         redirectTo: SupabaseConfig.authRedirect,

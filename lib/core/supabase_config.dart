@@ -25,6 +25,17 @@ class SupabaseConfig {
   /// **Redirect URLs** del progetto Supabase (Authentication → URL Configuration).
   static const String authRedirect = 'org.itinera://login-callback';
 
+  /// ID del client OAuth **Web** di Google Cloud (…apps.googleusercontent.com).
+  /// Serve al Google Sign-In NATIVO come `serverClientId`: fa sì che l'ID token
+  /// restituito abbia l'audience che Supabase si aspetta. Il client **Android**
+  /// (package `org.itinera.itinera` + SHA-1) va comunque creato su Google Cloud
+  /// per far apparire il popup nativo. Impostabile a build-time con
+  /// `--dart-define=GOOGLE_SERVER_CLIENT_ID=...`.
+  static const String googleServerClientId = String.fromEnvironment(
+    'GOOGLE_SERVER_CLIENT_ID',
+    defaultValue: '',
+  );
+
   /// Sono presenti delle credenziali (URL + chiave)?
   static bool get hasCredentials => url.isNotEmpty && anonKey.isNotEmpty;
 }

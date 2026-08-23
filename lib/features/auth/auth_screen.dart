@@ -118,7 +118,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   /// Avvia un accesso social (Google/Apple): apre il browser e torna via deep
   /// link. La sessione la stabilisce supabase_flutter; il pop della pagina lo
   /// gestisce il listener su currentUserProvider in [build].
-  Future<void> _oauth(Future<bool> Function() start) async {
+  Future<void> _oauth(Future<void> Function() start) async {
     setState(() {
       _loading = true;
       _error = null;
