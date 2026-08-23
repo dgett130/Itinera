@@ -61,7 +61,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       } else {
         await auth.signIn(email: _emailCtrl.text, password: _passCtrl.text);
       }
-      if (mounted) context.pop();
+      // Se aperta come pagina (da Impostazioni) torna indietro; se e' la radice
+      // (utente non loggato), ci pensa il RootGate a mostrare la home.
+      if (mounted && context.canPop()) context.pop();
     } on AuthException catch (e) {
       setState(() => _error = e.message);
     } catch (e) {

@@ -1,69 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/enums.dart';
-import '../../providers.dart';
-import '../../ui/itinera_theme.dart';
-import '../sync/login_screen.dart';
+import '../../core/supabase_config.dart';
+import '../../data/sync/sync_providers.dart';
+import '../../ui/widgets.dart';
+import '../auth/auth_providers.dart';
+import '../auth/auth_screen.dart';
 import '../trip/trips_screen.dart';
-import 'mode_chooser_screen.dart';
 
-/// Schermata radice ('/'): instrada in base allo stato dell'app.
+/// Schermata radice ('/'): l'app e' basata su account.
 ///
-/// - modalita' non ancora scelta -> scelta locale/remota;
-/// - modalita' remota senza token -> login;
-/// - altrimenti -> home dei viaggi.
+/// - non loggato  -> schermata di accesso/registrazione;
+/// - loggato      -> home dei viaggi, con il motore di sync avviato.
 ///
-/// E' reattiva: cambiando le impostazioni (scelta modalita', login, logout)
-/// la schermata giusta appare da sola.
+/// Reattiva: al login/logout la schermata giusta appare da sola.
 class RootGate extends ConsumerWidget {
   const RootGate({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(settingsProvider);
-    return settings.when(
-      loading: () => const _Splash(),
-      error: (e, _) => Scaffold(body: Center(child: Text('Errore: $e'))),
-      data: (s) {
-        if (!s.modeChosen) return const ModeChooserScreen();
-        if (s.appMode == AppMode.remote && s.authToken == null) {
-          return const LoginScreen();
-        }
-        return const TripsScreen();
-      },
-    );
+    if (!SupabaseConfig.hasCredentials || !supabaseReady) {
+      return const _AccountUnavailable();
+    }
+    final user = ref.watch(currentUserProvider);
+    if (user == null) return const AuthScreen();
+
+    // Avvia (e mantiene vivo) il motore di sincronizzazione finche' loggato.
+    ref.watch(syncEngineProvider);
+    return const TripsScreen();
   }
 }
 
-class _Splash extends StatelessWidget {
-  const _Splash();
+class _AccountUnavailable extends StatelessWidget {
+  const _AccountUnavailable();
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Itinera',
-              style: TextStyle(
-                fontFamily: tokens.displayFont,
-                fontSize: 34,
-                fontWeight: FontWeight.w600,
-                color: context.scheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: 26,
-              height: 26,
-              child: CircularProgressIndicator(strokeWidth: 2.5, color: tokens.accent),
-            ),
-          ],
-        ),
+    return const Scaffold(
+      body: EmptyState(
+        icon: Icons.cloud_off_outlined,
+        title: 'Account non disponibile',
+        message: 'Configura le chiavi Supabase per usare Itinera.',
       ),
     );
   }

@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../core/enums.dart';
 import '../../core/format.dart';
 import '../../core/supabase_config.dart';
 import '../../data/database.dart';
@@ -30,13 +29,6 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           SectionHeader('Account'),
           const _AccountCard(),
-          if (settings != null) ...[
-            SectionHeader('Modalità'),
-            ItineraCard(
-              padding: EdgeInsets.zero,
-              child: _ModeSection(settings: settings),
-            ),
-          ],
           SectionHeader('Backup ed esporta'),
           ItineraCard(
             padding: EdgeInsets.zero,
@@ -334,100 +326,3 @@ class _FuelDefaultsState extends ConsumerState<_FuelDefaults> {
   }
 }
 
-class _ModeSection extends ConsumerWidget {
-  const _ModeSection({required this.settings});
-  final AppSetting settings;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = context.tokens;
-    final isRemote = settings.appMode == AppMode.remote;
-    return Column(
-      children: [
-        ListTile(
-          leading: Icon(
-            isRemote ? Icons.cloud_done : Icons.phone_iphone,
-            color: isRemote ? tokens.positive : tokens.accent,
-          ),
-          title: Text(isRemote ? 'Server (sincronizzata)' : 'Solo locale'),
-          subtitle: Text(
-            isRemote
-                ? '${settings.serverUrl ?? '-'}'
-                    '${settings.lastSyncAt != null ? '\nUltima sync: ${Fmt.date(settings.lastSyncAt!)}' : ''}'
-                : 'I dati restano su questo dispositivo',
-          ),
-          isThreeLine: isRemote && settings.lastSyncAt != null,
-        ),
-        if (isRemote) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _sync(context, ref, push: false),
-                    icon: const Icon(Icons.cloud_download),
-                    label: const Text('Scarica'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => _sync(context, ref, push: true),
-                    icon: const Icon(Icons.cloud_upload),
-                    label: const Text('Carica'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Divider(height: 1, color: tokens.hairline),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Disconnetti'),
-            onTap: () async {
-              await ref.read(settingsRepositoryProvider).clearRemoteSession();
-              if (context.mounted) context.go('/');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.phone_iphone),
-            title: const Text('Passa alla modalità solo locale'),
-            onTap: () async {
-              await ref
-                  .read(settingsRepositoryProvider)
-                  .chooseMode(AppMode.local);
-              if (context.mounted) context.go('/');
-            },
-          ),
-        ] else
-          ListTile(
-            leading: Icon(Icons.cloud_sync, color: tokens.accent),
-            title: const Text('Passa alla modalità server'),
-            subtitle: const Text('Accedi e sincronizza con il tuo server'),
-            onTap: () async {
-              await ref
-                  .read(settingsRepositoryProvider)
-                  .chooseMode(AppMode.remote);
-              if (context.mounted) context.go('/');
-            },
-          ),
-      ],
-    );
-  }
-
-  Future<void> _sync(BuildContext context, WidgetRef ref,
-      {required bool push}) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final router = GoRouter.of(context);
-    try {
-      final sync = ref.read(syncServiceProvider);
-      final outcome = push ? await sync.push() : await sync.pull();
-      messenger.showSnackBar(SnackBar(content: Text(outcome.message)));
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('$e')));
-      final s = await ref.read(settingsRepositoryProvider).get();
-      if (s.authToken == null) router.go('/');
-    }
-  }
-}

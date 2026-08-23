@@ -6,7 +6,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app.dart';
 import 'core/supabase_config.dart';
 import 'data/database.dart';
-import 'data/sample_data.dart';
 import 'data/seed.dart';
 import 'providers.dart';
 
@@ -36,8 +35,9 @@ Future<void> main() async {
   // Apertura DB + caricamento dati di default e viaggio di esempio.
   // Fatto prima di runApp cosi' la UI parte con il DB gia' pronto.
   final db = AppDatabase();
+  // Solo dati di riferimento locali (categorie, modelli): i viaggi arrivano
+  // dall'account via sincronizzazione.
   await AppSeed.ensureSeeded(db);
-  await SampleData.createIfEmpty(db);
 
   runApp(
     ProviderScope(

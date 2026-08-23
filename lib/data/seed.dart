@@ -29,23 +29,25 @@ class AppSeed {
   }
 
   static Future<void> _seedPackingCategories(AppDatabase db) async {
-    const cats = <(String, String, String)>[
-      ('Documenti', 'badge', '#1565C0'),
-      ('Abbigliamento', 'checkroom', '#6A1B9A'),
-      ('Igiene', 'wash', '#00838F'),
-      ('Scarpe', 'shoe', '#4E342E'),
-      ('Elettronica', 'devices', '#37474F'),
-      ('Farmaci', 'medical', '#C62828'),
-      ('Accessori', 'accessories', '#AD1457'),
-      ('Varie', 'category', '#616161'),
+    // Id DETERMINISTICI (stabili su ogni dispositivo): gli oggetti sincronizzati
+    // referenziano questi id, che devono coincidere ovunque.
+    const cats = <(String, String, String, String)>[
+      ('pc_documenti', 'Documenti', 'badge', '#1565C0'),
+      ('pc_abbigliamento', 'Abbigliamento', 'checkroom', '#6A1B9A'),
+      ('pc_igiene', 'Igiene', 'wash', '#00838F'),
+      ('pc_scarpe', 'Scarpe', 'shoe', '#4E342E'),
+      ('pc_elettronica', 'Elettronica', 'devices', '#37474F'),
+      ('pc_farmaci', 'Farmaci', 'medical', '#C62828'),
+      ('pc_accessori', 'Accessori', 'accessories', '#AD1457'),
+      ('pc_varie', 'Varie', 'category', '#616161'),
     ];
     await db.batch((b) {
       var order = 0;
-      for (final (name, icon, color) in cats) {
+      for (final (id, name, icon, color) in cats) {
         b.insert(
           db.packingCategories,
           PackingCategoriesCompanion.insert(
-            id: newId(),
+            id: id,
             name: name,
             iconKey: Value(icon),
             colorHex: Value(color),
@@ -58,22 +60,22 @@ class AppSeed {
   }
 
   static Future<void> _seedActivityCategories(AppDatabase db) async {
-    const cats = <(String, String, String)>[
-      ('Cibo', 'restaurant', '#EF6C00'),
-      ('Visita', 'sightseeing', '#00695C'),
-      ('Trasporto', 'transport', '#455A64'),
-      ('Alloggio', 'hotel', '#4527A0'),
-      ('Relax', 'relax', '#2E7D32'),
-      ('Shopping', 'shopping', '#AD1457'),
-      ('Altro', 'place', '#616161'),
+    const cats = <(String, String, String, String)>[
+      ('ac_cibo', 'Cibo', 'restaurant', '#EF6C00'),
+      ('ac_visita', 'Visita', 'sightseeing', '#00695C'),
+      ('ac_trasporto', 'Trasporto', 'transport', '#455A64'),
+      ('ac_alloggio', 'Alloggio', 'hotel', '#4527A0'),
+      ('ac_relax', 'Relax', 'relax', '#2E7D32'),
+      ('ac_shopping', 'Shopping', 'shopping', '#AD1457'),
+      ('ac_altro', 'Altro', 'place', '#616161'),
     ];
     await db.batch((b) {
       var order = 0;
-      for (final (name, icon, color) in cats) {
+      for (final (id, name, icon, color) in cats) {
         b.insert(
           db.activityCategories,
           ActivityCategoriesCompanion.insert(
-            id: newId(),
+            id: id,
             name: name,
             iconKey: Value(icon),
             colorHex: Value(color),
