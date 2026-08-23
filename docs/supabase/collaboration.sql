@@ -47,11 +47,14 @@ $$;
 -- Reclama gli inviti in sospeso per l'email dell'utente corrente (chiamata al login).
 create or replace function public.claim_invites() returns void
 language plpgsql security definer set search_path = public as $$
+declare
+  uemail text := lower(coalesce(auth.jwt() ->> 'email', ''));
 begin
+  if uemail = '' then return; end if;
   update trip_members
      set user_id = auth.uid(), status = 'active'
    where user_id is null
-     and lower(invited_email) = lower(coalesce(auth.email(), ''));
+     and lower(invited_email) = uemail;
 end;
 $$;
 
@@ -121,7 +124,20 @@ create policy "profiles_comember_select" on public.profiles for select using (
   )
 );
 
--- 8) Realtime su trip_members ----------------------------------------------
+-- 8) La proprieta' del viaggio non cambia in update (un membro che modifica
+--    un viaggio condiviso non "ruba" owner_id: resta all'autore) -----------
+create or replace function public.preserve_trip_owner() returns trigger
+language plpgsql as $$
+begin
+  new.owner_id := old.owner_id;
+  return new;
+end;
+$$;
+drop trigger if exists trips_preserve_owner on public.trips;
+create trigger trips_preserve_owner before update on public.trips
+  for each row execute function public.preserve_trip_owner();
+
+-- 9) Realtime su trip_members ----------------------------------------------
 do $$ begin
   alter publication supabase_realtime add table public.trip_members;
 exception when duplicate_object then null; end $$;

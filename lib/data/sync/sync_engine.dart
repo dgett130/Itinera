@@ -113,6 +113,8 @@ class SyncEngine {
     } on AuthException {
       await _forceReauth();
     } on PostgrestException catch (e) {
+      debugPrint('[sync] postgrest code=${e.code} msg=${e.message} '
+          'details=${e.details} hint=${e.hint}');
       if (_isAuthError(e)) {
         await _forceReauth();
       } else {
@@ -120,6 +122,7 @@ class SyncEngine {
             status.value.copyWith(phase: SyncPhase.error, error: e.message);
       }
     } catch (e) {
+      debugPrint('[sync] error: $e');
       final s = e.toString().toLowerCase();
       if (s.contains('socket') ||
           s.contains('failed host') ||
@@ -231,9 +234,10 @@ class SyncEngine {
       } else {
         final map = await spec.toRemote(db, id);
         if (map != null) {
-          // owner_id NON viene inviato: lo imposta il default `auth.uid()` alla
-          // creazione e resta invariato in update -> la proprieta' del viaggio
-          // non cambia quando un membro modifica una riga condivisa.
+          // owner_id esplicito (il default auth.uid() non e' affidabile per la
+          // WITH CHECK). Per i viaggi condivisi, un trigger DB impedisce che
+          // owner_id di `trips` cambi in update (la proprieta' resta all'autore).
+          map['owner_id'] = userId;
           map['updated_at'] = _nowIso();
           map['deleted_at'] = null;
           await client.from(tbl).upsert(map);
