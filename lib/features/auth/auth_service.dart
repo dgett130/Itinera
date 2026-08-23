@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/supabase_config.dart';
@@ -59,6 +61,10 @@ class AuthService {
         redirectTo: SupabaseConfig.authRedirect,
       );
 
+  /// Imposta una nuova password (usato dopo il link di recupero).
+  Future<void> updatePassword(String newPassword) =>
+      _c.auth.updateUser(UserAttributes(password: newPassword));
+
   Future<Profile?> fetchProfile(String userId) async {
     final data =
         await _c.from('profiles').select().eq('id', userId).maybeSingle();
@@ -74,5 +80,26 @@ class AuthService {
       'display_name': displayName.trim(),
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     });
+  }
+
+  /// Carica un'immagine di profilo su Supabase Storage (bucket `avatars`) e
+  /// salva l'URL pubblico su `profiles.avatar_url`. Ritorna l'URL (con
+  /// cache-busting, cosi' l'app mostra subito la nuova immagine).
+  Future<String> uploadAvatar(Uint8List bytes, {String ext = 'jpg'}) async {
+    final uid = currentUser!.id;
+    final path = '$uid/avatar.$ext';
+    await _c.storage.from('avatars').uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(upsert: true, contentType: 'image/$ext'),
+        );
+    final base = _c.storage.from('avatars').getPublicUrl(path);
+    final url = '$base?t=${DateTime.now().millisecondsSinceEpoch}';
+    await _c.from('profiles').upsert({
+      'id': uid,
+      'avatar_url': url,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
+    return url;
   }
 }

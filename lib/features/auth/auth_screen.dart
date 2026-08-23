@@ -19,6 +19,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
 
   bool _register = false;
   bool _obscure = true;
@@ -30,6 +31,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
     _passCtrl.dispose();
+    _confirmCtrl.dispose();
     super.dispose();
   }
 
@@ -64,6 +66,52 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       setState(() => _error = 'Errore imprevisto: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _forgotPassword() async {
+    final ctrl = TextEditingController(text: _emailCtrl.text.trim());
+    final email = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reimposta password'),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.emailAddress,
+          autocorrect: false,
+          decoration: const InputDecoration(
+            labelText: 'Email',
+            prefixIcon: Icon(Icons.alternate_email),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+            child: const Text('Invia'),
+          ),
+        ],
+      ),
+    );
+    if (email == null || !email.contains('@')) return;
+    try {
+      await ref.read(authServiceProvider).sendPasswordReset(email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Se l\'email e\' registrata, ti invieremo le istruzioni.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
     }
   }
 
@@ -147,6 +195,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     ? 'Almeno 6 caratteri'
                     : null,
               ),
+              if (_register) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _confirmCtrl,
+                  obscureText: _obscure,
+                  decoration: const InputDecoration(
+                    labelText: 'Conferma password',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                  validator: (v) =>
+                      (v != _passCtrl.text) ? 'Le password non coincidono' : null,
+                ),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: 16),
                 _Banner(
@@ -179,6 +240,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     ? 'Hai gia\' un account? Accedi'
                     : 'Non hai un account? Registrati'),
               ),
+              if (!_register)
+                TextButton(
+                  onPressed: _loading ? null : _forgotPassword,
+                  child: const Text('Password dimenticata?'),
+                ),
             ],
           ),
         ),

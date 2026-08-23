@@ -57,6 +57,8 @@ class SyncEngine {
   static String _nowIso() => DateTime.now().toUtc().toIso8601String();
 
   Future<void> start() async {
+    await _ensureProfile();
+    await _claimInvites();
     await _bootstrapOnce();
     await syncNow();
 
@@ -108,13 +110,86 @@ class SyncEngine {
       );
     } on SocketException {
       status.value = status.value.copyWith(phase: SyncPhase.offline);
+    } on AuthException {
+      await _forceReauth();
+    } on PostgrestException catch (e) {
+      if (_isAuthError(e)) {
+        await _forceReauth();
+      } else {
+        status.value =
+            status.value.copyWith(phase: SyncPhase.error, error: e.message);
+      }
     } catch (e) {
-      status.value = status.value.copyWith(
-        phase: SyncPhase.error,
-        error: e.toString(),
-      );
+      final s = e.toString().toLowerCase();
+      if (s.contains('socket') ||
+          s.contains('failed host') ||
+          s.contains('connection')) {
+        status.value = status.value.copyWith(phase: SyncPhase.offline);
+      } else {
+        status.value = status.value.copyWith(
+          phase: SyncPhase.error,
+          error: e.toString(),
+        );
+      }
     } finally {
       _busy = false;
+    }
+  }
+
+  bool _isAuthError(PostgrestException e) {
+    final c = e.code ?? '';
+    return c == 'PGRST301' ||
+        c == '401' ||
+        e.message.toLowerCase().contains('jwt');
+  }
+
+  /// Sessione non piu' valida (token scaduto/revocato): esce, cosi' il
+  /// RootGate riporta alla schermata di accesso.
+  Future<void> _forceReauth() async {
+    status.value = status.value.copyWith(phase: SyncPhase.error, error: 'auth');
+    try {
+      await client.auth.signOut();
+    } catch (_) {}
+  }
+
+  /// Reclama gli inviti in sospeso per l'email dell'utente (al login).
+  Future<void> _claimInvites() async {
+    try {
+      await client.rpc('claim_invites');
+    } catch (_) {}
+  }
+
+  /// Garantisce che chi crea/pubblica un viaggio ne sia owner in trip_members
+  /// (necessario perche' le RLS di appartenenza permettano le righe figlie).
+  Future<void> _ensureOwnerMembership(String tripId) async {
+    try {
+      await client.from('trip_members').upsert(
+        {
+          'trip_id': tripId,
+          'user_id': userId,
+          'role': 'owner',
+          'status': 'active',
+        },
+        onConflict: 'trip_id,user_id',
+        ignoreDuplicates: true,
+      );
+    } catch (_) {}
+  }
+
+  /// Crea la riga `profiles` se manca (self-heal, indipendente dal trigger DB).
+  Future<void> _ensureProfile() async {
+    try {
+      final u = client.auth.currentUser;
+      if (u == null) return;
+      final name = (u.userMetadata?['display_name'] as String?) ??
+          u.email?.split('@').first;
+      await client.from('profiles').upsert(
+        {'id': u.id, 'display_name': name},
+        onConflict: 'id',
+        ignoreDuplicates: true,
+      );
+    } catch (_) {
+      // profiles assente o offline: non bloccante.
     }
   }
 
@@ -156,10 +231,13 @@ class SyncEngine {
       } else {
         final map = await spec.toRemote(db, id);
         if (map != null) {
-          map['owner_id'] = userId;
+          // owner_id NON viene inviato: lo imposta il default `auth.uid()` alla
+          // creazione e resta invariato in update -> la proprieta' del viaggio
+          // non cambia quando un membro modifica una riga condivisa.
           map['updated_at'] = _nowIso();
           map['deleted_at'] = null;
           await client.from(tbl).upsert(map);
+          if (tbl == 'trips') await _ensureOwnerMembership(id);
         }
       }
       await _dropOutbox(tbl, id);

@@ -1,8 +1,11 @@
 import 'package:go_router/go_router.dart';
 
 import 'features/auth/auth_screen.dart';
+import 'features/auth/password_reset_screen.dart';
 import 'features/auth/profile_screen.dart';
+import 'features/friends/friends_screen.dart';
 import 'features/itinerary/itinerary_screen.dart';
+import 'features/members/members_screen.dart';
 import 'features/onboarding/root_gate.dart';
 import 'features/packing/packing_screen.dart';
 import 'features/settings/settings_screen.dart';
@@ -29,6 +32,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/profile',
       builder: (context, state) => const ProfileScreen(),
+    ),
+    GoRoute(
+      path: '/friends',
+      builder: (context, state) => const FriendsScreen(),
+    ),
+    GoRoute(
+      path: '/reset-password',
+      builder: (context, state) => const PasswordResetScreen(),
     ),
     GoRoute(
       path: '/trip/new',
@@ -58,6 +69,11 @@ final appRouter = GoRouter(
       path: '/trip/:id/itinerary',
       builder: (context, state) =>
           ItineraryScreen(tripId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/trip/:id/members',
+      builder: (context, state) =>
+          MembersScreen(tripId: state.pathParameters['id']!),
     ),
   ],
 );

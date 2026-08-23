@@ -8,6 +8,7 @@ import 'core/supabase_config.dart';
 import 'data/database.dart';
 import 'data/seed.dart';
 import 'providers.dart';
+import 'router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +28,12 @@ Future<void> main() async {
         anonKey: SupabaseConfig.anonKey,
       );
       supabaseReady = true;
+      // Link di recupero password: porta alla schermata "nuova password".
+      Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+        if (data.event == AuthChangeEvent.passwordRecovery) {
+          appRouter.push('/reset-password');
+        }
+      });
     } catch (_) {
       supabaseReady = false;
     }

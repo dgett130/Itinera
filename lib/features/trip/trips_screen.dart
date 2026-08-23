@@ -10,6 +10,7 @@ import '../../data/database.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/itinera_theme.dart';
 import '../../ui/widgets.dart';
+import '../sync/sync_status_button.dart';
 import 'trip_providers.dart';
 
 /// Home: elenco dei viaggi, raggruppati in "In arrivo" e "Passati".
@@ -138,6 +139,12 @@ class _HomeHeader extends StatelessWidget {
                     ),
                 ],
               ),
+            ),
+            const SyncStatusButton(),
+            IconButton(
+              icon: const Icon(Icons.people_outline),
+              tooltip: 'Amici',
+              onPressed: () => context.push('/friends'),
             ),
             IconButton.filledTonal(
               icon: const Icon(Icons.settings_outlined),

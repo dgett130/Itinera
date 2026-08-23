@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../ui/itinera_theme.dart';
 import '../../ui/widgets.dart';
@@ -18,11 +19,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _nameCtrl = TextEditingController();
   bool _prefilled = false;
   bool _saving = false;
+  bool _uploadingAvatar = false;
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickAvatar() async {
+    final img = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 82,
+    );
+    if (img == null) return;
+    setState(() => _uploadingAvatar = true);
+    try {
+      final bytes = await img.readAsBytes();
+      final ext = img.name.toLowerCase().endsWith('.png') ? 'png' : 'jpg';
+      await ref.read(authServiceProvider).uploadAvatar(bytes, ext: ext);
+      ref.invalidate(profileProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Errore caricamento: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
   }
 
   Future<void> _save() async {
@@ -85,24 +111,81 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Center(
             child: Column(
               children: [
-                Container(
-                  width: 88,
-                  height: 88,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [tokens.accent, tokens.heroGradient.last],
-                    ),
-                  ),
-                  child: Text(
-                    initial,
-                    style: TextStyle(
-                      fontFamily: tokens.displayFont,
-                      fontSize: 36,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
+                GestureDetector(
+                  onTap: _uploadingAvatar ? null : _pickAvatar,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 88,
+                        height: 88,
+                        alignment: Alignment.center,
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [tokens.accent, tokens.heroGradient.last],
+                          ),
+                        ),
+                        child: profile?.avatarUrl != null
+                            ? Image.network(
+                                profile!.avatarUrl!,
+                                width: 88,
+                                height: 88,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Text(
+                                  initial,
+                                  style: TextStyle(
+                                    fontFamily: tokens.displayFont,
+                                    fontSize: 36,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                initial,
+                                style: TextStyle(
+                                  fontFamily: tokens.displayFont,
+                                  fontSize: 36,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                      ),
+                      if (_uploadingAvatar)
+                        Container(
+                          width: 88,
+                          height: 88,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.black54,
+                          ),
+                          child: const Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2.5, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: tokens.accent,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: context.scheme.surface, width: 2),
+                          ),
+                          child: Icon(Icons.photo_camera,
+                              size: 15, color: tokens.onAccent),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 12),

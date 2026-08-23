@@ -220,8 +220,13 @@ class _AccountCard extends ConsumerWidget {
             leading: CircleAvatar(
               backgroundColor: tokens.accent,
               foregroundColor: tokens.onAccent,
-              child: Text(initial,
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              backgroundImage: profile?.avatarUrl != null
+                  ? NetworkImage(profile!.avatarUrl!)
+                  : null,
+              child: profile?.avatarUrl == null
+                  ? Text(initial,
+                      style: const TextStyle(fontWeight: FontWeight.w700))
+                  : null,
             ),
             title: Text(name),
             subtitle: user.email != null ? Text(user.email!) : null,

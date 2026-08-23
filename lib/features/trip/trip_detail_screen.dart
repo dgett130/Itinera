@@ -68,6 +68,11 @@ class _TripDetailBody extends ConsumerWidget {
             title: Text(trip.name),
             actions: [
               IconButton(
+                icon: const Icon(Icons.people_outline),
+                tooltip: 'Persone',
+                onPressed: () => context.push('/trip/$tripId/members'),
+              ),
+              IconButton(
                 icon: const Icon(Icons.edit_outlined),
                 tooltip: l10n.commonEdit,
                 onPressed: () => context.push('/trip/$tripId/edit'),

@@ -45,6 +45,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Serve per scegliere la tua immagine di profilo.</string>
 	<!-- Deep link per i reindirizzamenti Supabase: org.itinera://login-callback -->
 	<key>CFBundleURLTypes</key>
 	<array>
