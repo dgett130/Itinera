@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/supabase_config.dart';
 import 'profile.dart';
 
 /// Servizio di autenticazione e profilo su Supabase.
@@ -37,6 +38,7 @@ class AuthService {
       email: email.trim(),
       password: password,
       data: {'display_name': displayName.trim()},
+      emailRedirectTo: SupabaseConfig.authRedirect,
     );
   }
 
@@ -52,8 +54,10 @@ class AuthService {
 
   Future<void> signOut() => _c.auth.signOut();
 
-  Future<void> sendPasswordReset(String email) =>
-      _c.auth.resetPasswordForEmail(email.trim());
+  Future<void> sendPasswordReset(String email) => _c.auth.resetPasswordForEmail(
+        email.trim(),
+        redirectTo: SupabaseConfig.authRedirect,
+      );
 
   Future<Profile?> fetchProfile(String userId) async {
     final data =

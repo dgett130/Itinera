@@ -20,6 +20,11 @@ class SupabaseConfig {
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impnbnl1d2Zvd2FxcHdnZ3lubGxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0ODk4MDYsImV4cCI6MjEwMzA2NTgwNn0.uF3im4721pRr3cUl7qLYZVswXVEhvBEwbj0etI-2-Js',
   );
 
+  /// Deep link a cui Supabase reindirizza dalle email (conferma account,
+  /// reset password, futuri inviti). Deve essere presente anche nell'elenco
+  /// **Redirect URLs** del progetto Supabase (Authentication → URL Configuration).
+  static const String authRedirect = 'org.itinera://login-callback';
+
   /// Sono presenti delle credenziali (URL + chiave)?
   static bool get hasCredentials => url.isNotEmpty && anonKey.isNotEmpty;
 }

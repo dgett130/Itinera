@@ -45,5 +45,19 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Deep link per i reindirizzamenti Supabase: org.itinera://login-callback -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>org.itinera.auth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>org.itinera</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
