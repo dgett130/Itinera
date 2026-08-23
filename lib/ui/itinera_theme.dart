@@ -392,9 +392,11 @@ class ItineraTheme {
         labelStyle: TextStyle(color: p.onSurfaceMuted),
       ),
       filledButtonTheme: FilledButtonThemeData(
+        // Le CTA piene usano il colore PRIMARIO (teal/brand), non l'accento
+        // corallo: un grande pulsante rosso sembrava un'azione negativa.
         style: FilledButton.styleFrom(
-          backgroundColor: p.accent,
-          foregroundColor: p.onAccent,
+          backgroundColor: p.primary,
+          foregroundColor: p.onPrimary,
           textStyle: t.labelLarge,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
@@ -416,8 +418,8 @@ class ItineraTheme {
         style: TextButton.styleFrom(foregroundColor: p.accent),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: p.accent,
-        foregroundColor: p.onAccent,
+        backgroundColor: p.primary,
+        foregroundColor: p.onPrimary,
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),

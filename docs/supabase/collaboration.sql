@@ -118,11 +118,13 @@ drop policy if exists trip_members_owner_delete  on public.trip_members;
 create policy trip_members_select on public.trip_members for select
   using (is_trip_member(trip_id) or user_id = auth.uid()
          or trip_owner_uid(trip_id) = auth.uid());
+-- Solo il PROPRIETARIO del viaggio puo' aggiungere membri/inviti. NIENTE
+-- auto-iscrizione come 'owner' da parte di un utente qualsiasi (era la falla
+-- che permetteva a chi sincronizzava un viaggio altrui di diventarne "owner").
 create policy trip_members_owner_insert on public.trip_members for insert
   with check (
     is_trip_owner(trip_id)
     or trip_owner_uid(trip_id) = auth.uid()
-    or (user_id = auth.uid() and role = 'owner')
   );
 create policy trip_members_owner_update on public.trip_members for update
   using (trip_owner_uid(trip_id) = auth.uid() or is_trip_owner(trip_id))
@@ -177,5 +179,20 @@ do $$ begin
   alter publication supabase_realtime add table public.trip_members;
 exception when duplicate_object then null; end $$;
 
--- 10) Pulizia righe di test lasciate dalla diagnosi (facoltativa) ----------
-delete from public.trips where name in ('ProvaSync','SQLtest-plain','SQLtest-returning');
+-- 10) Bonifica membership incoerenti -------------------------------------
+-- Rimuove le righe 'owner' fasulle: un membro 'owner' il cui user_id NON e' il
+-- proprietario reale del viaggio (residuo del vecchio _ensureOwnerMembership +
+-- bootstrap su cache sporca). L'owner corretto resta / viene ricreato sotto.
+delete from public.trip_members tm
+where tm.role = 'owner'
+  and tm.user_id is not null
+  and tm.user_id is distinct from (select owner_id from public.trips t where t.id = tm.trip_id);
+
+-- Garantisce che ogni viaggio esistente abbia la membership 'owner' corretta.
+insert into public.trip_members (trip_id, user_id, role, status)
+select id, owner_id, 'owner', 'active' from public.trips
+on conflict (trip_id, user_id) do update
+  set role = 'owner', status = 'active';
+
+-- 11) Pulizia righe di test lasciate dalla diagnosi (facoltativa) ----------
+delete from public.trips where name in ('SQLtest-plain','SQLtest-returning');

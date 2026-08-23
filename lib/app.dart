@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/enums.dart';
+import 'features/settings/theme_controller.dart';
 import 'l10n/app_localizations.dart';
 import 'router.dart';
 import 'ui/itinera_theme.dart';
 
 /// Widget radice dell'app.
-class ItineraApp extends StatelessWidget {
+class ItineraApp extends ConsumerWidget {
   const ItineraApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
     return MaterialApp.router(
       title: 'Itinera',
       debugShowCheckedModeBanner: false,
       theme: ItineraTheme.brand(Brightness.light),
       darkTheme: ItineraTheme.brand(Brightness.dark),
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
       routerConfig: appRouter,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

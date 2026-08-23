@@ -103,6 +103,13 @@ class AppDatabase extends _$AppDatabase {
         key TEXT PRIMARY KEY,
         value TEXT
       );''');
+    // Preferenze locali del dispositivo (tema, ecc.): NON sincronizzate e NON
+    // azzerate al cambio account (a differenza di _sync_state).
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS _app_prefs(
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );''');
     // NB: upsert esplicito con ON CONFLICT DO UPDATE. `INSERT OR REPLACE`
     // dentro un trigger puo' ereditare la conflict-policy dell'operazione
     // esterna (es. FK SET NULL) e fallire con UNIQUE constraint.
@@ -127,6 +134,21 @@ class AppDatabase extends _$AppDatabase {
         END;''');
     }
   }
+
+  /// Legge una preferenza locale del dispositivo (tabella `_app_prefs`).
+  Future<String?> getPref(String key) async {
+    final row = await customSelect(
+      'SELECT value FROM _app_prefs WHERE key = ?',
+      variables: [Variable<String>(key)],
+    ).getSingleOrNull();
+    return row?.read<String?>('value');
+  }
+
+  /// Salva una preferenza locale del dispositivo (tabella `_app_prefs`).
+  Future<void> setPref(String key, String value) => customStatement(
+        'INSERT OR REPLACE INTO _app_prefs(key,value) VALUES(?,?)',
+        [key, value],
+      );
 }
 
 LazyDatabase _openConnection() {

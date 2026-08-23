@@ -14,6 +14,7 @@ import '../../providers.dart';
 import '../../ui/itinera_theme.dart';
 import '../../ui/widgets.dart';
 import '../auth/auth_providers.dart';
+import 'theme_controller.dart';
 
 /// Impostazioni: modalita', backup/ripristino, valori carburante.
 class SettingsScreen extends ConsumerWidget {
@@ -29,6 +30,8 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           SectionHeader('Account'),
           const _AccountCard(),
+          SectionHeader('Aspetto'),
+          const ItineraCard(child: _ThemeSelector()),
           SectionHeader('Backup ed esporta'),
           ItineraCard(
             padding: EdgeInsets.zero,
@@ -325,6 +328,43 @@ class _FuelDefaultsState extends ConsumerState<_FuelDefaults> {
         Align(
           alignment: Alignment.centerRight,
           child: FilledButton(onPressed: _save, child: const Text('Salva')),
+        ),
+      ],
+    );
+  }
+}
+
+/// Selettore del tema dell'app: Sistema / Chiaro / Scuro.
+class _ThemeSelector extends ConsumerWidget {
+  const _ThemeSelector();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(themeModeProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.brightness_6_outlined, color: context.tokens.accent),
+            const SizedBox(width: 12),
+            Text('Tema', style: context.texts.titleSmall),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<ThemeMode>(
+            segments: const [
+              ButtonSegment(value: ThemeMode.system, label: Text('Sistema')),
+              ButtonSegment(value: ThemeMode.light, label: Text('Chiaro')),
+              ButtonSegment(value: ThemeMode.dark, label: Text('Scuro')),
+            ],
+            selected: {mode},
+            showSelectedIcon: false,
+            onSelectionChanged: (s) =>
+                ref.read(themeModeProvider.notifier).setMode(s.first),
+          ),
         ),
       ],
     );

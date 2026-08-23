@@ -57,6 +57,7 @@ class SyncEngine {
   static String _nowIso() => DateTime.now().toUtc().toIso8601String();
 
   Future<void> start() async {
+    await _ensureLocalOwner();
     await _ensureProfile();
     await _claimInvites();
     await _bootstrapOnce();
@@ -162,23 +163,6 @@ class SyncEngine {
     } catch (_) {}
   }
 
-  /// Garantisce che chi crea/pubblica un viaggio ne sia owner in trip_members
-  /// (necessario perche' le RLS di appartenenza permettano le righe figlie).
-  Future<void> _ensureOwnerMembership(String tripId) async {
-    try {
-      await client.from('trip_members').upsert(
-        {
-          'trip_id': tripId,
-          'user_id': userId,
-          'role': 'owner',
-          'status': 'active',
-        },
-        onConflict: 'trip_id,user_id',
-        ignoreDuplicates: true,
-      );
-    } catch (_) {}
-  }
-
   /// Crea la riga `profiles` se manca (self-heal, indipendente dal trigger DB).
   Future<void> _ensureProfile() async {
     try {
@@ -194,6 +178,34 @@ class SyncEngine {
     } catch (_) {
       // profiles assente o offline: non bloccante.
     }
+  }
+
+  // --- Isolamento per-utente: cambio account => svuota la cache locale -------
+
+  /// Se la cache locale appartiene a un altro utente (login con account diverso
+  /// sullo stesso dispositivo), la azzera prima di sincronizzare, cosi' non si
+  /// vedono i viaggi del profilo precedente. Con lo STESSO utente non tocca
+  /// nulla (le eventuali modifiche offline restano).
+  Future<void> _ensureLocalOwner() async {
+    final prev = await _getState('local_owner');
+    if (prev != null && prev != userId) {
+      await _wipeLocalData();
+    }
+    await _setState('local_owner', userId);
+  }
+
+  /// Cancella tutte le tabelle sincronizzate + la coda e lo stato di sync.
+  /// L'ordine inverso rispetta le foreign key; `_outbox` viene svuotata per
+  /// ULTIMA nella stessa transazione, cosi' le delete accodate dai trigger
+  /// durante la pulizia non vengono mai spinte sul server.
+  Future<void> _wipeLocalData() async {
+    await db.transaction(() async {
+      for (final name in AppDatabase.syncedTables.reversed) {
+        await db.customStatement('DELETE FROM $name');
+      }
+      await db.customStatement('DELETE FROM _sync_state');
+      await db.customStatement('DELETE FROM _outbox');
+    });
   }
 
   // --- Bootstrap: accoda i dati locali gia' presenti (primo login) ----------
@@ -241,7 +253,9 @@ class SyncEngine {
           map['updated_at'] = _nowIso();
           map['deleted_at'] = null;
           await client.from(tbl).upsert(map);
-          if (tbl == 'trips') await _ensureOwnerMembership(id);
+          // La membership 'owner' e' creata dal trigger DB add_owner_membership
+          // all'INSERT del viaggio: nessuna auto-iscrizione lato client (che
+          // altrimenti farebbe auto-iscrivere owner anche chi non lo e').
         }
       }
       await _dropOutbox(tbl, id);
