@@ -130,9 +130,6 @@ class _TripDetailBody extends ConsumerWidget {
                     ),
                   ),
                 ],
-                // Personalizzazione estetica in coda (secondaria).
-                SectionHeader('Stile del viaggio'),
-                _StyleSwitcher(trip: trip),
               ],
             ),
           ),
@@ -208,89 +205,6 @@ class _StatsRow extends StatelessWidget {
       mono: true,
     ));
     return StatStrip(tiles: tiles);
-  }
-}
-
-/// Selettore inline dello stile: tocco → ri-tematizza e persiste.
-class _StyleSwitcher extends ConsumerWidget {
-  const _StyleSwitcher({required this.trip});
-  final Trip trip;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final active = ItineraTheme.effectiveStyle(trip);
-    return Row(
-      children: [
-        for (final style in TripStyle.values) ...[
-          Expanded(child: _StyleChip(
-            style: style,
-            selected: style == active,
-            onTap: () =>
-                ref.read(tripRepositoryProvider).setThemeStyle(trip.id, style),
-          )),
-          if (style != TripStyle.values.last) const SizedBox(width: 10),
-        ],
-      ],
-    );
-  }
-}
-
-class _StyleChip extends StatelessWidget {
-  const _StyleChip({
-    required this.style,
-    required this.selected,
-    required this.onTap,
-  });
-  final TripStyle style;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final meta = ItineraTheme.meta(style);
-    final tokens = context.tokens;
-    final scheme = context.scheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: selected ? tokens.accentSoft : scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? tokens.accent : tokens.hairline,
-            width: selected ? 2 : 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [meta.swatch.first, meta.swatch[1]],
-                ),
-              ),
-              child: Icon(meta.icon, size: 17, color: Colors.white),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              meta.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: context.texts.labelMedium?.copyWith(
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? tokens.accent : scheme.onSurface,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 

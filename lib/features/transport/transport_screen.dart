@@ -535,7 +535,7 @@ Future<void> _manageTravelers(
                     ? null
                     : IconButton(
                         icon: const Icon(Icons.delete_outline),
-                        onPressed: () => repo.deleteTraveler(t.id),
+                        onPressed: () => repo.deleteTraveler(t.id, tripId),
                       ),
               ),
             const Divider(),

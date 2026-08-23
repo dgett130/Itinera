@@ -141,6 +141,7 @@ class StatTile extends StatelessWidget {
     final c = accent ?? scheme.onSurface;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
         if (icon != null) ...[
@@ -188,12 +189,19 @@ class StatStrip extends StatelessWidget {
     for (var i = 0; i < tiles.length; i++) {
       children.add(Expanded(child: tiles[i]));
       if (i != tiles.length - 1) {
-        children.add(Container(width: 1, height: 40, color: tokens.hairline));
+        // Nessuna altezza fissa: con IntrinsicHeight + stretch il separatore
+        // prende l'altezza del contenuto ed e' centrato per costruzione.
+        children.add(Container(width: 1, color: tokens.hairline));
       }
     }
     return ItineraCard(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: children),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
+      ),
     );
   }
 }

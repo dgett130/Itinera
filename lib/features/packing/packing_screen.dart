@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app.dart';
+import '../../core/enum_labels.dart';
 import '../../core/enums.dart';
 import '../../core/format.dart';
 import '../../core/icon_keys.dart';
@@ -37,8 +38,21 @@ class _PackingBody extends ConsumerStatefulWidget {
   ConsumerState<_PackingBody> createState() => _PackingBodyState();
 }
 
+/// Chiave sentinella per il filtro "oggetti senza borsa".
+const String _kNoBag = '__none__';
+
 class _PackingBodyState extends ConsumerState<_PackingBody> {
   String _query = '';
+
+  /// Bagagli selezionati come filtro (vuoto = mostra tutti). Puo' contenere
+  /// [_kNoBag] per gli oggetti non assegnati a una borsa.
+  final Set<String> _selectedBags = {};
+
+  void _toggleBag(String key) {
+    setState(() {
+      if (!_selectedBags.remove(key)) _selectedBags.add(key);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,8 +95,13 @@ class _PackingBodyState extends ConsumerState<_PackingBody> {
                   child: _ProgressHeader(items: items),
                 ),
                 _EssentialBanner(items: items),
-                if (bags.isNotEmpty)
-                  _BagsRow(tripId: widget.tripId, bags: bags, items: items),
+                _BagFilterRow(
+                  tripId: widget.tripId,
+                  bags: bags,
+                  items: items,
+                  selected: _selectedBags,
+                  onToggle: _toggleBag,
+                ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                   child: TextField(
@@ -101,6 +120,7 @@ class _PackingBodyState extends ConsumerState<_PackingBody> {
                     bags: bags,
                     categories: cats,
                     query: _query,
+                    selectedBags: _selectedBags,
                   ),
                 ),
               ],
@@ -195,117 +215,156 @@ class _EssentialBanner extends StatelessWidget {
   }
 }
 
-class _BagsRow extends StatelessWidget {
-  const _BagsRow(
-      {required this.tripId, required this.bags, required this.items});
+/// Riga di cerchietti-filtro dei bagagli: tocca per mostrare solo gli oggetti
+/// di quelle borse; nessuna selezione = mostra tutto. Pressione prolungata su
+/// una borsa per modificarla.
+class _BagFilterRow extends StatelessWidget {
+  const _BagFilterRow({
+    required this.tripId,
+    required this.bags,
+    required this.items,
+    required this.selected,
+    required this.onToggle,
+  });
+
   final String tripId;
   final List<Bag> bags;
   final List<PackingItem> items;
+  final Set<String> selected;
+  final void Function(String key) onToggle;
 
   @override
   Widget build(BuildContext context) {
+    final hasUnassigned = items.any((i) => i.bagId == null);
     return SizedBox(
-      height: 84,
+      height: 104,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
         children: [
           for (final bag in bags) ...[
-            _BagChip(tripId: tripId, bag: bag, items: items),
-            const SizedBox(width: 10),
+            Builder(builder: (context) {
+              final inBag = items.where((i) => i.bagId == bag.id).toList();
+              final w = computeBagWeight(bag, inBag);
+              final over = bag.maxWeightGrams != null &&
+                  w.complete &&
+                  w.grams > bag.maxWeightGrams!;
+              final caption =
+                  '${Fmt.weightGrams(w.grams)}${w.complete ? '' : '+'}';
+              return _BagFilterChip(
+                icon: bag.type.icon,
+                label: bag.name,
+                caption: caption,
+                selected: selected.contains(bag.id),
+                over: over,
+                onTap: () => onToggle(bag.id),
+                onLongPress: () => showPackingBagSheet(context,
+                    tripId: tripId, existing: bag),
+              );
+            }),
+            const SizedBox(width: 12),
           ],
-          _AddBagChip(tripId: tripId),
+          if (hasUnassigned) ...[
+            _BagFilterChip(
+              icon: Icons.label_off_outlined,
+              label: 'Senza borsa',
+              selected: selected.contains(_kNoBag),
+              onTap: () => onToggle(_kNoBag),
+            ),
+            const SizedBox(width: 12),
+          ],
+          _BagFilterChip(
+            icon: Icons.add,
+            label: 'Bagaglio',
+            addStyle: true,
+            selected: false,
+            onTap: () => showPackingBagSheet(context, tripId: tripId),
+          ),
         ],
       ),
     );
   }
 }
 
-class _BagChip extends StatelessWidget {
-  const _BagChip(
-      {required this.tripId, required this.bag, required this.items});
-  final String tripId;
-  final Bag bag;
-  final List<PackingItem> items;
+class _BagFilterChip extends StatelessWidget {
+  const _BagFilterChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.caption,
+    this.over = false,
+    this.addStyle = false,
+    this.onLongPress,
+  });
+
+  final IconData icon;
+  final String label;
+  final String? caption;
+  final bool selected;
+  final bool over;
+  final bool addStyle;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final scheme = context.scheme;
-    final inBag = items.where((i) => i.bagId == bag.id).toList();
-    final weight = computeBagWeight(bag, inBag);
-    final over = bag.maxWeightGrams != null &&
-        weight.complete &&
-        weight.grams > bag.maxWeightGrams!;
-    final label = bag.maxWeightGrams != null
-        ? '${Fmt.weightGrams(weight.grams)}${weight.complete ? '' : '+'} / ${Fmt.weightGrams(bag.maxWeightGrams!)}'
-        : '${Fmt.weightGrams(weight.grams)}${weight.complete ? '' : '+'}';
+    final Color ring = over
+        ? tokens.warning
+        : selected
+            ? tokens.accent
+            : tokens.hairline;
+    final Color fill = selected ? tokens.accent : scheme.surfaceContainerHigh;
+    final Color fg = selected ? tokens.onAccent : tokens.accent;
+
     return InkWell(
-      onTap: () => showPackingBagSheet(context, tripId: tripId, existing: bag),
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        width: 150,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: over ? tokens.warning.withValues(alpha: 0.12)
-              : scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-              color: over ? tokens.warning.withValues(alpha: 0.5)
-                  : tokens.hairline),
-        ),
+      onTap: onTap,
+      onLongPress: onLongPress,
+      borderRadius: BorderRadius.circular(16),
+      child: SizedBox(
+        width: 66,
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(bag.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.texts.titleSmall),
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: addStyle ? Colors.transparent : fill,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: ring,
+                  width: selected ? 2.5 : 1.5,
                 ),
-                if (over)
-                  Icon(Icons.warning_amber, size: 16, color: tokens.warning),
-              ],
+              ),
+              child: Icon(icon, color: addStyle ? tokens.accent : fg, size: 24),
             ),
             const SizedBox(height: 6),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: tokens.monoFont,
-                fontSize: 12,
-                color: over ? tokens.warning : scheme.onSurfaceVariant,
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: selected ? tokens.accent : scheme.onSurface,
               ),
             ),
+            if (caption != null)
+              Text(
+                caption!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: tokens.monoFont,
+                  fontSize: 9.5,
+                  color: over ? tokens.warning : scheme.onSurfaceVariant,
+                ),
+              ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _AddBagChip extends StatelessWidget {
-  const _AddBagChip({required this.tripId});
-  final String tripId;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return InkWell(
-      onTap: () => showPackingBagSheet(context, tripId: tripId),
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        width: 72,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: tokens.hairline,
-            style: BorderStyle.solid,
-          ),
-        ),
-        child: Icon(Icons.add, color: tokens.accent),
       ),
     );
   }
@@ -318,6 +377,7 @@ class _ItemList extends ConsumerWidget {
     required this.bags,
     required this.categories,
     required this.query,
+    required this.selectedBags,
   });
 
   final String tripId;
@@ -325,18 +385,26 @@ class _ItemList extends ConsumerWidget {
   final List<Bag> bags;
   final List<PackingCategory> categories;
   final String query;
+  final Set<String> selectedBags;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final filtered = query.isEmpty
-        ? items
-        : items.where((i) => i.name.toLowerCase().contains(query)).toList();
+    Iterable<PackingItem> result = items;
+    if (query.isNotEmpty) {
+      result = result.where((i) => i.name.toLowerCase().contains(query));
+    }
+    if (selectedBags.isNotEmpty) {
+      result = result.where((i) =>
+          (i.bagId != null && selectedBags.contains(i.bagId)) ||
+          (i.bagId == null && selectedBags.contains(_kNoBag)));
+    }
+    final filtered = result.toList();
 
     if (filtered.isEmpty) {
       return const EmptyState(
-        icon: Icons.search_off,
-        title: 'Nessun risultato',
-        message: 'Nessun oggetto corrisponde alla ricerca.',
+        icon: Icons.filter_alt_off_outlined,
+        title: 'Nessun oggetto',
+        message: 'Nessun oggetto corrisponde ai filtri attivi.',
       );
     }
 
