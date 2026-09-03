@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- L'icona adattiva usa @drawable/ic_launcher_background (mappa a tutto
-         campo), quindi non serve piu' il colore di sfondo dell'icona. -->
-</resources>
