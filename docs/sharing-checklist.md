@@ -8,20 +8,33 @@ Ora la schermata di consenso è in *Testing*: solo i Test users possono accedere
 - (Alternativa senza pubblicare: aggiungere le email Google degli amici tra i
   *Test users*, max 100.)
 
-## 2) Reset password via Resend (SMTP)
+## 2) Reset password via SMTP — ✅ CONFIGURATO con Gmail SMTP
 L'app-side è già pronto (Password dimenticata → email → deep link → nuova password).
-Manca solo l'SMTP su Supabase.
-1. Crea un account su **resend.com**.
-2. **Domains → Add domain**: aggiungi un tuo dominio e inserisci i record DNS
-   (SPF/DKIM) che Resend mostra, poi *Verify*.
-   ⚠️ Serve un dominio tuo. Senza, Resend permette solo `onboarding@resend.dev`
-   che invia **solo al tuo indirizzo** → inutile per gli amici.
-3. **API Keys → Create** → copia la key.
-4. Supabase → **Authentication → SMTP Settings → Enable custom SMTP**:
-   - Sender email: `no-reply@iltuodominio` · Sender name: `Itinera`
-   - Host: `smtp.resend.com` · Port: `465` · Username: `resend` · Password: *(la API key)*
+Serve un SMTP su Supabase. **Soluzione che funziona senza dominio: Gmail SMTP.**
+
+### Gmail SMTP (in uso, invia a chiunque, ~500 email/giorno)
+1. Account Google (`dgettatelli@gmail.com`) → **myaccount.google.com/security** →
+   attiva la **Verifica in due passaggi**.
+2. **myaccount.google.com/apppasswords** → crea una password per app ("Itinera")
+   → 16 caratteri.
+3. Supabase → **Authentication → SMTP Settings → Enable custom SMTP**:
+   - Sender email: `dgettatelli@gmail.com` · Sender name: `Itinera`
+   - Host: `smtp.gmail.com` · Port: `465`
+   - Username: `dgettatelli@gmail.com` · Password: la **password per app** (senza spazi)
    - Save.
-5. (Opz.) Authentication → **Email Templates** → personalizza "Reset password".
+
+**Note importanti (verificate sul campo):**
+- Il link di reset è **usa-e-getta**: va cliccato **una sola volta**. Un secondo
+  click (o un pre-scan del client email) dà "link scaduto/otp_expired" → basta
+  richiederne uno nuovo.
+- Il reset vale per gli account **email/password**. Gli account **solo-Google**
+  non ricevono il recupero (ma accedono con Google, quindi non serve).
+
+### Resend — perché NON l'abbiamo usato
+Resend via SMTP **rifiuta** il mittente di prova `onboarding@resend.dev` (l'invio
+non parte nemmeno, nessun log). Richiede un **dominio verificato**. Se un domani
+avrai un dominio, Resend va benissimo: `smtp.resend.com:465`, user `resend`,
+password = API key, sender `no-reply@tuodominio`.
 
 ## 3) Firebase App Distribution (installazione + auto-update per i tester)
 1. **console.firebase.google.com** → crea/usa un progetto.
