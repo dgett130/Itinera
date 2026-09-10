@@ -46,7 +46,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forExecutor(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -82,6 +82,10 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(sightseeingRoutes);
         await m.createTable(sightseeingRouteStops);
         await m.createTable(poiCacheEntries);
+      }
+      if (from < 5) {
+        // v5: un'attivita' puo' rappresentare un intero percorso di visita.
+        await m.addColumn(activities, activities.routeId);
       }
     },
     beforeOpen: (details) async {

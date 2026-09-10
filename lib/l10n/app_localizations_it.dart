@@ -254,6 +254,9 @@ class AppLocalizationsIt extends AppLocalizations {
       'Nessun luogo salvato. Tocca un suggerimento o la mappa.';
 
   @override
+  String get exploreShowMore => 'Mostra altri';
+
+  @override
   String get exploreFromCenter => 'dal centro';
 
   @override
@@ -379,16 +382,10 @@ class AppLocalizationsIt extends AppLocalizations {
   String get routeComputing => 'Calcolo…';
 
   @override
-  String routeAddedToItinerary(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count tappe aggiunte all\'itinerario',
-      one: '1 tappa aggiunta all\'itinerario',
-      zero: 'Nessuna nuova tappa',
-    );
-    return '$_temp0';
-  }
+  String get routeAddedToDay => 'Percorso aggiunto all\'itinerario';
+
+  @override
+  String get routeAlreadyInDay => 'Percorso già presente in quel giorno';
 
   @override
   String get unitKm => 'km';

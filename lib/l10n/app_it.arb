@@ -88,6 +88,7 @@
   "exploreSuggested": "Suggeriti",
   "exploreSaved": "Luoghi salvati",
   "exploreSavedEmpty": "Nessun luogo salvato. Tocca un suggerimento o la mappa.",
+  "exploreShowMore": "Mostra altri",
   "exploreFromCenter": "dal centro",
   "exploreInUse": "Luogo usato in un percorso o in un'attività: non eliminato",
   "exploreAddManual": "Aggiungi dalla mappa",
@@ -130,8 +131,8 @@
   "routeDistance": "Distanza",
   "routeDuration": "Durata",
   "routeComputing": "Calcolo…",
-  "routeAddedToItinerary": "{count, plural, =0{Nessuna nuova tappa} =1{1 tappa aggiunta all'itinerario} other{{count} tappe aggiunte all'itinerario}}",
-  "@routeAddedToItinerary": {"placeholders": {"count": {"type": "int"}}},
+  "routeAddedToDay": "Percorso aggiunto all'itinerario",
+  "routeAlreadyInDay": "Percorso già presente in quel giorno",
 
   "unitKm": "km",
   "unitMeter": "m",

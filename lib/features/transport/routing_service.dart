@@ -29,21 +29,24 @@ class RouteResult {
   final RouteTravelMode effectiveMode;
 }
 
-/// Routing stradale via OSRM (demo pubblico, senza chiave). L'endpoint e'
-/// configurabile; nessuna chiave segreta nel client.
-///
-/// ATTENZIONE (onesta' sui profili): il demo pubblico OSRM gestisce SOLO il
-/// profilo `driving`. Percio' [route] restituisce un percorso reale solo per
-/// [RouteTravelMode.car]; per piedi/bici ritorna `null` e il chiamante ripiega
-/// su una stima etichettata. Non dichiariamo supportato cio' che il provider
-/// non gestisce davvero.
+/// Routing stradale via OSRM. Usa le istanze pubbliche FOSSGIS
+/// (openstreetmap.de) che espongono profili reali **a piedi, in bici e in
+/// auto** — cosi' ogni mezzo segue davvero le strade/sentieri, non la linea
+/// d'aria. Nessuna chiave: uso in fair-use come per i tile OSM. Gli endpoint
+/// sono configurabili. Offline/errore -> il chiamante ripiega su una stima.
 class RoutingService {
-  RoutingService({http.Client? client, String? osrmBase})
+  RoutingService({http.Client? client, Map<RouteTravelMode, String>? bases})
     : _client = client ?? http.Client(),
-      _osrmBase = osrmBase ?? 'https://router.project-osrm.org';
+      _bases = bases ?? _defaultBases;
 
   final http.Client _client;
-  final String _osrmBase;
+  final Map<RouteTravelMode, String> _bases;
+
+  static const Map<RouteTravelMode, String> _defaultBases = {
+    RouteTravelMode.walk: 'https://routing.openstreetmap.de/routed-foot',
+    RouteTravelMode.bike: 'https://routing.openstreetmap.de/routed-bike',
+    RouteTravelMode.car: 'https://routing.openstreetmap.de/routed-car',
+  };
 
   /// Distanza stradale in km per auto tra due coordinate, o null se non
   /// disponibile (offline/errore). Mantenuta per compatibilita' col modulo
@@ -54,9 +57,9 @@ class RoutingService {
     double lat2,
     double lon2,
   ) async {
+    final base = _bases[RouteTravelMode.car]!;
     final uri = Uri.parse(
-      '$_osrmBase/route/v1/driving/'
-      '$lon1,$lat1;$lon2,$lat2?overview=false',
+      '$base/route/v1/driving/$lon1,$lat1;$lon2,$lat2?overview=false',
     );
     try {
       final res = await _client.get(uri).timeout(const Duration(seconds: 15));
@@ -72,22 +75,21 @@ class RoutingService {
     }
   }
 
-  /// Percorso stradale reale che attraversa i [waypoints] in ordine. Ritorna
-  /// null se il mezzo non e' gestito online (piedi/bici), se ci sono meno di 2
-  /// tappe o in caso di offline/errore: in tutti questi casi il chiamante usa
-  /// la stima.
+  /// Percorso stradale reale che attraversa i [waypoints] in ordine, per il
+  /// [mode] indicato (a piedi/bici/auto, ciascuno col proprio profilo OSRM).
+  /// Ritorna null se ci sono meno di 2 tappe o in caso di offline/errore: in
+  /// quel caso il chiamante usa la stima.
   Future<RouteResult?> route(
     List<LatLng> waypoints,
     RouteTravelMode mode,
   ) async {
     if (waypoints.length < 2) return null;
-    if (mode != RouteTravelMode.car) return null; // solo 'driving' online
+    final base = _bases[mode] ?? _bases[RouteTravelMode.car]!;
     final coords = waypoints
         .map((p) => '${p.longitude},${p.latitude}')
         .join(';');
     final uri = Uri.parse(
-      '$_osrmBase/route/v1/driving/$coords'
-      '?overview=full&geometries=geojson',
+      '$base/route/v1/driving/$coords?overview=full&geometries=geojson',
     );
     try {
       final res = await _client.get(uri).timeout(const Duration(seconds: 20));
@@ -113,7 +115,7 @@ class RoutingService {
         distanceMeters: distance,
         durationSeconds: duration,
         source: DistanceSource.onlineRouting,
-        effectiveMode: RouteTravelMode.car,
+        effectiveMode: mode,
       );
     } catch (_) {
       return null;

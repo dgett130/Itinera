@@ -169,43 +169,48 @@ void main() {
     });
   });
 
-  group('addToItinerary (transazionale, deduplicato)', () {
-    test('crea attivita\' senza orario e non duplica per giorno', () async {
-      final repo = SightseeingRouteRepository(db);
-      final trip = await makeTrip();
-      final dayId = newId();
-      await db
-          .into(db.itineraryDays)
-          .insert(ItineraryDaysCompanion.insert(id: dayId, tripId: trip));
-      final l1 = await addLocation(trip, 'A', lat: 45.0, lng: 9.0);
-      final l2 = await addLocation(trip, 'B', lat: 45.1, lng: 9.1);
-      final routeId = await repo.createRoute(
-        tripId: trip,
-        name: 'R',
-        locationIds: [l1, l2],
-      );
+  group('addToItinerary (evento unico collegato al percorso)', () {
+    test(
+      'crea una sola attivita\' collegata al percorso, senza duplicare',
+      () async {
+        final repo = SightseeingRouteRepository(db);
+        final trip = await makeTrip();
+        final dayId = newId();
+        await db
+            .into(db.itineraryDays)
+            .insert(ItineraryDaysCompanion.insert(id: dayId, tripId: trip));
+        final l1 = await addLocation(trip, 'A', lat: 45.0, lng: 9.0);
+        final l2 = await addLocation(trip, 'B', lat: 45.1, lng: 9.1);
+        final routeId = await repo.createRoute(
+          tripId: trip,
+          name: 'Giro centro',
+          locationIds: [l1, l2],
+        );
 
-      final added = await repo.addToItinerary(routeId, dayId, trip);
-      expect(added, 2);
-      final acts = await (db.select(
-        db.activities,
-      )..where((a) => a.dayId.equals(dayId))).get();
-      expect(acts.length, 2);
-      expect(acts.every((a) => a.startMinutes == null), isTrue);
-      expect(acts.map((a) => a.locationId), containsAll([l1, l2]));
-      // il percorso e' agganciato al giorno
-      expect((await repo.getRoute(routeId))!.dayId, dayId);
-
-      // seconda chiamata: entrambe gia' presenti -> nessuna nuova
-      final added2 = await repo.addToItinerary(routeId, dayId, trip);
-      expect(added2, 0);
-      expect(
-        (await (db.select(
+        final added = await repo.addToItinerary(routeId, dayId, trip);
+        expect(added, 1);
+        final acts = await (db.select(
           db.activities,
-        )..where((a) => a.dayId.equals(dayId))).get()).length,
-        2,
-      );
-    });
+        )..where((a) => a.dayId.equals(dayId))).get();
+        expect(acts.length, 1);
+        expect(acts.single.routeId, routeId);
+        expect(acts.single.title, 'Giro centro');
+        expect(acts.single.startMinutes, isNull);
+        expect(acts.single.isAllDay, isTrue);
+        // il percorso e' agganciato al giorno
+        expect((await repo.getRoute(routeId))!.dayId, dayId);
+
+        // seconda chiamata: gia' presente -> nessuna nuova attivita'
+        final added2 = await repo.addToItinerary(routeId, dayId, trip);
+        expect(added2, 0);
+        expect(
+          (await (db.select(
+            db.activities,
+          )..where((a) => a.dayId.equals(dayId))).get()).length,
+          1,
+        );
+      },
+    );
   });
 
   group('duplicateTrip copia luoghi (con metadati), percorsi e tappe', () {

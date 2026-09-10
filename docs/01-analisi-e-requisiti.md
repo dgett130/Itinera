@@ -436,10 +436,13 @@ vicino alla destinazione, salvarli e comporre percorsi di visita.
   JSON (v2, retrocompatibile); `duplicateTrip` copia luoghi, percorsi e tappe.
 
 ### Limiti dichiarati
-- **Routing stradale reale solo per l'auto**: il demo pubblico OSRM gestisce solo
-  il profilo `driving`. A piedi/bici (e offline) la distanza/durata è una **stima
-  etichettata** (linea d'aria × fattore di deviazione documentato: piedi 1,25 /
+- **Routing stradale reale per piedi/bici/auto** via le istanze OSRM pubbliche
+  FOSSGIS (`routed-foot`/`routed-bike`/`routed-car`): ogni mezzo segue davvero
+  strade/sentieri. Solo **offline** (o se il servizio non risponde) si ripiega su
+  una **stima etichettata** (linea d'aria × fattore documentato: piedi 1,25 /
   bici 1,30 / auto 1,40; velocità medie 4,8 / 15 / 40 km/h).
+- **Aggiunta all'itinerario = evento unico**: il percorso diventa **una sola**
+  attività del giorno (non una per tappa); toccandola si apre il percorso.
 - **Ottimizzazione = euristica** (Haversine + nearest-neighbor + 2-opt,
   deterministica, ≤25 tappe): migliora l'ordine ma **non promette l'ottimo
   globale**; il risultato non è mai peggiore dell'ordine iniziale secondo la

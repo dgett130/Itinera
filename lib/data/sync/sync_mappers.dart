@@ -546,6 +546,7 @@ List<SyncTable> buildSyncTables(AppDatabase db) => [
         'end_minutes': a.endMinutes,
         'is_all_day': a.isAllDay,
         'location_id': a.locationId,
+        'route_id': a.routeId,
         'cost_cents': a.costCents,
         'currency': a.currency,
         'status': a.status.name,
@@ -571,6 +572,7 @@ List<SyncTable> buildSyncTables(AppDatabase db) => [
               endMinutes: Value(_pi(m['end_minutes'])),
               isAllDay: Value(m['is_all_day'] as bool? ?? false),
               locationId: Value(m['location_id'] as String?),
+              routeId: Value(m['route_id'] as String?),
               costCents: Value(_pi(m['cost_cents'])),
               currency: Value(m['currency'] as String? ?? 'EUR'),
               status: Value(

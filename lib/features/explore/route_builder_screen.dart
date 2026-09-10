@@ -260,12 +260,16 @@ class _RouteBuilderScreenState extends ConsumerState<RouteBuilderScreen> {
       ),
     );
     if (day == null) return;
-    final count = await ref
+    final added = await ref
         .read(sightseeingRouteRepositoryProvider)
         .addToItinerary(widget.routeId, day.id, widget.tripId);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.routeAddedToItinerary(count))),
+        SnackBar(
+          content: Text(
+            added > 0 ? l10n.routeAddedToDay : l10n.routeAlreadyInDay,
+          ),
+        ),
       );
     }
   }

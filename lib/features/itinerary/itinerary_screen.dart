@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app.dart';
@@ -36,8 +37,9 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen> {
   @override
   Widget build(BuildContext context) {
     final trip = ref.watch(tripProvider(widget.tripId)).value;
-    final style =
-        trip == null ? TripStyle.atlante : ItineraTheme.effectiveStyle(trip);
+    final style = trip == null
+        ? TripStyle.atlante
+        : ItineraTheme.effectiveStyle(trip);
     return TripThemeScope(style: style, child: _buildBody());
   }
 
@@ -84,12 +86,12 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen> {
               onAdd: days.isEmpty
                   ? null
                   : () => showActivitySheet(
-                        context,
-                        tripId: widget.tripId,
-                        dayId: days.first.id,
-                        days: days,
-                        categories: categories,
-                      ),
+                      context,
+                      tripId: widget.tripId,
+                      dayId: days.first.id,
+                      days: days,
+                      categories: categories,
+                    ),
             )
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
@@ -196,9 +198,9 @@ class _DaySection extends ConsumerWidget {
                   tooltip: 'Ordina per orario',
                   icon: const Icon(Icons.sort),
                   onPressed: () => repo.reorderDay(
-                    ItineraryDomain.sortForDisplay(activities)
-                        .map((a) => a.id)
-                        .toList(),
+                    ItineraryDomain.sortForDisplay(
+                      activities,
+                    ).map((a) => a.id).toList(),
                   ),
                 ),
               IconButton.filledTonal(
@@ -220,8 +222,9 @@ class _DaySection extends ConsumerWidget {
             padding: const EdgeInsets.only(left: 56, bottom: 4),
             child: Text(
               'Giornata libera',
-              style: context.texts.bodySmall
-                  ?.copyWith(color: scheme.onSurfaceVariant),
+              style: context.texts.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
             ),
           )
         else
@@ -299,12 +302,14 @@ class _ActivityTile extends ConsumerWidget {
     final tokens = context.tokens;
     final scheme = context.scheme;
     final done = activity.status == ActivityStatus.done;
-    final skipped = activity.status == ActivityStatus.skipped ||
+    final skipped =
+        activity.status == ActivityStatus.skipped ||
         activity.status == ActivityStatus.cancelled;
     Color? catColor;
     if (category?.colorHex != null) {
-      catColor =
-          Color(int.parse('FF${category!.colorHex!.substring(1)}', radix: 16));
+      catColor = Color(
+        int.parse('FF${category!.colorHex!.substring(1)}', radix: 16),
+      );
     }
     final edge = isConflict ? tokens.warning : (catColor ?? tokens.accent);
 
@@ -312,15 +317,19 @@ class _ActivityTile extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: ItineraCard(
         accentEdge: edge,
-        onTap: () => showActivitySheet(
-          context,
-          tripId: tripId,
-          dayId: activity.dayId,
-          days: allDays,
-          categories: categories,
-          existing: activity,
-          existingLocation: location,
-        ),
+        // Un'attivita'-percorso apre il percorso (mappa+tappe); le altre il
+        // foglio di modifica dell'attivita'.
+        onTap: activity.routeId != null
+            ? () => context.push('/trip/$tripId/route/${activity.routeId}')
+            : () => showActivitySheet(
+                context,
+                tripId: tripId,
+                dayId: activity.dayId,
+                days: allDays,
+                categories: categories,
+                existing: activity,
+                existingLocation: location,
+              ),
         padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,7 +344,9 @@ class _ActivityTile extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                iconForKey(category?.iconKey ?? 'place'),
+                activity.routeId != null
+                    ? Icons.route
+                    : iconForKey(category?.iconKey ?? 'place'),
                 size: 18,
                 color: catColor ?? tokens.accent,
               ),
@@ -348,25 +359,45 @@ class _ActivityTile extends ConsumerWidget {
                     activity.title,
                     style: context.texts.bodyLarge?.copyWith(
                       fontWeight: FontWeight.w600,
-                      decoration:
-                          (done || skipped) ? TextDecoration.lineThrough : null,
+                      decoration: (done || skipped)
+                          ? TextDecoration.lineThrough
+                          : null,
                       color: skipped ? scheme.onSurfaceVariant : null,
                     ),
                   ),
+                  if (activity.routeId != null) ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Icon(Icons.route, size: 13, color: tokens.accent),
+                        const SizedBox(width: 3),
+                        Text(
+                          'Percorso di visita · tocca per aprire',
+                          style: context.texts.bodySmall?.copyWith(
+                            color: tokens.accent,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   if (location != null) ...[
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        Icon(Icons.place_outlined,
-                            size: 13, color: scheme.onSurfaceVariant),
+                        Icon(
+                          Icons.place_outlined,
+                          size: 13,
+                          color: scheme.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 3),
                         Flexible(
                           child: Text(
                             location!.label,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: context.texts.bodySmall
-                                ?.copyWith(color: scheme.onSurfaceVariant),
+                            style: context.texts.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
                       ],
@@ -376,15 +407,19 @@ class _ActivityTile extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.warning_amber,
-                            size: 13, color: tokens.warning),
+                        Icon(
+                          Icons.warning_amber,
+                          size: 13,
+                          color: tokens.warning,
+                        ),
                         const SizedBox(width: 3),
                         Text(
                           'Sovrapposta',
                           style: TextStyle(
-                              fontSize: 11.5,
-                              color: tokens.warning,
-                              fontWeight: FontWeight.w600),
+                            fontSize: 11.5,
+                            color: tokens.warning,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -399,14 +434,18 @@ class _ActivityTile extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (done)
-                      Icon(Icons.check_circle,
-                          size: 18, color: tokens.positive),
+                      Icon(
+                        Icons.check_circle,
+                        size: 18,
+                        color: tokens.positive,
+                      ),
                     _ActivityMenu(
                       tripId: tripId,
                       activity: activity,
                       hasLocation: location != null,
-                      onOpenMap:
-                          location != null ? () => _openInMaps(location!) : null,
+                      onOpenMap: location != null
+                          ? () => _openInMaps(location!)
+                          : null,
                     ),
                   ],
                 ),
@@ -426,8 +465,11 @@ class _ActivityTile extends ConsumerWidget {
                   index: index,
                   child: Padding(
                     padding: const EdgeInsets.only(right: 8, top: 2),
-                    child: Icon(Icons.drag_indicator,
-                        size: 18, color: tokens.hairline),
+                    child: Icon(
+                      Icons.drag_indicator,
+                      size: 18,
+                      color: tokens.hairline,
+                    ),
                   ),
                 ),
               ],
@@ -546,7 +588,8 @@ class _EmptyItinerary extends StatelessWidget {
     return EmptyState(
       icon: Icons.map_outlined,
       title: 'Costruisci la tua tabella di marcia',
-      message: 'Imposta le date del viaggio per avere un giorno per ogni data, '
+      message:
+          'Imposta le date del viaggio per avere un giorno per ogni data, '
           'oppure aggiungi subito un\'attività.',
       action: onAdd == null
           ? null

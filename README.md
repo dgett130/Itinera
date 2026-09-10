@@ -64,9 +64,9 @@ Dopo aver modificato tabelle Drift o file `.arb`, rilanciare `build_runner`.
 - **Luoghi e percorsi**: scopri POI reali vicino alla destinazione
   (OpenStreetMap via Overpass), filtra per categoria e raggio, salvali (offline)
   e costruisci percorsi — riordino drag&drop, **ottimizzazione dell'ordine**
-  (nearest-neighbor + 2-opt, offline), distanza/durata, aggiunta all'itinerario.
-  Il routing stradale reale (OSRM) vale per l'**auto**; a piedi/bici usano una
-  **stima etichettata**. Schema Supabase: `docs/supabase/explore.sql`.
+  (nearest-neighbor + 2-opt, offline), distanza/durata, aggiunta all'itinerario
+  come **evento unico**. Routing stradale reale per **piedi/bici/auto** (OSRM
+  FOSSGIS); offline → **stima etichettata**. Schema: `docs/supabase/explore.sql`.
 - **Backup**: export JSON completo via share; import (incolla JSON).
 - **Offline totale**: tutto funziona senza rete; dati locali (Drift/SQLite).
 

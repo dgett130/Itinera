@@ -41,6 +41,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   LatLng? _center;
   double _radiusKm = 5;
   final Set<PoiCategory> _filters = {};
+  static const _pageSize = 12;
+  int _visibleCount = _pageSize;
   bool _loading = false;
   Object? _error;
   PoiSearchOutcome? _outcome;
@@ -84,6 +86,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       setState(() {
         _outcome = outcome;
         _loading = false;
+        _visibleCount = _pageSize;
       });
     } on PoiDiscoveryException catch (e) {
       if (!mounted) return;
@@ -338,7 +341,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           FilterChip(
             label: Text(l10n.exploreCategoryAll),
             selected: _filters.isEmpty,
-            onSelected: (_) => setState(_filters.clear),
+            onSelected: (_) => setState(() {
+              _filters.clear();
+              _visibleCount = _pageSize;
+            }),
           ),
           for (final c in exploreFilterCategories)
             FilterChip(
@@ -351,6 +357,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 } else {
                   _filters.remove(c);
                 }
+                _visibleCount = _pageSize;
               }),
             ),
         ],
@@ -440,8 +447,22 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               title: l10n.exploreEmpty,
             ),
           )
-        else
-          ...pois.map((p) => _poiTile(context, l10n, p, savedKeys, saved)),
+        else ...[
+          ...pois
+              .take(_visibleCount)
+              .map((p) => _poiTile(context, l10n, p, savedKeys, saved)),
+          if (pois.length > _visibleCount)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: OutlinedButton.icon(
+                onPressed: () => setState(() => _visibleCount += _pageSize),
+                icon: const Icon(Icons.expand_more),
+                label: Text(
+                  '${l10n.exploreShowMore} (${pois.length - _visibleCount})',
+                ),
+              ),
+            ),
+        ],
       ],
     );
   }

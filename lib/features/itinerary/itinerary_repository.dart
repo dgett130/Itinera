@@ -35,20 +35,21 @@ class ItineraryRepository {
   }
 
   Stream<List<Activity>> watchActivities(String tripId) {
-    return (_db.select(_db.activities)
-          ..where((a) => a.tripId.equals(tripId)))
-        .watch();
+    return (_db.select(
+      _db.activities,
+    )..where((a) => a.tripId.equals(tripId))).watch();
   }
 
   Stream<List<ActivityCategory>> watchCategories() {
-    return (_db.select(_db.activityCategories)
-          ..orderBy([(c) => OrderingTerm(expression: c.sortIndex)]))
-        .watch();
+    return (_db.select(
+      _db.activityCategories,
+    )..orderBy([(c) => OrderingTerm(expression: c.sortIndex)])).watch();
   }
 
   Stream<List<Location>> watchLocations(String tripId) {
-    return (_db.select(_db.locations)..where((l) => l.tripId.equals(tripId)))
-        .watch();
+    return (_db.select(
+      _db.locations,
+    )..where((l) => l.tripId.equals(tripId))).watch();
   }
 
   /// Crea o aggiorna un luogo (etichetta + coordinate opzionali) e ne ritorna
@@ -63,17 +64,21 @@ class ItineraryRepository {
     final trimmed = label.trim();
     if (trimmed.isEmpty) return null;
     if (existingLocationId != null) {
-      await (_db.update(_db.locations)
-            ..where((l) => l.id.equals(existingLocationId)))
-          .write(LocationsCompanion(
-        label: Value(trimmed),
-        latitude: Value(latitude),
-        longitude: Value(longitude),
-      ));
+      await (_db.update(
+        _db.locations,
+      )..where((l) => l.id.equals(existingLocationId))).write(
+        LocationsCompanion(
+          label: Value(trimmed),
+          latitude: Value(latitude),
+          longitude: Value(longitude),
+        ),
+      );
       return existingLocationId;
     }
     final id = newId();
-    await _db.into(_db.locations).insert(
+    await _db
+        .into(_db.locations)
+        .insert(
           LocationsCompanion.insert(
             id: id,
             tripId: tripId,
@@ -88,13 +93,14 @@ class ItineraryRepository {
   /// Crea i giorni mancanti per l'intervallo di date del viaggio e garantisce
   /// il bucket "Non programmato". Idempotente.
   Future<void> ensureDays(String tripId) async {
-    final trip = await (_db.select(_db.trips)..where((t) => t.id.equals(tripId)))
-        .getSingleOrNull();
+    final trip = await (_db.select(
+      _db.trips,
+    )..where((t) => t.id.equals(tripId))).getSingleOrNull();
     if (trip == null) return;
 
-    final existing = await (_db.select(_db.itineraryDays)
-          ..where((d) => d.tripId.equals(tripId)))
-        .get();
+    final existing = await (_db.select(
+      _db.itineraryDays,
+    )..where((d) => d.tripId.equals(tripId))).get();
     final existingDates = <String>{
       for (final d in existing)
         if (d.date != null) _dateKey(d.date!),
@@ -112,12 +118,14 @@ class ItineraryRepository {
       var index = 0;
       while (!current.isAfter(endDay)) {
         if (!existingDates.contains(_dateKey(current))) {
-          toInsert.add(ItineraryDaysCompanion.insert(
-            id: newId(),
-            tripId: tripId,
-            date: Value(current),
-            dayIndex: Value(index),
-          ));
+          toInsert.add(
+            ItineraryDaysCompanion.insert(
+              id: newId(),
+              tripId: tripId,
+              date: Value(current),
+              dayIndex: Value(index),
+            ),
+          );
         }
         current = current.add(const Duration(days: 1));
         index++;
@@ -125,13 +133,15 @@ class ItineraryRepository {
     }
 
     if (!hasBucket) {
-      toInsert.add(ItineraryDaysCompanion.insert(
-        id: newId(),
-        tripId: tripId,
-        date: const Value(null),
-        dayIndex: const Value(9999),
-        sortIndex: const Value(9999),
-      ));
+      toInsert.add(
+        ItineraryDaysCompanion.insert(
+          id: newId(),
+          tripId: tripId,
+          date: const Value(null),
+          dayIndex: const Value(9999),
+          sortIndex: const Value(9999),
+        ),
+      );
     }
 
     if (toInsert.isNotEmpty) {
@@ -140,9 +150,9 @@ class ItineraryRepository {
   }
 
   Future<int> _nextSortIndex(String dayId) async {
-    final acts = await (_db.select(_db.activities)
-          ..where((a) => a.dayId.equals(dayId)))
-        .get();
+    final acts = await (_db.select(
+      _db.activities,
+    )..where((a) => a.dayId.equals(dayId))).get();
     if (acts.isEmpty) return 0;
     return acts.map((a) => a.sortIndex).reduce((a, b) => a > b ? a : b) + 1;
   }
@@ -158,7 +168,9 @@ class ItineraryRepository {
     String? locationId,
     String? notes,
   }) async {
-    await _db.into(_db.activities).insert(
+    await _db
+        .into(_db.activities)
+        .insert(
           ActivitiesCompanion.insert(
             id: newId(),
             dayId: dayId,
@@ -202,8 +214,9 @@ class ItineraryRepository {
   }
 
   Future<void> setStatus(String id, ActivityStatus status) async {
-    await (_db.update(_db.activities)..where((a) => a.id.equals(id)))
-        .write(ActivitiesCompanion(status: Value(status)));
+    await (_db.update(_db.activities)..where((a) => a.id.equals(id))).write(
+      ActivitiesCompanion(status: Value(status)),
+    );
   }
 
   Future<void> deleteActivity(String id) async {

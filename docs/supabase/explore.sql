@@ -28,6 +28,11 @@ alter table public.locations
   add column if not exists opening_hours text,
   add column if not exists wikidata text;
 
+-- v5: un'attivita' puo' rappresentare un intero percorso di visita (evento
+-- unico nella tabella di marcia).
+alter table public.activities
+  add column if not exists route_id text;
+
 -- 2) Nuove tabelle ----------------------------------------------------------
 create table if not exists public.sightseeing_routes (
   id text primary key,

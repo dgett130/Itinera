@@ -556,6 +556,12 @@ abstract class AppLocalizations {
   /// **'Nessun luogo salvato. Tocca un suggerimento o la mappa.'**
   String get exploreSavedEmpty;
 
+  /// No description provided for @exploreShowMore.
+  ///
+  /// In it, this message translates to:
+  /// **'Mostra altri'**
+  String get exploreShowMore;
+
   /// No description provided for @exploreFromCenter.
   ///
   /// In it, this message translates to:
@@ -802,11 +808,17 @@ abstract class AppLocalizations {
   /// **'Calcolo…'**
   String get routeComputing;
 
-  /// No description provided for @routeAddedToItinerary.
+  /// No description provided for @routeAddedToDay.
   ///
   /// In it, this message translates to:
-  /// **'{count, plural, =0{Nessuna nuova tappa} =1{1 tappa aggiunta all\'itinerario} other{{count} tappe aggiunte all\'itinerario}}'**
-  String routeAddedToItinerary(int count);
+  /// **'Percorso aggiunto all\'itinerario'**
+  String get routeAddedToDay;
+
+  /// No description provided for @routeAlreadyInDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Percorso già presente in quel giorno'**
+  String get routeAlreadyInDay;
 
   /// No description provided for @unitKm.
   ///

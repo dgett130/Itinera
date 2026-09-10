@@ -228,49 +228,25 @@ class SightseeingRouteRepository {
     );
   }
 
-  /// Converte le tappe del percorso in attivita' di [dayId], in ordine, senza
-  /// orario, riusando le stesse Location. Deduplica per location gia' presente
-  /// nel giorno. Transazionale. Ritorna il numero di attivita' create.
+  /// Aggancia il percorso a [dayId] come UNICO evento della tabella di marcia:
+  /// crea una sola attivita' che rappresenta il percorso (Activities.routeId),
+  /// senza orario (tutto il giorno). Idempotente: se l'evento del percorso e'
+  /// gia' nel giorno aggiorna solo l'aggancio. Ritorna 1 se creato, 0 se
+  /// gia' presente. Transazionale.
   Future<int> addToItinerary(
     String routeId,
     String dayId,
     String tripId,
   ) async {
-    final stops = await stopsFor(routeId);
-    var added = 0;
-    await _db.transaction(() async {
-      final existing = await (_db.select(
-        _db.activities,
-      )..where((a) => a.dayId.equals(dayId))).get();
-      final usedLoc = existing
-          .map((a) => a.locationId)
-          .whereType<String>()
-          .toSet();
-      var sort = existing.isEmpty
-          ? 0
-          : existing.map((a) => a.sortIndex).reduce((a, b) => a > b ? a : b) +
-                1;
-      for (final s in stops) {
-        if (usedLoc.contains(s.locationId)) continue;
-        final loc = await (_db.select(
-          _db.locations,
-        )..where((l) => l.id.equals(s.locationId))).getSingleOrNull();
-        if (loc == null) continue;
-        await _db
-            .into(_db.activities)
-            .insert(
-              ActivitiesCompanion.insert(
-                id: newId(),
-                dayId: dayId,
-                tripId: tripId,
-                title: loc.label,
-                locationId: Value(loc.id),
-                sortIndex: Value(sort++),
-              ),
-            );
-        usedLoc.add(s.locationId);
-        added++;
-      }
+    final route = await getRoute(routeId);
+    if (route == null) return 0;
+    return _db.transaction(() async {
+      final existing =
+          await (_db.select(_db.activities)..where(
+                (a) => a.dayId.equals(dayId) & a.routeId.equals(routeId),
+              ))
+              .getSingleOrNull();
+      // Aggancia comunque il percorso al giorno.
       await (_db.update(
         _db.sightseeingRoutes,
       )..where((r) => r.id.equals(routeId))).write(
@@ -279,8 +255,28 @@ class SightseeingRouteRepository {
           updatedAt: Value(DateTime.now()),
         ),
       );
+      if (existing != null) return 0;
+      final all = await (_db.select(
+        _db.activities,
+      )..where((a) => a.dayId.equals(dayId))).get();
+      final sort = all.isEmpty
+          ? 0
+          : all.map((a) => a.sortIndex).reduce((a, b) => a > b ? a : b) + 1;
+      await _db
+          .into(_db.activities)
+          .insert(
+            ActivitiesCompanion.insert(
+              id: newId(),
+              dayId: dayId,
+              tripId: tripId,
+              title: route.name,
+              isAllDay: const Value(true),
+              routeId: Value(routeId),
+              sortIndex: Value(sort),
+            ),
+          );
+      return 1;
     });
-    return added;
   }
 
   Future<void> _patch(String routeId, SightseeingRoutesCompanion patch) async {

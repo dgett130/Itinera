@@ -367,6 +367,16 @@ class Activities extends Table {
     #id,
     onDelete: KeyAction.setNull,
   )();
+
+  /// Se valorizzato, l'attivita' rappresenta un intero PERCORSO di visita
+  /// (evento unico nella tabella di marcia); toccandola si apre il percorso.
+  /// Schema v5. SET NULL: se il percorso viene eliminato, l'evento resta come
+  /// attivita' semplice.
+  TextColumn get routeId => text().nullable().references(
+    SightseeingRoutes,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
   IntColumn get costCents => integer().nullable()();
   TextColumn get currency => text().withDefault(const Constant('EUR'))();
   TextColumn get status => textEnum<ActivityStatus>().withDefault(
