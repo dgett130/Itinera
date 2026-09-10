@@ -46,6 +46,12 @@ class Trips extends Table {
   TextColumn get name => text()();
   TextColumn get destination => text().nullable()();
   TextColumn get country => text().nullable()();
+
+  /// Coordinate della destinazione (schema v4). Popolate quando la
+  /// destinazione e' scelta dall'autocomplete; invalidate (null) se l'utente
+  /// modifica manualmente il testo della destinazione.
+  RealColumn get destinationLat => real().nullable()();
+  RealColumn get destinationLng => real().nullable()();
   DateTimeColumn get startDate => dateTime().nullable()();
   DateTimeColumn get endDate => dateTime().nullable()();
   TextColumn get tripType =>
@@ -55,6 +61,7 @@ class Trips extends Table {
   IntColumn get travelerCount => integer().withDefault(const Constant(1))();
   TextColumn get homeCurrency => text().withDefault(const Constant('EUR'))();
   TextColumn get coverImagePath => text().nullable()();
+
   /// Stile visivo del viaggio; null = automatico (dedotto dal tipo). Nullable
   /// per retrocompatibilita' con i backup/sync precedenti alla v3.
   TextColumn get themeStyle => textEnum<TripStyle>().nullable()();
@@ -176,10 +183,10 @@ class Vehicles extends Table {
   TextColumn get name => text()();
   TextColumn get fuelType =>
       textEnum<FuelType>().withDefault(Constant(FuelType.petrol.name))();
-  RealColumn get consumptionValue =>
-      real().withDefault(const Constant(6.5))();
-  TextColumn get consumptionUnit => textEnum<ConsumptionUnit>()
-      .withDefault(Constant(ConsumptionUnit.lPer100km.name))();
+  RealColumn get consumptionValue => real().withDefault(const Constant(6.5))();
+  TextColumn get consumptionUnit => textEnum<ConsumptionUnit>().withDefault(
+    Constant(ConsumptionUnit.lPer100km.name),
+  )();
   RealColumn get tankCapacity => real().nullable()();
   TextColumn get plate => text().nullable()();
   BoolColumn get isDefault => boolean().withDefault(const Constant(false))();
@@ -207,14 +214,18 @@ class TransportSegments extends Table {
   RealColumn get destinationLat => real().nullable()();
   RealColumn get destinationLng => real().nullable()();
   RealColumn get distanceKm => real().nullable()();
-  TextColumn get distanceSource => textEnum<DistanceSource>()
-      .withDefault(Constant(DistanceSource.manual.name))();
+  TextColumn get distanceSource => textEnum<DistanceSource>().withDefault(
+    Constant(DistanceSource.manual.name),
+  )();
   RealColumn get detourFactor => real().withDefault(const Constant(1.3))();
   BoolColumn get isRoundTrip => boolean().withDefault(const Constant(false))();
   DateTimeColumn get departureAt => dateTime().nullable()();
   DateTimeColumn get arrivalAt => dateTime().nullable()();
-  TextColumn get vehicleId =>
-      text().nullable().references(Vehicles, #id, onDelete: KeyAction.setNull)();
+  TextColumn get vehicleId => text().nullable().references(
+    Vehicles,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
   RealColumn get consumptionSnapshot => real().nullable()();
   TextColumn get consumptionUnitSnapshot =>
       textEnum<ConsumptionUnit>().nullable()();
@@ -234,20 +245,24 @@ class CostItems extends Table {
   TextColumn get id => text()();
   TextColumn get tripId =>
       text().references(Trips, #id, onDelete: KeyAction.cascade)();
-  TextColumn get segmentId => text()
-      .nullable()
-      .references(TransportSegments, #id, onDelete: KeyAction.setNull)();
-  TextColumn get category => textEnum<CostCategory>()
-      .withDefault(Constant(CostCategory.other.name))();
+  TextColumn get segmentId => text().nullable().references(
+    TransportSegments,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
+  TextColumn get category =>
+      textEnum<CostCategory>().withDefault(Constant(CostCategory.other.name))();
   TextColumn get description => text().nullable()();
   IntColumn get amountCents => integer().withDefault(const Constant(0))();
   TextColumn get currency => text().withDefault(const Constant('EUR'))();
   DateTimeColumn get date => dateTime().nullable()();
   TextColumn get status =>
       textEnum<CostStatus>().withDefault(Constant(CostStatus.actual.name))();
-  TextColumn get paidByTravelerId => text()
-      .nullable()
-      .references(Travelers, #id, onDelete: KeyAction.setNull)();
+  TextColumn get paidByTravelerId => text().nullable().references(
+    Travelers,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
   TextColumn get splitMethod =>
       textEnum<SplitMethod>().withDefault(Constant(SplitMethod.equal.name))();
   TextColumn get receiptPhotoPath => text().nullable()();
@@ -315,8 +330,19 @@ class Locations extends Table {
   RealColumn get longitude => real().nullable()();
   TextColumn get placeType => textEnum<PlaceType>().nullable()();
   TextColumn get notes => text().nullable()();
-  TextColumn get source => textEnum<LocationSource>()
-      .withDefault(Constant(LocationSource.manual.name))();
+  TextColumn get source => textEnum<LocationSource>().withDefault(
+    Constant(LocationSource.manual.name),
+  )();
+  // --- Metadati POI (schema v4): valorizzati quando il luogo proviene da un
+  //     provider esterno (OSM). Nullable per retrocompatibilita'. La coppia
+  //     (externalProvider, externalId) evita i duplicati nello stesso viaggio. ---
+  TextColumn get externalProvider => text().nullable()();
+  TextColumn get externalId => text().nullable()();
+  TextColumn get poiCategory => textEnum<PoiCategory>().nullable()();
+  TextColumn get description => text().nullable()();
+  TextColumn get website => text().nullable()();
+  TextColumn get openingHours => text().nullable()();
+  TextColumn get wikidata => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -336,12 +362,16 @@ class Activities extends Table {
   IntColumn get startMinutes => integer().nullable()();
   IntColumn get endMinutes => integer().nullable()();
   BoolColumn get isAllDay => boolean().withDefault(const Constant(false))();
-  TextColumn get locationId =>
-      text().nullable().references(Locations, #id, onDelete: KeyAction.setNull)();
+  TextColumn get locationId => text().nullable().references(
+    Locations,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
   IntColumn get costCents => integer().nullable()();
   TextColumn get currency => text().withDefault(const Constant('EUR'))();
-  TextColumn get status => textEnum<ActivityStatus>()
-      .withDefault(Constant(ActivityStatus.planned.name))();
+  TextColumn get status => textEnum<ActivityStatus>().withDefault(
+    Constant(ActivityStatus.planned.name),
+  )();
   BoolColumn get ignoreConflict =>
       boolean().withDefault(const Constant(false))();
   TextColumn get notes => text().nullable()();
@@ -353,4 +383,87 @@ class Activities extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+}
+
+// ---------------------------------------------------------------------------
+// LUOGHI E PERCORSI (schema v4)
+// ---------------------------------------------------------------------------
+
+/// Un percorso di visita salvato: una sequenza ordinata di tappe (Locations)
+/// con un mezzo, il calcolo di distanza/durata e la geometria per la mappa.
+/// Puo' essere agganciato a un giorno dell'itinerario.
+class SightseeingRoutes extends Table {
+  TextColumn get id => text()();
+  TextColumn get tripId =>
+      text().references(Trips, #id, onDelete: KeyAction.cascade)();
+
+  /// Giorno dell'itinerario a cui il percorso e' agganciato (facoltativo).
+  TextColumn get dayId => text().nullable().references(
+    ItineraryDays,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
+  TextColumn get name => text()();
+  TextColumn get travelMode => textEnum<RouteTravelMode>().withDefault(
+    Constant(RouteTravelMode.walk.name),
+  )();
+
+  /// L'ordine corrente e' frutto di un'ottimizzazione automatica?
+  BoolColumn get optimized => boolean().withDefault(const Constant(false))();
+
+  /// La prima tappa e' una partenza fissa (non riordinabile dall'ottimizzatore)?
+  BoolColumn get fixedStart => boolean().withDefault(const Constant(false))();
+
+  /// Il percorso torna al punto di partenza (anello)?
+  BoolColumn get returnToStart =>
+      boolean().withDefault(const Constant(false))();
+  IntColumn get distanceMeters => integer().nullable()();
+  IntColumn get durationSeconds => integer().nullable()();
+
+  /// Geometria della polyline come JSON `[[lat,lng],...]` (null se non calcolata).
+  TextColumn get geometry => text().nullable()();
+
+  /// Ultimo ordine manuale (JSON di id-tappa) per ripristinarlo dopo un'ottimizzazione.
+  TextColumn get lastManualOrder => text().nullable()();
+
+  /// Origine del calcolo di distanza/durata/geometria.
+  TextColumn get calcSource => textEnum<DistanceSource>().withDefault(
+    Constant(DistanceSource.straightLine.name),
+  )();
+  DateTimeColumn get createdAt => dateTime().clientDefault(DateTime.now)();
+  DateTimeColumn get updatedAt => dateTime().clientDefault(DateTime.now)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Una tappa di un percorso: riferisce una Location e conserva un ordine
+/// persistente (`sequenceIndex`).
+class SightseeingRouteStops extends Table {
+  TextColumn get id => text()();
+  TextColumn get routeId =>
+      text().references(SightseeingRoutes, #id, onDelete: KeyAction.cascade)();
+  // Denormalizzato per la RLS/collaborazione (ogni figlia porta il trip_id).
+  TextColumn get tripId =>
+      text().references(Trips, #id, onDelete: KeyAction.cascade)();
+  TextColumn get locationId =>
+      text().references(Locations, #id, onDelete: KeyAction.cascade)();
+  IntColumn get sequenceIndex => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Cache locale (NON sincronizzata) delle proposte POI, con scadenza. Serve a
+/// mostrare le ultime proposte offline; non e' un dato dell'utente.
+class PoiCacheEntries extends Table {
+  /// Chiave deterministica: provider|categorie|raggio|lat|lng arrotondati.
+  TextColumn get cacheKey => text()();
+
+  /// JSON dei POI restituiti (lista serializzata).
+  TextColumn get payload => text()();
+  DateTimeColumn get fetchedAt => dateTime().clientDefault(DateTime.now)();
+
+  @override
+  Set<Column> get primaryKey => {cacheKey};
 }

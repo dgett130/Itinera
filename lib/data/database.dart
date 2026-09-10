@@ -34,6 +34,9 @@ part 'database.g.dart';
     ActivityCategories,
     Locations,
     Activities,
+    SightseeingRoutes,
+    SightseeingRouteStops,
+    PoiCacheEntries,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -43,34 +46,50 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forExecutor(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-        },
-        onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            // v2: campi per la modalita' locale/remota.
-            await m.addColumn(appSettings, appSettings.modeChosen);
-            await m.addColumn(appSettings, appSettings.appMode);
-            await m.addColumn(appSettings, appSettings.serverUrl);
-            await m.addColumn(appSettings, appSettings.remoteUsername);
-            await m.addColumn(appSettings, appSettings.authToken);
-            await m.addColumn(appSettings, appSettings.lastSyncAt);
-          }
-          if (from < 3) {
-            // v3: stile visivo per-viaggio (nullable = automatico).
-            await m.addColumn(trips, trips.themeStyle);
-          }
-        },
-        beforeOpen: (details) async {
-          // Necessario perche' CASCADE/SET NULL vengano applicate da SQLite.
-          await customStatement('PRAGMA foreign_keys = ON');
-          await ensureSyncInfrastructure();
-        },
-      );
+    onCreate: (m) async {
+      await m.createAll();
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // v2: campi per la modalita' locale/remota.
+        await m.addColumn(appSettings, appSettings.modeChosen);
+        await m.addColumn(appSettings, appSettings.appMode);
+        await m.addColumn(appSettings, appSettings.serverUrl);
+        await m.addColumn(appSettings, appSettings.remoteUsername);
+        await m.addColumn(appSettings, appSettings.authToken);
+        await m.addColumn(appSettings, appSettings.lastSyncAt);
+      }
+      if (from < 3) {
+        // v3: stile visivo per-viaggio (nullable = automatico).
+        await m.addColumn(trips, trips.themeStyle);
+      }
+      if (from < 4) {
+        // v4: "Luoghi e percorsi" — coordinate destinazione, metadati POI
+        // sui luoghi, percorsi di visita + cache POI locale.
+        await m.addColumn(trips, trips.destinationLat);
+        await m.addColumn(trips, trips.destinationLng);
+        await m.addColumn(locations, locations.externalProvider);
+        await m.addColumn(locations, locations.externalId);
+        await m.addColumn(locations, locations.poiCategory);
+        await m.addColumn(locations, locations.description);
+        await m.addColumn(locations, locations.website);
+        await m.addColumn(locations, locations.openingHours);
+        await m.addColumn(locations, locations.wikidata);
+        await m.createTable(sightseeingRoutes);
+        await m.createTable(sightseeingRouteStops);
+        await m.createTable(poiCacheEntries);
+      }
+    },
+    beforeOpen: (details) async {
+      // Necessario perche' CASCADE/SET NULL vengano applicate da SQLite.
+      await customStatement('PRAGMA foreign_keys = ON');
+      await ensureSyncInfrastructure();
+    },
+  );
 
   /// Tabelle i cui dati vengono sincronizzati con Supabase.
   static const List<String> syncedTables = [
@@ -84,6 +103,9 @@ class AppDatabase extends _$AppDatabase {
     'itinerary_days',
     'locations',
     'activities',
+    // Percorsi di visita: dopo locations/itinerary_days (dipendenze FK).
+    'sightseeing_routes',
+    'sightseeing_route_stops',
   ];
 
   /// Crea (idempotente) la coda `_outbox`, lo stato `_sync_state` e i trigger
@@ -146,9 +168,9 @@ class AppDatabase extends _$AppDatabase {
 
   /// Salva una preferenza locale del dispositivo (tabella `_app_prefs`).
   Future<void> setPref(String key, String value) => customStatement(
-        'INSERT OR REPLACE INTO _app_prefs(key,value) VALUES(?,?)',
-        [key, value],
-      );
+    'INSERT OR REPLACE INTO _app_prefs(key,value) VALUES(?,?)',
+    [key, value],
+  );
 
   /// Svuota tutti i dati sincronizzati + coda/stato di sync (preserva le
   /// preferenze locali come il tema). Usato al cambio account e alla

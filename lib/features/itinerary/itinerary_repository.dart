@@ -22,6 +22,18 @@ class ItineraryRepository {
         .watch();
   }
 
+  /// Lettura una-tantum dei giorni (query diretta, non reattiva). Utile dopo
+  /// [ensureDays] per evitare la lettura stale dello stream provider.
+  Future<List<ItineraryDay>> getDays(String tripId) {
+    return (_db.select(_db.itineraryDays)
+          ..where((d) => d.tripId.equals(tripId))
+          ..orderBy([
+            (d) => OrderingTerm(expression: d.date),
+            (d) => OrderingTerm(expression: d.sortIndex),
+          ]))
+        .get();
+  }
+
   Stream<List<Activity>> watchActivities(String tripId) {
     return (_db.select(_db.activities)
           ..where((a) => a.tripId.equals(tripId)))

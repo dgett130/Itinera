@@ -77,6 +77,23 @@ enum PlaceType { poi, hotel, restaurant, station, custom }
 /// Provenienza di un luogo salvato.
 enum LocationSource { manual, osm, mapPick, transportLeg }
 
+/// Categoria turistica di un punto d'interesse (POI). Guida i filtri della
+/// scheda "Luoghi e percorsi" e il mapping dei tag OpenStreetMap.
+/// `other` = turistico ma non classificabile nei filtri principali.
+enum PoiCategory {
+  monument,
+  museum,
+  nature,
+  viewpoint,
+  religious,
+  attraction,
+  other,
+}
+
+/// Mezzo di un percorso di visita. Sottoinsieme rilevante per routing/stime:
+/// a piedi, in bicicletta, in auto.
+enum RouteTravelMode { walk, bike, car }
+
 /// Sistema di unita' di misura preferito dall'utente.
 enum UnitSystem { metric, imperial }
 

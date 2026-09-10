@@ -856,6 +856,28 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _destinationLatMeta = const VerificationMeta(
+    'destinationLat',
+  );
+  @override
+  late final GeneratedColumn<double> destinationLat = GeneratedColumn<double>(
+    'destination_lat',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _destinationLngMeta = const VerificationMeta(
+    'destinationLng',
+  );
+  @override
+  late final GeneratedColumn<double> destinationLng = GeneratedColumn<double>(
+    'destination_lng',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _startDateMeta = const VerificationMeta(
     'startDate',
   );
@@ -981,6 +1003,8 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
     name,
     destination,
     country,
+    destinationLat,
+    destinationLng,
     startDate,
     endDate,
     tripType,
@@ -1031,6 +1055,24 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
       context.handle(
         _countryMeta,
         country.isAcceptableOrUnknown(data['country']!, _countryMeta),
+      );
+    }
+    if (data.containsKey('destination_lat')) {
+      context.handle(
+        _destinationLatMeta,
+        destinationLat.isAcceptableOrUnknown(
+          data['destination_lat']!,
+          _destinationLatMeta,
+        ),
+      );
+    }
+    if (data.containsKey('destination_lng')) {
+      context.handle(
+        _destinationLngMeta,
+        destinationLng.isAcceptableOrUnknown(
+          data['destination_lng']!,
+          _destinationLngMeta,
+        ),
       );
     }
     if (data.containsKey('start_date')) {
@@ -1115,6 +1157,14 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
         DriftSqlType.string,
         data['${effectivePrefix}country'],
       ),
+      destinationLat: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}destination_lat'],
+      ),
+      destinationLng: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}destination_lng'],
+      ),
       startDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}start_date'],
@@ -1188,6 +1238,12 @@ class Trip extends DataClass implements Insertable<Trip> {
   final String name;
   final String? destination;
   final String? country;
+
+  /// Coordinate della destinazione (schema v4). Popolate quando la
+  /// destinazione e' scelta dall'autocomplete; invalidate (null) se l'utente
+  /// modifica manualmente il testo della destinazione.
+  final double? destinationLat;
+  final double? destinationLng;
   final DateTime? startDate;
   final DateTime? endDate;
   final TripType tripType;
@@ -1207,6 +1263,8 @@ class Trip extends DataClass implements Insertable<Trip> {
     required this.name,
     this.destination,
     this.country,
+    this.destinationLat,
+    this.destinationLng,
     this.startDate,
     this.endDate,
     required this.tripType,
@@ -1229,6 +1287,12 @@ class Trip extends DataClass implements Insertable<Trip> {
     }
     if (!nullToAbsent || country != null) {
       map['country'] = Variable<String>(country);
+    }
+    if (!nullToAbsent || destinationLat != null) {
+      map['destination_lat'] = Variable<double>(destinationLat);
+    }
+    if (!nullToAbsent || destinationLng != null) {
+      map['destination_lng'] = Variable<double>(destinationLng);
     }
     if (!nullToAbsent || startDate != null) {
       map['start_date'] = Variable<DateTime>(startDate);
@@ -1274,6 +1338,12 @@ class Trip extends DataClass implements Insertable<Trip> {
       country: country == null && nullToAbsent
           ? const Value.absent()
           : Value(country),
+      destinationLat: destinationLat == null && nullToAbsent
+          ? const Value.absent()
+          : Value(destinationLat),
+      destinationLng: destinationLng == null && nullToAbsent
+          ? const Value.absent()
+          : Value(destinationLng),
       startDate: startDate == null && nullToAbsent
           ? const Value.absent()
           : Value(startDate),
@@ -1308,6 +1378,8 @@ class Trip extends DataClass implements Insertable<Trip> {
       name: serializer.fromJson<String>(json['name']),
       destination: serializer.fromJson<String?>(json['destination']),
       country: serializer.fromJson<String?>(json['country']),
+      destinationLat: serializer.fromJson<double?>(json['destinationLat']),
+      destinationLng: serializer.fromJson<double?>(json['destinationLng']),
       startDate: serializer.fromJson<DateTime?>(json['startDate']),
       endDate: serializer.fromJson<DateTime?>(json['endDate']),
       tripType: $TripsTable.$convertertripType.fromJson(
@@ -1335,6 +1407,8 @@ class Trip extends DataClass implements Insertable<Trip> {
       'name': serializer.toJson<String>(name),
       'destination': serializer.toJson<String?>(destination),
       'country': serializer.toJson<String?>(country),
+      'destinationLat': serializer.toJson<double?>(destinationLat),
+      'destinationLng': serializer.toJson<double?>(destinationLng),
       'startDate': serializer.toJson<DateTime?>(startDate),
       'endDate': serializer.toJson<DateTime?>(endDate),
       'tripType': serializer.toJson<String>(
@@ -1360,6 +1434,8 @@ class Trip extends DataClass implements Insertable<Trip> {
     String? name,
     Value<String?> destination = const Value.absent(),
     Value<String?> country = const Value.absent(),
+    Value<double?> destinationLat = const Value.absent(),
+    Value<double?> destinationLng = const Value.absent(),
     Value<DateTime?> startDate = const Value.absent(),
     Value<DateTime?> endDate = const Value.absent(),
     TripType? tripType,
@@ -1376,6 +1452,12 @@ class Trip extends DataClass implements Insertable<Trip> {
     name: name ?? this.name,
     destination: destination.present ? destination.value : this.destination,
     country: country.present ? country.value : this.country,
+    destinationLat: destinationLat.present
+        ? destinationLat.value
+        : this.destinationLat,
+    destinationLng: destinationLng.present
+        ? destinationLng.value
+        : this.destinationLng,
     startDate: startDate.present ? startDate.value : this.startDate,
     endDate: endDate.present ? endDate.value : this.endDate,
     tripType: tripType ?? this.tripType,
@@ -1398,6 +1480,12 @@ class Trip extends DataClass implements Insertable<Trip> {
           ? data.destination.value
           : this.destination,
       country: data.country.present ? data.country.value : this.country,
+      destinationLat: data.destinationLat.present
+          ? data.destinationLat.value
+          : this.destinationLat,
+      destinationLng: data.destinationLng.present
+          ? data.destinationLng.value
+          : this.destinationLng,
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
       endDate: data.endDate.present ? data.endDate.value : this.endDate,
       tripType: data.tripType.present ? data.tripType.value : this.tripType,
@@ -1427,6 +1515,8 @@ class Trip extends DataClass implements Insertable<Trip> {
           ..write('name: $name, ')
           ..write('destination: $destination, ')
           ..write('country: $country, ')
+          ..write('destinationLat: $destinationLat, ')
+          ..write('destinationLng: $destinationLng, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('tripType: $tripType, ')
@@ -1448,6 +1538,8 @@ class Trip extends DataClass implements Insertable<Trip> {
     name,
     destination,
     country,
+    destinationLat,
+    destinationLng,
     startDate,
     endDate,
     tripType,
@@ -1468,6 +1560,8 @@ class Trip extends DataClass implements Insertable<Trip> {
           other.name == this.name &&
           other.destination == this.destination &&
           other.country == this.country &&
+          other.destinationLat == this.destinationLat &&
+          other.destinationLng == this.destinationLng &&
           other.startDate == this.startDate &&
           other.endDate == this.endDate &&
           other.tripType == this.tripType &&
@@ -1486,6 +1580,8 @@ class TripsCompanion extends UpdateCompanion<Trip> {
   final Value<String> name;
   final Value<String?> destination;
   final Value<String?> country;
+  final Value<double?> destinationLat;
+  final Value<double?> destinationLng;
   final Value<DateTime?> startDate;
   final Value<DateTime?> endDate;
   final Value<TripType> tripType;
@@ -1503,6 +1599,8 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     this.name = const Value.absent(),
     this.destination = const Value.absent(),
     this.country = const Value.absent(),
+    this.destinationLat = const Value.absent(),
+    this.destinationLng = const Value.absent(),
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
     this.tripType = const Value.absent(),
@@ -1521,6 +1619,8 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     required String name,
     this.destination = const Value.absent(),
     this.country = const Value.absent(),
+    this.destinationLat = const Value.absent(),
+    this.destinationLng = const Value.absent(),
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
     this.tripType = const Value.absent(),
@@ -1540,6 +1640,8 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     Expression<String>? name,
     Expression<String>? destination,
     Expression<String>? country,
+    Expression<double>? destinationLat,
+    Expression<double>? destinationLng,
     Expression<DateTime>? startDate,
     Expression<DateTime>? endDate,
     Expression<String>? tripType,
@@ -1558,6 +1660,8 @@ class TripsCompanion extends UpdateCompanion<Trip> {
       if (name != null) 'name': name,
       if (destination != null) 'destination': destination,
       if (country != null) 'country': country,
+      if (destinationLat != null) 'destination_lat': destinationLat,
+      if (destinationLng != null) 'destination_lng': destinationLng,
       if (startDate != null) 'start_date': startDate,
       if (endDate != null) 'end_date': endDate,
       if (tripType != null) 'trip_type': tripType,
@@ -1578,6 +1682,8 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     Value<String>? name,
     Value<String?>? destination,
     Value<String?>? country,
+    Value<double?>? destinationLat,
+    Value<double?>? destinationLng,
     Value<DateTime?>? startDate,
     Value<DateTime?>? endDate,
     Value<TripType>? tripType,
@@ -1596,6 +1702,8 @@ class TripsCompanion extends UpdateCompanion<Trip> {
       name: name ?? this.name,
       destination: destination ?? this.destination,
       country: country ?? this.country,
+      destinationLat: destinationLat ?? this.destinationLat,
+      destinationLng: destinationLng ?? this.destinationLng,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       tripType: tripType ?? this.tripType,
@@ -1625,6 +1733,12 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     }
     if (country.present) {
       map['country'] = Variable<String>(country.value);
+    }
+    if (destinationLat.present) {
+      map['destination_lat'] = Variable<double>(destinationLat.value);
+    }
+    if (destinationLng.present) {
+      map['destination_lng'] = Variable<double>(destinationLng.value);
     }
     if (startDate.present) {
       map['start_date'] = Variable<DateTime>(startDate.value);
@@ -1678,6 +1792,8 @@ class TripsCompanion extends UpdateCompanion<Trip> {
           ..write('name: $name, ')
           ..write('destination: $destination, ')
           ..write('country: $country, ')
+          ..write('destinationLat: $destinationLat, ')
+          ..write('destinationLng: $destinationLng, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('tripType: $tripType, ')
@@ -9093,6 +9209,81 @@ class $LocationsTable extends Locations
         requiredDuringInsert: false,
         defaultValue: Constant(LocationSource.manual.name),
       ).withConverter<LocationSource>($LocationsTable.$convertersource);
+  static const VerificationMeta _externalProviderMeta = const VerificationMeta(
+    'externalProvider',
+  );
+  @override
+  late final GeneratedColumn<String> externalProvider = GeneratedColumn<String>(
+    'external_provider',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _externalIdMeta = const VerificationMeta(
+    'externalId',
+  );
+  @override
+  late final GeneratedColumn<String> externalId = GeneratedColumn<String>(
+    'external_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<PoiCategory?, String>
+  poiCategory = GeneratedColumn<String>(
+    'poi_category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  ).withConverter<PoiCategory?>($LocationsTable.$converterpoiCategoryn);
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _websiteMeta = const VerificationMeta(
+    'website',
+  );
+  @override
+  late final GeneratedColumn<String> website = GeneratedColumn<String>(
+    'website',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _openingHoursMeta = const VerificationMeta(
+    'openingHours',
+  );
+  @override
+  late final GeneratedColumn<String> openingHours = GeneratedColumn<String>(
+    'opening_hours',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _wikidataMeta = const VerificationMeta(
+    'wikidata',
+  );
+  @override
+  late final GeneratedColumn<String> wikidata = GeneratedColumn<String>(
+    'wikidata',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -9104,6 +9295,13 @@ class $LocationsTable extends Locations
     placeType,
     notes,
     source,
+    externalProvider,
+    externalId,
+    poiCategory,
+    description,
+    website,
+    openingHours,
+    wikidata,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -9162,6 +9360,51 @@ class $LocationsTable extends Locations
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
       );
     }
+    if (data.containsKey('external_provider')) {
+      context.handle(
+        _externalProviderMeta,
+        externalProvider.isAcceptableOrUnknown(
+          data['external_provider']!,
+          _externalProviderMeta,
+        ),
+      );
+    }
+    if (data.containsKey('external_id')) {
+      context.handle(
+        _externalIdMeta,
+        externalId.isAcceptableOrUnknown(data['external_id']!, _externalIdMeta),
+      );
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('website')) {
+      context.handle(
+        _websiteMeta,
+        website.isAcceptableOrUnknown(data['website']!, _websiteMeta),
+      );
+    }
+    if (data.containsKey('opening_hours')) {
+      context.handle(
+        _openingHoursMeta,
+        openingHours.isAcceptableOrUnknown(
+          data['opening_hours']!,
+          _openingHoursMeta,
+        ),
+      );
+    }
+    if (data.containsKey('wikidata')) {
+      context.handle(
+        _wikidataMeta,
+        wikidata.isAcceptableOrUnknown(data['wikidata']!, _wikidataMeta),
+      );
+    }
     return context;
   }
 
@@ -9211,6 +9454,36 @@ class $LocationsTable extends Locations
           data['${effectivePrefix}source'],
         )!,
       ),
+      externalProvider: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}external_provider'],
+      ),
+      externalId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}external_id'],
+      ),
+      poiCategory: $LocationsTable.$converterpoiCategoryn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}poi_category'],
+        ),
+      ),
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      website: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}website'],
+      ),
+      openingHours: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}opening_hours'],
+      ),
+      wikidata: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wikidata'],
+      ),
     );
   }
 
@@ -9225,6 +9498,10 @@ class $LocationsTable extends Locations
       JsonTypeConverter2.asNullable($converterplaceType);
   static JsonTypeConverter2<LocationSource, String, String> $convertersource =
       const EnumNameConverter<LocationSource>(LocationSource.values);
+  static JsonTypeConverter2<PoiCategory, String, String> $converterpoiCategory =
+      const EnumNameConverter<PoiCategory>(PoiCategory.values);
+  static JsonTypeConverter2<PoiCategory?, String?, String?>
+  $converterpoiCategoryn = JsonTypeConverter2.asNullable($converterpoiCategory);
 }
 
 class Location extends DataClass implements Insertable<Location> {
@@ -9237,6 +9514,13 @@ class Location extends DataClass implements Insertable<Location> {
   final PlaceType? placeType;
   final String? notes;
   final LocationSource source;
+  final String? externalProvider;
+  final String? externalId;
+  final PoiCategory? poiCategory;
+  final String? description;
+  final String? website;
+  final String? openingHours;
+  final String? wikidata;
   const Location({
     required this.id,
     required this.tripId,
@@ -9247,6 +9531,13 @@ class Location extends DataClass implements Insertable<Location> {
     this.placeType,
     this.notes,
     required this.source,
+    this.externalProvider,
+    this.externalId,
+    this.poiCategory,
+    this.description,
+    this.website,
+    this.openingHours,
+    this.wikidata,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -9276,6 +9567,29 @@ class Location extends DataClass implements Insertable<Location> {
         $LocationsTable.$convertersource.toSql(source),
       );
     }
+    if (!nullToAbsent || externalProvider != null) {
+      map['external_provider'] = Variable<String>(externalProvider);
+    }
+    if (!nullToAbsent || externalId != null) {
+      map['external_id'] = Variable<String>(externalId);
+    }
+    if (!nullToAbsent || poiCategory != null) {
+      map['poi_category'] = Variable<String>(
+        $LocationsTable.$converterpoiCategoryn.toSql(poiCategory),
+      );
+    }
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    if (!nullToAbsent || website != null) {
+      map['website'] = Variable<String>(website);
+    }
+    if (!nullToAbsent || openingHours != null) {
+      map['opening_hours'] = Variable<String>(openingHours);
+    }
+    if (!nullToAbsent || wikidata != null) {
+      map['wikidata'] = Variable<String>(wikidata);
+    }
     return map;
   }
 
@@ -9300,6 +9614,27 @@ class Location extends DataClass implements Insertable<Location> {
           ? const Value.absent()
           : Value(notes),
       source: Value(source),
+      externalProvider: externalProvider == null && nullToAbsent
+          ? const Value.absent()
+          : Value(externalProvider),
+      externalId: externalId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(externalId),
+      poiCategory: poiCategory == null && nullToAbsent
+          ? const Value.absent()
+          : Value(poiCategory),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      website: website == null && nullToAbsent
+          ? const Value.absent()
+          : Value(website),
+      openingHours: openingHours == null && nullToAbsent
+          ? const Value.absent()
+          : Value(openingHours),
+      wikidata: wikidata == null && nullToAbsent
+          ? const Value.absent()
+          : Value(wikidata),
     );
   }
 
@@ -9322,6 +9657,15 @@ class Location extends DataClass implements Insertable<Location> {
       source: $LocationsTable.$convertersource.fromJson(
         serializer.fromJson<String>(json['source']),
       ),
+      externalProvider: serializer.fromJson<String?>(json['externalProvider']),
+      externalId: serializer.fromJson<String?>(json['externalId']),
+      poiCategory: $LocationsTable.$converterpoiCategoryn.fromJson(
+        serializer.fromJson<String?>(json['poiCategory']),
+      ),
+      description: serializer.fromJson<String?>(json['description']),
+      website: serializer.fromJson<String?>(json['website']),
+      openingHours: serializer.fromJson<String?>(json['openingHours']),
+      wikidata: serializer.fromJson<String?>(json['wikidata']),
     );
   }
   @override
@@ -9341,6 +9685,15 @@ class Location extends DataClass implements Insertable<Location> {
       'source': serializer.toJson<String>(
         $LocationsTable.$convertersource.toJson(source),
       ),
+      'externalProvider': serializer.toJson<String?>(externalProvider),
+      'externalId': serializer.toJson<String?>(externalId),
+      'poiCategory': serializer.toJson<String?>(
+        $LocationsTable.$converterpoiCategoryn.toJson(poiCategory),
+      ),
+      'description': serializer.toJson<String?>(description),
+      'website': serializer.toJson<String?>(website),
+      'openingHours': serializer.toJson<String?>(openingHours),
+      'wikidata': serializer.toJson<String?>(wikidata),
     };
   }
 
@@ -9354,6 +9707,13 @@ class Location extends DataClass implements Insertable<Location> {
     Value<PlaceType?> placeType = const Value.absent(),
     Value<String?> notes = const Value.absent(),
     LocationSource? source,
+    Value<String?> externalProvider = const Value.absent(),
+    Value<String?> externalId = const Value.absent(),
+    Value<PoiCategory?> poiCategory = const Value.absent(),
+    Value<String?> description = const Value.absent(),
+    Value<String?> website = const Value.absent(),
+    Value<String?> openingHours = const Value.absent(),
+    Value<String?> wikidata = const Value.absent(),
   }) => Location(
     id: id ?? this.id,
     tripId: tripId ?? this.tripId,
@@ -9364,6 +9724,15 @@ class Location extends DataClass implements Insertable<Location> {
     placeType: placeType.present ? placeType.value : this.placeType,
     notes: notes.present ? notes.value : this.notes,
     source: source ?? this.source,
+    externalProvider: externalProvider.present
+        ? externalProvider.value
+        : this.externalProvider,
+    externalId: externalId.present ? externalId.value : this.externalId,
+    poiCategory: poiCategory.present ? poiCategory.value : this.poiCategory,
+    description: description.present ? description.value : this.description,
+    website: website.present ? website.value : this.website,
+    openingHours: openingHours.present ? openingHours.value : this.openingHours,
+    wikidata: wikidata.present ? wikidata.value : this.wikidata,
   );
   Location copyWithCompanion(LocationsCompanion data) {
     return Location(
@@ -9376,6 +9745,23 @@ class Location extends DataClass implements Insertable<Location> {
       placeType: data.placeType.present ? data.placeType.value : this.placeType,
       notes: data.notes.present ? data.notes.value : this.notes,
       source: data.source.present ? data.source.value : this.source,
+      externalProvider: data.externalProvider.present
+          ? data.externalProvider.value
+          : this.externalProvider,
+      externalId: data.externalId.present
+          ? data.externalId.value
+          : this.externalId,
+      poiCategory: data.poiCategory.present
+          ? data.poiCategory.value
+          : this.poiCategory,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      website: data.website.present ? data.website.value : this.website,
+      openingHours: data.openingHours.present
+          ? data.openingHours.value
+          : this.openingHours,
+      wikidata: data.wikidata.present ? data.wikidata.value : this.wikidata,
     );
   }
 
@@ -9390,7 +9776,14 @@ class Location extends DataClass implements Insertable<Location> {
           ..write('longitude: $longitude, ')
           ..write('placeType: $placeType, ')
           ..write('notes: $notes, ')
-          ..write('source: $source')
+          ..write('source: $source, ')
+          ..write('externalProvider: $externalProvider, ')
+          ..write('externalId: $externalId, ')
+          ..write('poiCategory: $poiCategory, ')
+          ..write('description: $description, ')
+          ..write('website: $website, ')
+          ..write('openingHours: $openingHours, ')
+          ..write('wikidata: $wikidata')
           ..write(')'))
         .toString();
   }
@@ -9406,6 +9799,13 @@ class Location extends DataClass implements Insertable<Location> {
     placeType,
     notes,
     source,
+    externalProvider,
+    externalId,
+    poiCategory,
+    description,
+    website,
+    openingHours,
+    wikidata,
   );
   @override
   bool operator ==(Object other) =>
@@ -9419,7 +9819,14 @@ class Location extends DataClass implements Insertable<Location> {
           other.longitude == this.longitude &&
           other.placeType == this.placeType &&
           other.notes == this.notes &&
-          other.source == this.source);
+          other.source == this.source &&
+          other.externalProvider == this.externalProvider &&
+          other.externalId == this.externalId &&
+          other.poiCategory == this.poiCategory &&
+          other.description == this.description &&
+          other.website == this.website &&
+          other.openingHours == this.openingHours &&
+          other.wikidata == this.wikidata);
 }
 
 class LocationsCompanion extends UpdateCompanion<Location> {
@@ -9432,6 +9839,13 @@ class LocationsCompanion extends UpdateCompanion<Location> {
   final Value<PlaceType?> placeType;
   final Value<String?> notes;
   final Value<LocationSource> source;
+  final Value<String?> externalProvider;
+  final Value<String?> externalId;
+  final Value<PoiCategory?> poiCategory;
+  final Value<String?> description;
+  final Value<String?> website;
+  final Value<String?> openingHours;
+  final Value<String?> wikidata;
   final Value<int> rowid;
   const LocationsCompanion({
     this.id = const Value.absent(),
@@ -9443,6 +9857,13 @@ class LocationsCompanion extends UpdateCompanion<Location> {
     this.placeType = const Value.absent(),
     this.notes = const Value.absent(),
     this.source = const Value.absent(),
+    this.externalProvider = const Value.absent(),
+    this.externalId = const Value.absent(),
+    this.poiCategory = const Value.absent(),
+    this.description = const Value.absent(),
+    this.website = const Value.absent(),
+    this.openingHours = const Value.absent(),
+    this.wikidata = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocationsCompanion.insert({
@@ -9455,6 +9876,13 @@ class LocationsCompanion extends UpdateCompanion<Location> {
     this.placeType = const Value.absent(),
     this.notes = const Value.absent(),
     this.source = const Value.absent(),
+    this.externalProvider = const Value.absent(),
+    this.externalId = const Value.absent(),
+    this.poiCategory = const Value.absent(),
+    this.description = const Value.absent(),
+    this.website = const Value.absent(),
+    this.openingHours = const Value.absent(),
+    this.wikidata = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        tripId = Value(tripId),
@@ -9469,6 +9897,13 @@ class LocationsCompanion extends UpdateCompanion<Location> {
     Expression<String>? placeType,
     Expression<String>? notes,
     Expression<String>? source,
+    Expression<String>? externalProvider,
+    Expression<String>? externalId,
+    Expression<String>? poiCategory,
+    Expression<String>? description,
+    Expression<String>? website,
+    Expression<String>? openingHours,
+    Expression<String>? wikidata,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -9481,6 +9916,13 @@ class LocationsCompanion extends UpdateCompanion<Location> {
       if (placeType != null) 'place_type': placeType,
       if (notes != null) 'notes': notes,
       if (source != null) 'source': source,
+      if (externalProvider != null) 'external_provider': externalProvider,
+      if (externalId != null) 'external_id': externalId,
+      if (poiCategory != null) 'poi_category': poiCategory,
+      if (description != null) 'description': description,
+      if (website != null) 'website': website,
+      if (openingHours != null) 'opening_hours': openingHours,
+      if (wikidata != null) 'wikidata': wikidata,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -9495,6 +9937,13 @@ class LocationsCompanion extends UpdateCompanion<Location> {
     Value<PlaceType?>? placeType,
     Value<String?>? notes,
     Value<LocationSource>? source,
+    Value<String?>? externalProvider,
+    Value<String?>? externalId,
+    Value<PoiCategory?>? poiCategory,
+    Value<String?>? description,
+    Value<String?>? website,
+    Value<String?>? openingHours,
+    Value<String?>? wikidata,
     Value<int>? rowid,
   }) {
     return LocationsCompanion(
@@ -9507,6 +9956,13 @@ class LocationsCompanion extends UpdateCompanion<Location> {
       placeType: placeType ?? this.placeType,
       notes: notes ?? this.notes,
       source: source ?? this.source,
+      externalProvider: externalProvider ?? this.externalProvider,
+      externalId: externalId ?? this.externalId,
+      poiCategory: poiCategory ?? this.poiCategory,
+      description: description ?? this.description,
+      website: website ?? this.website,
+      openingHours: openingHours ?? this.openingHours,
+      wikidata: wikidata ?? this.wikidata,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -9545,6 +10001,29 @@ class LocationsCompanion extends UpdateCompanion<Location> {
         $LocationsTable.$convertersource.toSql(source.value),
       );
     }
+    if (externalProvider.present) {
+      map['external_provider'] = Variable<String>(externalProvider.value);
+    }
+    if (externalId.present) {
+      map['external_id'] = Variable<String>(externalId.value);
+    }
+    if (poiCategory.present) {
+      map['poi_category'] = Variable<String>(
+        $LocationsTable.$converterpoiCategoryn.toSql(poiCategory.value),
+      );
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (website.present) {
+      map['website'] = Variable<String>(website.value);
+    }
+    if (openingHours.present) {
+      map['opening_hours'] = Variable<String>(openingHours.value);
+    }
+    if (wikidata.present) {
+      map['wikidata'] = Variable<String>(wikidata.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -9563,6 +10042,13 @@ class LocationsCompanion extends UpdateCompanion<Location> {
           ..write('placeType: $placeType, ')
           ..write('notes: $notes, ')
           ..write('source: $source, ')
+          ..write('externalProvider: $externalProvider, ')
+          ..write('externalId: $externalId, ')
+          ..write('poiCategory: $poiCategory, ')
+          ..write('description: $description, ')
+          ..write('website: $website, ')
+          ..write('openingHours: $openingHours, ')
+          ..write('wikidata: $wikidata, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -10640,6 +11126,1568 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
   }
 }
 
+class $SightseeingRoutesTable extends SightseeingRoutes
+    with TableInfo<$SightseeingRoutesTable, SightseeingRoute> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SightseeingRoutesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tripIdMeta = const VerificationMeta('tripId');
+  @override
+  late final GeneratedColumn<String> tripId = GeneratedColumn<String>(
+    'trip_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES trips (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _dayIdMeta = const VerificationMeta('dayId');
+  @override
+  late final GeneratedColumn<String> dayId = GeneratedColumn<String>(
+    'day_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES itinerary_days (id) ON DELETE SET NULL',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<RouteTravelMode, String>
+  travelMode =
+      GeneratedColumn<String>(
+        'travel_mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: Constant(RouteTravelMode.walk.name),
+      ).withConverter<RouteTravelMode>(
+        $SightseeingRoutesTable.$convertertravelMode,
+      );
+  static const VerificationMeta _optimizedMeta = const VerificationMeta(
+    'optimized',
+  );
+  @override
+  late final GeneratedColumn<bool> optimized = GeneratedColumn<bool>(
+    'optimized',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("optimized" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _fixedStartMeta = const VerificationMeta(
+    'fixedStart',
+  );
+  @override
+  late final GeneratedColumn<bool> fixedStart = GeneratedColumn<bool>(
+    'fixed_start',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("fixed_start" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _returnToStartMeta = const VerificationMeta(
+    'returnToStart',
+  );
+  @override
+  late final GeneratedColumn<bool> returnToStart = GeneratedColumn<bool>(
+    'return_to_start',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("return_to_start" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _distanceMetersMeta = const VerificationMeta(
+    'distanceMeters',
+  );
+  @override
+  late final GeneratedColumn<int> distanceMeters = GeneratedColumn<int>(
+    'distance_meters',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _durationSecondsMeta = const VerificationMeta(
+    'durationSeconds',
+  );
+  @override
+  late final GeneratedColumn<int> durationSeconds = GeneratedColumn<int>(
+    'duration_seconds',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _geometryMeta = const VerificationMeta(
+    'geometry',
+  );
+  @override
+  late final GeneratedColumn<String> geometry = GeneratedColumn<String>(
+    'geometry',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastManualOrderMeta = const VerificationMeta(
+    'lastManualOrder',
+  );
+  @override
+  late final GeneratedColumn<String> lastManualOrder = GeneratedColumn<String>(
+    'last_manual_order',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DistanceSource, String>
+  calcSource = GeneratedColumn<String>(
+    'calc_source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: Constant(DistanceSource.straightLine.name),
+  ).withConverter<DistanceSource>($SightseeingRoutesTable.$convertercalcSource);
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: DateTime.now,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: DateTime.now,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    tripId,
+    dayId,
+    name,
+    travelMode,
+    optimized,
+    fixedStart,
+    returnToStart,
+    distanceMeters,
+    durationSeconds,
+    geometry,
+    lastManualOrder,
+    calcSource,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sightseeing_routes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SightseeingRoute> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('trip_id')) {
+      context.handle(
+        _tripIdMeta,
+        tripId.isAcceptableOrUnknown(data['trip_id']!, _tripIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tripIdMeta);
+    }
+    if (data.containsKey('day_id')) {
+      context.handle(
+        _dayIdMeta,
+        dayId.isAcceptableOrUnknown(data['day_id']!, _dayIdMeta),
+      );
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('optimized')) {
+      context.handle(
+        _optimizedMeta,
+        optimized.isAcceptableOrUnknown(data['optimized']!, _optimizedMeta),
+      );
+    }
+    if (data.containsKey('fixed_start')) {
+      context.handle(
+        _fixedStartMeta,
+        fixedStart.isAcceptableOrUnknown(data['fixed_start']!, _fixedStartMeta),
+      );
+    }
+    if (data.containsKey('return_to_start')) {
+      context.handle(
+        _returnToStartMeta,
+        returnToStart.isAcceptableOrUnknown(
+          data['return_to_start']!,
+          _returnToStartMeta,
+        ),
+      );
+    }
+    if (data.containsKey('distance_meters')) {
+      context.handle(
+        _distanceMetersMeta,
+        distanceMeters.isAcceptableOrUnknown(
+          data['distance_meters']!,
+          _distanceMetersMeta,
+        ),
+      );
+    }
+    if (data.containsKey('duration_seconds')) {
+      context.handle(
+        _durationSecondsMeta,
+        durationSeconds.isAcceptableOrUnknown(
+          data['duration_seconds']!,
+          _durationSecondsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('geometry')) {
+      context.handle(
+        _geometryMeta,
+        geometry.isAcceptableOrUnknown(data['geometry']!, _geometryMeta),
+      );
+    }
+    if (data.containsKey('last_manual_order')) {
+      context.handle(
+        _lastManualOrderMeta,
+        lastManualOrder.isAcceptableOrUnknown(
+          data['last_manual_order']!,
+          _lastManualOrderMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SightseeingRoute map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SightseeingRoute(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      tripId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}trip_id'],
+      )!,
+      dayId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}day_id'],
+      ),
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      travelMode: $SightseeingRoutesTable.$convertertravelMode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}travel_mode'],
+        )!,
+      ),
+      optimized: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}optimized'],
+      )!,
+      fixedStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}fixed_start'],
+      )!,
+      returnToStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}return_to_start'],
+      )!,
+      distanceMeters: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}distance_meters'],
+      ),
+      durationSeconds: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration_seconds'],
+      ),
+      geometry: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}geometry'],
+      ),
+      lastManualOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_manual_order'],
+      ),
+      calcSource: $SightseeingRoutesTable.$convertercalcSource.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}calc_source'],
+        )!,
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SightseeingRoutesTable createAlias(String alias) {
+    return $SightseeingRoutesTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<RouteTravelMode, String, String>
+  $convertertravelMode = const EnumNameConverter<RouteTravelMode>(
+    RouteTravelMode.values,
+  );
+  static JsonTypeConverter2<DistanceSource, String, String>
+  $convertercalcSource = const EnumNameConverter<DistanceSource>(
+    DistanceSource.values,
+  );
+}
+
+class SightseeingRoute extends DataClass
+    implements Insertable<SightseeingRoute> {
+  final String id;
+  final String tripId;
+
+  /// Giorno dell'itinerario a cui il percorso e' agganciato (facoltativo).
+  final String? dayId;
+  final String name;
+  final RouteTravelMode travelMode;
+
+  /// L'ordine corrente e' frutto di un'ottimizzazione automatica?
+  final bool optimized;
+
+  /// La prima tappa e' una partenza fissa (non riordinabile dall'ottimizzatore)?
+  final bool fixedStart;
+
+  /// Il percorso torna al punto di partenza (anello)?
+  final bool returnToStart;
+  final int? distanceMeters;
+  final int? durationSeconds;
+
+  /// Geometria della polyline come JSON `[[lat,lng],...]` (null se non calcolata).
+  final String? geometry;
+
+  /// Ultimo ordine manuale (JSON di id-tappa) per ripristinarlo dopo un'ottimizzazione.
+  final String? lastManualOrder;
+
+  /// Origine del calcolo di distanza/durata/geometria.
+  final DistanceSource calcSource;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const SightseeingRoute({
+    required this.id,
+    required this.tripId,
+    this.dayId,
+    required this.name,
+    required this.travelMode,
+    required this.optimized,
+    required this.fixedStart,
+    required this.returnToStart,
+    this.distanceMeters,
+    this.durationSeconds,
+    this.geometry,
+    this.lastManualOrder,
+    required this.calcSource,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['trip_id'] = Variable<String>(tripId);
+    if (!nullToAbsent || dayId != null) {
+      map['day_id'] = Variable<String>(dayId);
+    }
+    map['name'] = Variable<String>(name);
+    {
+      map['travel_mode'] = Variable<String>(
+        $SightseeingRoutesTable.$convertertravelMode.toSql(travelMode),
+      );
+    }
+    map['optimized'] = Variable<bool>(optimized);
+    map['fixed_start'] = Variable<bool>(fixedStart);
+    map['return_to_start'] = Variable<bool>(returnToStart);
+    if (!nullToAbsent || distanceMeters != null) {
+      map['distance_meters'] = Variable<int>(distanceMeters);
+    }
+    if (!nullToAbsent || durationSeconds != null) {
+      map['duration_seconds'] = Variable<int>(durationSeconds);
+    }
+    if (!nullToAbsent || geometry != null) {
+      map['geometry'] = Variable<String>(geometry);
+    }
+    if (!nullToAbsent || lastManualOrder != null) {
+      map['last_manual_order'] = Variable<String>(lastManualOrder);
+    }
+    {
+      map['calc_source'] = Variable<String>(
+        $SightseeingRoutesTable.$convertercalcSource.toSql(calcSource),
+      );
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  SightseeingRoutesCompanion toCompanion(bool nullToAbsent) {
+    return SightseeingRoutesCompanion(
+      id: Value(id),
+      tripId: Value(tripId),
+      dayId: dayId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dayId),
+      name: Value(name),
+      travelMode: Value(travelMode),
+      optimized: Value(optimized),
+      fixedStart: Value(fixedStart),
+      returnToStart: Value(returnToStart),
+      distanceMeters: distanceMeters == null && nullToAbsent
+          ? const Value.absent()
+          : Value(distanceMeters),
+      durationSeconds: durationSeconds == null && nullToAbsent
+          ? const Value.absent()
+          : Value(durationSeconds),
+      geometry: geometry == null && nullToAbsent
+          ? const Value.absent()
+          : Value(geometry),
+      lastManualOrder: lastManualOrder == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastManualOrder),
+      calcSource: Value(calcSource),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory SightseeingRoute.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SightseeingRoute(
+      id: serializer.fromJson<String>(json['id']),
+      tripId: serializer.fromJson<String>(json['tripId']),
+      dayId: serializer.fromJson<String?>(json['dayId']),
+      name: serializer.fromJson<String>(json['name']),
+      travelMode: $SightseeingRoutesTable.$convertertravelMode.fromJson(
+        serializer.fromJson<String>(json['travelMode']),
+      ),
+      optimized: serializer.fromJson<bool>(json['optimized']),
+      fixedStart: serializer.fromJson<bool>(json['fixedStart']),
+      returnToStart: serializer.fromJson<bool>(json['returnToStart']),
+      distanceMeters: serializer.fromJson<int?>(json['distanceMeters']),
+      durationSeconds: serializer.fromJson<int?>(json['durationSeconds']),
+      geometry: serializer.fromJson<String?>(json['geometry']),
+      lastManualOrder: serializer.fromJson<String?>(json['lastManualOrder']),
+      calcSource: $SightseeingRoutesTable.$convertercalcSource.fromJson(
+        serializer.fromJson<String>(json['calcSource']),
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'tripId': serializer.toJson<String>(tripId),
+      'dayId': serializer.toJson<String?>(dayId),
+      'name': serializer.toJson<String>(name),
+      'travelMode': serializer.toJson<String>(
+        $SightseeingRoutesTable.$convertertravelMode.toJson(travelMode),
+      ),
+      'optimized': serializer.toJson<bool>(optimized),
+      'fixedStart': serializer.toJson<bool>(fixedStart),
+      'returnToStart': serializer.toJson<bool>(returnToStart),
+      'distanceMeters': serializer.toJson<int?>(distanceMeters),
+      'durationSeconds': serializer.toJson<int?>(durationSeconds),
+      'geometry': serializer.toJson<String?>(geometry),
+      'lastManualOrder': serializer.toJson<String?>(lastManualOrder),
+      'calcSource': serializer.toJson<String>(
+        $SightseeingRoutesTable.$convertercalcSource.toJson(calcSource),
+      ),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  SightseeingRoute copyWith({
+    String? id,
+    String? tripId,
+    Value<String?> dayId = const Value.absent(),
+    String? name,
+    RouteTravelMode? travelMode,
+    bool? optimized,
+    bool? fixedStart,
+    bool? returnToStart,
+    Value<int?> distanceMeters = const Value.absent(),
+    Value<int?> durationSeconds = const Value.absent(),
+    Value<String?> geometry = const Value.absent(),
+    Value<String?> lastManualOrder = const Value.absent(),
+    DistanceSource? calcSource,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => SightseeingRoute(
+    id: id ?? this.id,
+    tripId: tripId ?? this.tripId,
+    dayId: dayId.present ? dayId.value : this.dayId,
+    name: name ?? this.name,
+    travelMode: travelMode ?? this.travelMode,
+    optimized: optimized ?? this.optimized,
+    fixedStart: fixedStart ?? this.fixedStart,
+    returnToStart: returnToStart ?? this.returnToStart,
+    distanceMeters: distanceMeters.present
+        ? distanceMeters.value
+        : this.distanceMeters,
+    durationSeconds: durationSeconds.present
+        ? durationSeconds.value
+        : this.durationSeconds,
+    geometry: geometry.present ? geometry.value : this.geometry,
+    lastManualOrder: lastManualOrder.present
+        ? lastManualOrder.value
+        : this.lastManualOrder,
+    calcSource: calcSource ?? this.calcSource,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  SightseeingRoute copyWithCompanion(SightseeingRoutesCompanion data) {
+    return SightseeingRoute(
+      id: data.id.present ? data.id.value : this.id,
+      tripId: data.tripId.present ? data.tripId.value : this.tripId,
+      dayId: data.dayId.present ? data.dayId.value : this.dayId,
+      name: data.name.present ? data.name.value : this.name,
+      travelMode: data.travelMode.present
+          ? data.travelMode.value
+          : this.travelMode,
+      optimized: data.optimized.present ? data.optimized.value : this.optimized,
+      fixedStart: data.fixedStart.present
+          ? data.fixedStart.value
+          : this.fixedStart,
+      returnToStart: data.returnToStart.present
+          ? data.returnToStart.value
+          : this.returnToStart,
+      distanceMeters: data.distanceMeters.present
+          ? data.distanceMeters.value
+          : this.distanceMeters,
+      durationSeconds: data.durationSeconds.present
+          ? data.durationSeconds.value
+          : this.durationSeconds,
+      geometry: data.geometry.present ? data.geometry.value : this.geometry,
+      lastManualOrder: data.lastManualOrder.present
+          ? data.lastManualOrder.value
+          : this.lastManualOrder,
+      calcSource: data.calcSource.present
+          ? data.calcSource.value
+          : this.calcSource,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SightseeingRoute(')
+          ..write('id: $id, ')
+          ..write('tripId: $tripId, ')
+          ..write('dayId: $dayId, ')
+          ..write('name: $name, ')
+          ..write('travelMode: $travelMode, ')
+          ..write('optimized: $optimized, ')
+          ..write('fixedStart: $fixedStart, ')
+          ..write('returnToStart: $returnToStart, ')
+          ..write('distanceMeters: $distanceMeters, ')
+          ..write('durationSeconds: $durationSeconds, ')
+          ..write('geometry: $geometry, ')
+          ..write('lastManualOrder: $lastManualOrder, ')
+          ..write('calcSource: $calcSource, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    tripId,
+    dayId,
+    name,
+    travelMode,
+    optimized,
+    fixedStart,
+    returnToStart,
+    distanceMeters,
+    durationSeconds,
+    geometry,
+    lastManualOrder,
+    calcSource,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SightseeingRoute &&
+          other.id == this.id &&
+          other.tripId == this.tripId &&
+          other.dayId == this.dayId &&
+          other.name == this.name &&
+          other.travelMode == this.travelMode &&
+          other.optimized == this.optimized &&
+          other.fixedStart == this.fixedStart &&
+          other.returnToStart == this.returnToStart &&
+          other.distanceMeters == this.distanceMeters &&
+          other.durationSeconds == this.durationSeconds &&
+          other.geometry == this.geometry &&
+          other.lastManualOrder == this.lastManualOrder &&
+          other.calcSource == this.calcSource &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SightseeingRoutesCompanion extends UpdateCompanion<SightseeingRoute> {
+  final Value<String> id;
+  final Value<String> tripId;
+  final Value<String?> dayId;
+  final Value<String> name;
+  final Value<RouteTravelMode> travelMode;
+  final Value<bool> optimized;
+  final Value<bool> fixedStart;
+  final Value<bool> returnToStart;
+  final Value<int?> distanceMeters;
+  final Value<int?> durationSeconds;
+  final Value<String?> geometry;
+  final Value<String?> lastManualOrder;
+  final Value<DistanceSource> calcSource;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const SightseeingRoutesCompanion({
+    this.id = const Value.absent(),
+    this.tripId = const Value.absent(),
+    this.dayId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.travelMode = const Value.absent(),
+    this.optimized = const Value.absent(),
+    this.fixedStart = const Value.absent(),
+    this.returnToStart = const Value.absent(),
+    this.distanceMeters = const Value.absent(),
+    this.durationSeconds = const Value.absent(),
+    this.geometry = const Value.absent(),
+    this.lastManualOrder = const Value.absent(),
+    this.calcSource = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SightseeingRoutesCompanion.insert({
+    required String id,
+    required String tripId,
+    this.dayId = const Value.absent(),
+    required String name,
+    this.travelMode = const Value.absent(),
+    this.optimized = const Value.absent(),
+    this.fixedStart = const Value.absent(),
+    this.returnToStart = const Value.absent(),
+    this.distanceMeters = const Value.absent(),
+    this.durationSeconds = const Value.absent(),
+    this.geometry = const Value.absent(),
+    this.lastManualOrder = const Value.absent(),
+    this.calcSource = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       tripId = Value(tripId),
+       name = Value(name);
+  static Insertable<SightseeingRoute> custom({
+    Expression<String>? id,
+    Expression<String>? tripId,
+    Expression<String>? dayId,
+    Expression<String>? name,
+    Expression<String>? travelMode,
+    Expression<bool>? optimized,
+    Expression<bool>? fixedStart,
+    Expression<bool>? returnToStart,
+    Expression<int>? distanceMeters,
+    Expression<int>? durationSeconds,
+    Expression<String>? geometry,
+    Expression<String>? lastManualOrder,
+    Expression<String>? calcSource,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (tripId != null) 'trip_id': tripId,
+      if (dayId != null) 'day_id': dayId,
+      if (name != null) 'name': name,
+      if (travelMode != null) 'travel_mode': travelMode,
+      if (optimized != null) 'optimized': optimized,
+      if (fixedStart != null) 'fixed_start': fixedStart,
+      if (returnToStart != null) 'return_to_start': returnToStart,
+      if (distanceMeters != null) 'distance_meters': distanceMeters,
+      if (durationSeconds != null) 'duration_seconds': durationSeconds,
+      if (geometry != null) 'geometry': geometry,
+      if (lastManualOrder != null) 'last_manual_order': lastManualOrder,
+      if (calcSource != null) 'calc_source': calcSource,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SightseeingRoutesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? tripId,
+    Value<String?>? dayId,
+    Value<String>? name,
+    Value<RouteTravelMode>? travelMode,
+    Value<bool>? optimized,
+    Value<bool>? fixedStart,
+    Value<bool>? returnToStart,
+    Value<int?>? distanceMeters,
+    Value<int?>? durationSeconds,
+    Value<String?>? geometry,
+    Value<String?>? lastManualOrder,
+    Value<DistanceSource>? calcSource,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return SightseeingRoutesCompanion(
+      id: id ?? this.id,
+      tripId: tripId ?? this.tripId,
+      dayId: dayId ?? this.dayId,
+      name: name ?? this.name,
+      travelMode: travelMode ?? this.travelMode,
+      optimized: optimized ?? this.optimized,
+      fixedStart: fixedStart ?? this.fixedStart,
+      returnToStart: returnToStart ?? this.returnToStart,
+      distanceMeters: distanceMeters ?? this.distanceMeters,
+      durationSeconds: durationSeconds ?? this.durationSeconds,
+      geometry: geometry ?? this.geometry,
+      lastManualOrder: lastManualOrder ?? this.lastManualOrder,
+      calcSource: calcSource ?? this.calcSource,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (tripId.present) {
+      map['trip_id'] = Variable<String>(tripId.value);
+    }
+    if (dayId.present) {
+      map['day_id'] = Variable<String>(dayId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (travelMode.present) {
+      map['travel_mode'] = Variable<String>(
+        $SightseeingRoutesTable.$convertertravelMode.toSql(travelMode.value),
+      );
+    }
+    if (optimized.present) {
+      map['optimized'] = Variable<bool>(optimized.value);
+    }
+    if (fixedStart.present) {
+      map['fixed_start'] = Variable<bool>(fixedStart.value);
+    }
+    if (returnToStart.present) {
+      map['return_to_start'] = Variable<bool>(returnToStart.value);
+    }
+    if (distanceMeters.present) {
+      map['distance_meters'] = Variable<int>(distanceMeters.value);
+    }
+    if (durationSeconds.present) {
+      map['duration_seconds'] = Variable<int>(durationSeconds.value);
+    }
+    if (geometry.present) {
+      map['geometry'] = Variable<String>(geometry.value);
+    }
+    if (lastManualOrder.present) {
+      map['last_manual_order'] = Variable<String>(lastManualOrder.value);
+    }
+    if (calcSource.present) {
+      map['calc_source'] = Variable<String>(
+        $SightseeingRoutesTable.$convertercalcSource.toSql(calcSource.value),
+      );
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SightseeingRoutesCompanion(')
+          ..write('id: $id, ')
+          ..write('tripId: $tripId, ')
+          ..write('dayId: $dayId, ')
+          ..write('name: $name, ')
+          ..write('travelMode: $travelMode, ')
+          ..write('optimized: $optimized, ')
+          ..write('fixedStart: $fixedStart, ')
+          ..write('returnToStart: $returnToStart, ')
+          ..write('distanceMeters: $distanceMeters, ')
+          ..write('durationSeconds: $durationSeconds, ')
+          ..write('geometry: $geometry, ')
+          ..write('lastManualOrder: $lastManualOrder, ')
+          ..write('calcSource: $calcSource, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SightseeingRouteStopsTable extends SightseeingRouteStops
+    with TableInfo<$SightseeingRouteStopsTable, SightseeingRouteStop> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SightseeingRouteStopsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _routeIdMeta = const VerificationMeta(
+    'routeId',
+  );
+  @override
+  late final GeneratedColumn<String> routeId = GeneratedColumn<String>(
+    'route_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sightseeing_routes (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _tripIdMeta = const VerificationMeta('tripId');
+  @override
+  late final GeneratedColumn<String> tripId = GeneratedColumn<String>(
+    'trip_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES trips (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _locationIdMeta = const VerificationMeta(
+    'locationId',
+  );
+  @override
+  late final GeneratedColumn<String> locationId = GeneratedColumn<String>(
+    'location_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES locations (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _sequenceIndexMeta = const VerificationMeta(
+    'sequenceIndex',
+  );
+  @override
+  late final GeneratedColumn<int> sequenceIndex = GeneratedColumn<int>(
+    'sequence_index',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    routeId,
+    tripId,
+    locationId,
+    sequenceIndex,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sightseeing_route_stops';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SightseeingRouteStop> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('route_id')) {
+      context.handle(
+        _routeIdMeta,
+        routeId.isAcceptableOrUnknown(data['route_id']!, _routeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_routeIdMeta);
+    }
+    if (data.containsKey('trip_id')) {
+      context.handle(
+        _tripIdMeta,
+        tripId.isAcceptableOrUnknown(data['trip_id']!, _tripIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tripIdMeta);
+    }
+    if (data.containsKey('location_id')) {
+      context.handle(
+        _locationIdMeta,
+        locationId.isAcceptableOrUnknown(data['location_id']!, _locationIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_locationIdMeta);
+    }
+    if (data.containsKey('sequence_index')) {
+      context.handle(
+        _sequenceIndexMeta,
+        sequenceIndex.isAcceptableOrUnknown(
+          data['sequence_index']!,
+          _sequenceIndexMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SightseeingRouteStop map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SightseeingRouteStop(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      routeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}route_id'],
+      )!,
+      tripId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}trip_id'],
+      )!,
+      locationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}location_id'],
+      )!,
+      sequenceIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sequence_index'],
+      )!,
+    );
+  }
+
+  @override
+  $SightseeingRouteStopsTable createAlias(String alias) {
+    return $SightseeingRouteStopsTable(attachedDatabase, alias);
+  }
+}
+
+class SightseeingRouteStop extends DataClass
+    implements Insertable<SightseeingRouteStop> {
+  final String id;
+  final String routeId;
+  final String tripId;
+  final String locationId;
+  final int sequenceIndex;
+  const SightseeingRouteStop({
+    required this.id,
+    required this.routeId,
+    required this.tripId,
+    required this.locationId,
+    required this.sequenceIndex,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['route_id'] = Variable<String>(routeId);
+    map['trip_id'] = Variable<String>(tripId);
+    map['location_id'] = Variable<String>(locationId);
+    map['sequence_index'] = Variable<int>(sequenceIndex);
+    return map;
+  }
+
+  SightseeingRouteStopsCompanion toCompanion(bool nullToAbsent) {
+    return SightseeingRouteStopsCompanion(
+      id: Value(id),
+      routeId: Value(routeId),
+      tripId: Value(tripId),
+      locationId: Value(locationId),
+      sequenceIndex: Value(sequenceIndex),
+    );
+  }
+
+  factory SightseeingRouteStop.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SightseeingRouteStop(
+      id: serializer.fromJson<String>(json['id']),
+      routeId: serializer.fromJson<String>(json['routeId']),
+      tripId: serializer.fromJson<String>(json['tripId']),
+      locationId: serializer.fromJson<String>(json['locationId']),
+      sequenceIndex: serializer.fromJson<int>(json['sequenceIndex']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'routeId': serializer.toJson<String>(routeId),
+      'tripId': serializer.toJson<String>(tripId),
+      'locationId': serializer.toJson<String>(locationId),
+      'sequenceIndex': serializer.toJson<int>(sequenceIndex),
+    };
+  }
+
+  SightseeingRouteStop copyWith({
+    String? id,
+    String? routeId,
+    String? tripId,
+    String? locationId,
+    int? sequenceIndex,
+  }) => SightseeingRouteStop(
+    id: id ?? this.id,
+    routeId: routeId ?? this.routeId,
+    tripId: tripId ?? this.tripId,
+    locationId: locationId ?? this.locationId,
+    sequenceIndex: sequenceIndex ?? this.sequenceIndex,
+  );
+  SightseeingRouteStop copyWithCompanion(SightseeingRouteStopsCompanion data) {
+    return SightseeingRouteStop(
+      id: data.id.present ? data.id.value : this.id,
+      routeId: data.routeId.present ? data.routeId.value : this.routeId,
+      tripId: data.tripId.present ? data.tripId.value : this.tripId,
+      locationId: data.locationId.present
+          ? data.locationId.value
+          : this.locationId,
+      sequenceIndex: data.sequenceIndex.present
+          ? data.sequenceIndex.value
+          : this.sequenceIndex,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SightseeingRouteStop(')
+          ..write('id: $id, ')
+          ..write('routeId: $routeId, ')
+          ..write('tripId: $tripId, ')
+          ..write('locationId: $locationId, ')
+          ..write('sequenceIndex: $sequenceIndex')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, routeId, tripId, locationId, sequenceIndex);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SightseeingRouteStop &&
+          other.id == this.id &&
+          other.routeId == this.routeId &&
+          other.tripId == this.tripId &&
+          other.locationId == this.locationId &&
+          other.sequenceIndex == this.sequenceIndex);
+}
+
+class SightseeingRouteStopsCompanion
+    extends UpdateCompanion<SightseeingRouteStop> {
+  final Value<String> id;
+  final Value<String> routeId;
+  final Value<String> tripId;
+  final Value<String> locationId;
+  final Value<int> sequenceIndex;
+  final Value<int> rowid;
+  const SightseeingRouteStopsCompanion({
+    this.id = const Value.absent(),
+    this.routeId = const Value.absent(),
+    this.tripId = const Value.absent(),
+    this.locationId = const Value.absent(),
+    this.sequenceIndex = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SightseeingRouteStopsCompanion.insert({
+    required String id,
+    required String routeId,
+    required String tripId,
+    required String locationId,
+    this.sequenceIndex = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       routeId = Value(routeId),
+       tripId = Value(tripId),
+       locationId = Value(locationId);
+  static Insertable<SightseeingRouteStop> custom({
+    Expression<String>? id,
+    Expression<String>? routeId,
+    Expression<String>? tripId,
+    Expression<String>? locationId,
+    Expression<int>? sequenceIndex,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (routeId != null) 'route_id': routeId,
+      if (tripId != null) 'trip_id': tripId,
+      if (locationId != null) 'location_id': locationId,
+      if (sequenceIndex != null) 'sequence_index': sequenceIndex,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SightseeingRouteStopsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? routeId,
+    Value<String>? tripId,
+    Value<String>? locationId,
+    Value<int>? sequenceIndex,
+    Value<int>? rowid,
+  }) {
+    return SightseeingRouteStopsCompanion(
+      id: id ?? this.id,
+      routeId: routeId ?? this.routeId,
+      tripId: tripId ?? this.tripId,
+      locationId: locationId ?? this.locationId,
+      sequenceIndex: sequenceIndex ?? this.sequenceIndex,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (routeId.present) {
+      map['route_id'] = Variable<String>(routeId.value);
+    }
+    if (tripId.present) {
+      map['trip_id'] = Variable<String>(tripId.value);
+    }
+    if (locationId.present) {
+      map['location_id'] = Variable<String>(locationId.value);
+    }
+    if (sequenceIndex.present) {
+      map['sequence_index'] = Variable<int>(sequenceIndex.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SightseeingRouteStopsCompanion(')
+          ..write('id: $id, ')
+          ..write('routeId: $routeId, ')
+          ..write('tripId: $tripId, ')
+          ..write('locationId: $locationId, ')
+          ..write('sequenceIndex: $sequenceIndex, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PoiCacheEntriesTable extends PoiCacheEntries
+    with TableInfo<$PoiCacheEntriesTable, PoiCacheEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PoiCacheEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _cacheKeyMeta = const VerificationMeta(
+    'cacheKey',
+  );
+  @override
+  late final GeneratedColumn<String> cacheKey = GeneratedColumn<String>(
+    'cache_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fetchedAtMeta = const VerificationMeta(
+    'fetchedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> fetchedAt = GeneratedColumn<DateTime>(
+    'fetched_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: DateTime.now,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [cacheKey, payload, fetchedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'poi_cache_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PoiCacheEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('cache_key')) {
+      context.handle(
+        _cacheKeyMeta,
+        cacheKey.isAcceptableOrUnknown(data['cache_key']!, _cacheKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cacheKeyMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('fetched_at')) {
+      context.handle(
+        _fetchedAtMeta,
+        fetchedAt.isAcceptableOrUnknown(data['fetched_at']!, _fetchedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {cacheKey};
+  @override
+  PoiCacheEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PoiCacheEntry(
+      cacheKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cache_key'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      fetchedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}fetched_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PoiCacheEntriesTable createAlias(String alias) {
+    return $PoiCacheEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class PoiCacheEntry extends DataClass implements Insertable<PoiCacheEntry> {
+  /// Chiave deterministica: provider|categorie|raggio|lat|lng arrotondati.
+  final String cacheKey;
+
+  /// JSON dei POI restituiti (lista serializzata).
+  final String payload;
+  final DateTime fetchedAt;
+  const PoiCacheEntry({
+    required this.cacheKey,
+    required this.payload,
+    required this.fetchedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['cache_key'] = Variable<String>(cacheKey);
+    map['payload'] = Variable<String>(payload);
+    map['fetched_at'] = Variable<DateTime>(fetchedAt);
+    return map;
+  }
+
+  PoiCacheEntriesCompanion toCompanion(bool nullToAbsent) {
+    return PoiCacheEntriesCompanion(
+      cacheKey: Value(cacheKey),
+      payload: Value(payload),
+      fetchedAt: Value(fetchedAt),
+    );
+  }
+
+  factory PoiCacheEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PoiCacheEntry(
+      cacheKey: serializer.fromJson<String>(json['cacheKey']),
+      payload: serializer.fromJson<String>(json['payload']),
+      fetchedAt: serializer.fromJson<DateTime>(json['fetchedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'cacheKey': serializer.toJson<String>(cacheKey),
+      'payload': serializer.toJson<String>(payload),
+      'fetchedAt': serializer.toJson<DateTime>(fetchedAt),
+    };
+  }
+
+  PoiCacheEntry copyWith({
+    String? cacheKey,
+    String? payload,
+    DateTime? fetchedAt,
+  }) => PoiCacheEntry(
+    cacheKey: cacheKey ?? this.cacheKey,
+    payload: payload ?? this.payload,
+    fetchedAt: fetchedAt ?? this.fetchedAt,
+  );
+  PoiCacheEntry copyWithCompanion(PoiCacheEntriesCompanion data) {
+    return PoiCacheEntry(
+      cacheKey: data.cacheKey.present ? data.cacheKey.value : this.cacheKey,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      fetchedAt: data.fetchedAt.present ? data.fetchedAt.value : this.fetchedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PoiCacheEntry(')
+          ..write('cacheKey: $cacheKey, ')
+          ..write('payload: $payload, ')
+          ..write('fetchedAt: $fetchedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(cacheKey, payload, fetchedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PoiCacheEntry &&
+          other.cacheKey == this.cacheKey &&
+          other.payload == this.payload &&
+          other.fetchedAt == this.fetchedAt);
+}
+
+class PoiCacheEntriesCompanion extends UpdateCompanion<PoiCacheEntry> {
+  final Value<String> cacheKey;
+  final Value<String> payload;
+  final Value<DateTime> fetchedAt;
+  final Value<int> rowid;
+  const PoiCacheEntriesCompanion({
+    this.cacheKey = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.fetchedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PoiCacheEntriesCompanion.insert({
+    required String cacheKey,
+    required String payload,
+    this.fetchedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : cacheKey = Value(cacheKey),
+       payload = Value(payload);
+  static Insertable<PoiCacheEntry> custom({
+    Expression<String>? cacheKey,
+    Expression<String>? payload,
+    Expression<DateTime>? fetchedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (cacheKey != null) 'cache_key': cacheKey,
+      if (payload != null) 'payload': payload,
+      if (fetchedAt != null) 'fetched_at': fetchedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PoiCacheEntriesCompanion copyWith({
+    Value<String>? cacheKey,
+    Value<String>? payload,
+    Value<DateTime>? fetchedAt,
+    Value<int>? rowid,
+  }) {
+    return PoiCacheEntriesCompanion(
+      cacheKey: cacheKey ?? this.cacheKey,
+      payload: payload ?? this.payload,
+      fetchedAt: fetchedAt ?? this.fetchedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (cacheKey.present) {
+      map['cache_key'] = Variable<String>(cacheKey.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (fetchedAt.present) {
+      map['fetched_at'] = Variable<DateTime>(fetchedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PoiCacheEntriesCompanion(')
+          ..write('cacheKey: $cacheKey, ')
+          ..write('payload: $payload, ')
+          ..write('fetchedAt: $fetchedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -10665,6 +12713,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $ActivityCategoriesTable(this);
   late final $LocationsTable locations = $LocationsTable(this);
   late final $ActivitiesTable activities = $ActivitiesTable(this);
+  late final $SightseeingRoutesTable sightseeingRoutes =
+      $SightseeingRoutesTable(this);
+  late final $SightseeingRouteStopsTable sightseeingRouteStops =
+      $SightseeingRouteStopsTable(this);
+  late final $PoiCacheEntriesTable poiCacheEntries = $PoiCacheEntriesTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -10686,6 +12741,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     activityCategories,
     locations,
     activities,
+    sightseeingRoutes,
+    sightseeingRouteStops,
+    poiCacheEntries,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -10807,6 +12865,41 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('activities', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'trips',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('sightseeing_routes', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'itinerary_days',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('sightseeing_routes', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sightseeing_routes',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('sightseeing_route_stops', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'trips',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('sightseeing_route_stops', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'locations',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('sightseeing_route_stops', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -11186,6 +13279,8 @@ typedef $$TripsTableCreateCompanionBuilder =
       required String name,
       Value<String?> destination,
       Value<String?> country,
+      Value<double?> destinationLat,
+      Value<double?> destinationLng,
       Value<DateTime?> startDate,
       Value<DateTime?> endDate,
       Value<TripType> tripType,
@@ -11205,6 +13300,8 @@ typedef $$TripsTableUpdateCompanionBuilder =
       Value<String> name,
       Value<String?> destination,
       Value<String?> country,
+      Value<double?> destinationLat,
+      Value<double?> destinationLng,
       Value<DateTime?> startDate,
       Value<DateTime?> endDate,
       Value<TripType> tripType,
@@ -11373,6 +13470,58 @@ final class $$TripsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$SightseeingRoutesTable, List<SightseeingRoute>>
+  _sightseeingRoutesRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sightseeingRoutes,
+        aliasName: $_aliasNameGenerator(
+          db.trips.id,
+          db.sightseeingRoutes.tripId,
+        ),
+      );
+
+  $$SightseeingRoutesTableProcessedTableManager get sightseeingRoutesRefs {
+    final manager = $$SightseeingRoutesTableTableManager(
+      $_db,
+      $_db.sightseeingRoutes,
+    ).filter((f) => f.tripId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _sightseeingRoutesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $SightseeingRouteStopsTable,
+    List<SightseeingRouteStop>
+  >
+  _sightseeingRouteStopsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sightseeingRouteStops,
+        aliasName: $_aliasNameGenerator(
+          db.trips.id,
+          db.sightseeingRouteStops.tripId,
+        ),
+      );
+
+  $$SightseeingRouteStopsTableProcessedTableManager
+  get sightseeingRouteStopsRefs {
+    final manager = $$SightseeingRouteStopsTableTableManager(
+      $_db,
+      $_db.sightseeingRouteStops,
+    ).filter((f) => f.tripId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _sightseeingRouteStopsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$TripsTableFilterComposer extends Composer<_$AppDatabase, $TripsTable> {
@@ -11400,6 +13549,16 @@ class $$TripsTableFilterComposer extends Composer<_$AppDatabase, $TripsTable> {
 
   ColumnFilters<String> get country => $composableBuilder(
     column: $table.country,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get destinationLat => $composableBuilder(
+    column: $table.destinationLat,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get destinationLng => $composableBuilder(
+    column: $table.destinationLng,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11660,6 +13819,57 @@ class $$TripsTableFilterComposer extends Composer<_$AppDatabase, $TripsTable> {
     );
     return f(composer);
   }
+
+  Expression<bool> sightseeingRoutesRefs(
+    Expression<bool> Function($$SightseeingRoutesTableFilterComposer f) f,
+  ) {
+    final $$SightseeingRoutesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.sightseeingRoutes,
+      getReferencedColumn: (t) => t.tripId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SightseeingRoutesTableFilterComposer(
+            $db: $db,
+            $table: $db.sightseeingRoutes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> sightseeingRouteStopsRefs(
+    Expression<bool> Function($$SightseeingRouteStopsTableFilterComposer f) f,
+  ) {
+    final $$SightseeingRouteStopsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.sightseeingRouteStops,
+          getReferencedColumn: (t) => t.tripId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SightseeingRouteStopsTableFilterComposer(
+                $db: $db,
+                $table: $db.sightseeingRouteStops,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$TripsTableOrderingComposer
@@ -11688,6 +13898,16 @@ class $$TripsTableOrderingComposer
 
   ColumnOrderings<String> get country => $composableBuilder(
     column: $table.country,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get destinationLat => $composableBuilder(
+    column: $table.destinationLat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get destinationLng => $composableBuilder(
+    column: $table.destinationLng,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -11769,6 +13989,16 @@ class $$TripsTableAnnotationComposer
 
   GeneratedColumn<String> get country =>
       $composableBuilder(column: $table.country, builder: (column) => column);
+
+  GeneratedColumn<double> get destinationLat => $composableBuilder(
+    column: $table.destinationLat,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get destinationLng => $composableBuilder(
+    column: $table.destinationLng,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get startDate =>
       $composableBuilder(column: $table.startDate, builder: (column) => column);
@@ -12012,6 +14242,58 @@ class $$TripsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> sightseeingRoutesRefs<T extends Object>(
+    Expression<T> Function($$SightseeingRoutesTableAnnotationComposer a) f,
+  ) {
+    final $$SightseeingRoutesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.sightseeingRoutes,
+          getReferencedColumn: (t) => t.tripId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SightseeingRoutesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sightseeingRoutes,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> sightseeingRouteStopsRefs<T extends Object>(
+    Expression<T> Function($$SightseeingRouteStopsTableAnnotationComposer a) f,
+  ) {
+    final $$SightseeingRouteStopsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.sightseeingRouteStops,
+          getReferencedColumn: (t) => t.tripId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SightseeingRouteStopsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sightseeingRouteStops,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$TripsTableTableManager
@@ -12036,6 +14318,8 @@ class $$TripsTableTableManager
             bool itineraryDaysRefs,
             bool locationsRefs,
             bool activitiesRefs,
+            bool sightseeingRoutesRefs,
+            bool sightseeingRouteStopsRefs,
           })
         > {
   $$TripsTableTableManager(_$AppDatabase db, $TripsTable table)
@@ -12055,6 +14339,8 @@ class $$TripsTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String?> destination = const Value.absent(),
                 Value<String?> country = const Value.absent(),
+                Value<double?> destinationLat = const Value.absent(),
+                Value<double?> destinationLng = const Value.absent(),
                 Value<DateTime?> startDate = const Value.absent(),
                 Value<DateTime?> endDate = const Value.absent(),
                 Value<TripType> tripType = const Value.absent(),
@@ -12072,6 +14358,8 @@ class $$TripsTableTableManager
                 name: name,
                 destination: destination,
                 country: country,
+                destinationLat: destinationLat,
+                destinationLng: destinationLng,
                 startDate: startDate,
                 endDate: endDate,
                 tripType: tripType,
@@ -12091,6 +14379,8 @@ class $$TripsTableTableManager
                 required String name,
                 Value<String?> destination = const Value.absent(),
                 Value<String?> country = const Value.absent(),
+                Value<double?> destinationLat = const Value.absent(),
+                Value<double?> destinationLng = const Value.absent(),
                 Value<DateTime?> startDate = const Value.absent(),
                 Value<DateTime?> endDate = const Value.absent(),
                 Value<TripType> tripType = const Value.absent(),
@@ -12108,6 +14398,8 @@ class $$TripsTableTableManager
                 name: name,
                 destination: destination,
                 country: country,
+                destinationLat: destinationLat,
+                destinationLng: destinationLng,
                 startDate: startDate,
                 endDate: endDate,
                 tripType: tripType,
@@ -12137,6 +14429,8 @@ class $$TripsTableTableManager
                 itineraryDaysRefs = false,
                 locationsRefs = false,
                 activitiesRefs = false,
+                sightseeingRoutesRefs = false,
+                sightseeingRouteStopsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -12149,6 +14443,8 @@ class $$TripsTableTableManager
                     if (itineraryDaysRefs) db.itineraryDays,
                     if (locationsRefs) db.locations,
                     if (activitiesRefs) db.activities,
+                    if (sightseeingRoutesRefs) db.sightseeingRoutes,
+                    if (sightseeingRouteStopsRefs) db.sightseeingRouteStops,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -12297,6 +14593,48 @@ class $$TripsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (sightseeingRoutesRefs)
+                        await $_getPrefetchedData<
+                          Trip,
+                          $TripsTable,
+                          SightseeingRoute
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TripsTableReferences
+                              ._sightseeingRoutesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TripsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sightseeingRoutesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.tripId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (sightseeingRouteStopsRefs)
+                        await $_getPrefetchedData<
+                          Trip,
+                          $TripsTable,
+                          SightseeingRouteStop
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TripsTableReferences
+                              ._sightseeingRouteStopsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TripsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sightseeingRouteStopsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.tripId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -12326,6 +14664,8 @@ typedef $$TripsTableProcessedTableManager =
         bool itineraryDaysRefs,
         bool locationsRefs,
         bool activitiesRefs,
+        bool sightseeingRoutesRefs,
+        bool sightseeingRouteStopsRefs,
       })
     >;
 typedef $$TravelersTableCreateCompanionBuilder =
@@ -17703,6 +20043,30 @@ final class $$ItineraryDaysTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$SightseeingRoutesTable, List<SightseeingRoute>>
+  _sightseeingRoutesRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sightseeingRoutes,
+        aliasName: $_aliasNameGenerator(
+          db.itineraryDays.id,
+          db.sightseeingRoutes.dayId,
+        ),
+      );
+
+  $$SightseeingRoutesTableProcessedTableManager get sightseeingRoutesRefs {
+    final manager = $$SightseeingRoutesTableTableManager(
+      $_db,
+      $_db.sightseeingRoutes,
+    ).filter((f) => f.dayId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _sightseeingRoutesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$ItineraryDaysTableFilterComposer
@@ -17783,6 +20147,31 @@ class $$ItineraryDaysTableFilterComposer
           }) => $$ActivitiesTableFilterComposer(
             $db: $db,
             $table: $db.activities,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> sightseeingRoutesRefs(
+    Expression<bool> Function($$SightseeingRoutesTableFilterComposer f) f,
+  ) {
+    final $$SightseeingRoutesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.sightseeingRoutes,
+      getReferencedColumn: (t) => t.dayId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SightseeingRoutesTableFilterComposer(
+            $db: $db,
+            $table: $db.sightseeingRoutes,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -17930,6 +20319,32 @@ class $$ItineraryDaysTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> sightseeingRoutesRefs<T extends Object>(
+    Expression<T> Function($$SightseeingRoutesTableAnnotationComposer a) f,
+  ) {
+    final $$SightseeingRoutesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.sightseeingRoutes,
+          getReferencedColumn: (t) => t.dayId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SightseeingRoutesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sightseeingRoutes,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$ItineraryDaysTableTableManager
@@ -17945,7 +20360,11 @@ class $$ItineraryDaysTableTableManager
           $$ItineraryDaysTableUpdateCompanionBuilder,
           (ItineraryDay, $$ItineraryDaysTableReferences),
           ItineraryDay,
-          PrefetchHooks Function({bool tripId, bool activitiesRefs})
+          PrefetchHooks Function({
+            bool tripId,
+            bool activitiesRefs,
+            bool sightseeingRoutesRefs,
+          })
         > {
   $$ItineraryDaysTableTableManager(_$AppDatabase db, $ItineraryDaysTable table)
     : super(
@@ -18006,67 +20425,100 @@ class $$ItineraryDaysTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({tripId = false, activitiesRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (activitiesRefs) db.activities],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (tripId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.tripId,
-                                referencedTable: $$ItineraryDaysTableReferences
-                                    ._tripIdTable(db),
-                                referencedColumn: $$ItineraryDaysTableReferences
-                                    ._tripIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({
+                tripId = false,
+                activitiesRefs = false,
+                sightseeingRoutesRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (activitiesRefs) db.activities,
+                    if (sightseeingRoutesRefs) db.sightseeingRoutes,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (tripId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.tripId,
+                                    referencedTable:
+                                        $$ItineraryDaysTableReferences
+                                            ._tripIdTable(db),
+                                    referencedColumn:
+                                        $$ItineraryDaysTableReferences
+                                            ._tripIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (activitiesRefs)
+                        await $_getPrefetchedData<
+                          ItineraryDay,
+                          $ItineraryDaysTable,
+                          Activity
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ItineraryDaysTableReferences
+                              ._activitiesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ItineraryDaysTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).activitiesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.dayId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (sightseeingRoutesRefs)
+                        await $_getPrefetchedData<
+                          ItineraryDay,
+                          $ItineraryDaysTable,
+                          SightseeingRoute
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ItineraryDaysTableReferences
+                              ._sightseeingRoutesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ItineraryDaysTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sightseeingRoutesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.dayId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (activitiesRefs)
-                    await $_getPrefetchedData<
-                      ItineraryDay,
-                      $ItineraryDaysTable,
-                      Activity
-                    >(
-                      currentTable: table,
-                      referencedTable: $$ItineraryDaysTableReferences
-                          ._activitiesRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$ItineraryDaysTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).activitiesRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.dayId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -18083,7 +20535,11 @@ typedef $$ItineraryDaysTableProcessedTableManager =
       $$ItineraryDaysTableUpdateCompanionBuilder,
       (ItineraryDay, $$ItineraryDaysTableReferences),
       ItineraryDay,
-      PrefetchHooks Function({bool tripId, bool activitiesRefs})
+      PrefetchHooks Function({
+        bool tripId,
+        bool activitiesRefs,
+        bool sightseeingRoutesRefs,
+      })
     >;
 typedef $$ActivityCategoriesTableCreateCompanionBuilder =
     ActivityCategoriesCompanion Function({
@@ -18433,6 +20889,13 @@ typedef $$LocationsTableCreateCompanionBuilder =
       Value<PlaceType?> placeType,
       Value<String?> notes,
       Value<LocationSource> source,
+      Value<String?> externalProvider,
+      Value<String?> externalId,
+      Value<PoiCategory?> poiCategory,
+      Value<String?> description,
+      Value<String?> website,
+      Value<String?> openingHours,
+      Value<String?> wikidata,
       Value<int> rowid,
     });
 typedef $$LocationsTableUpdateCompanionBuilder =
@@ -18446,6 +20909,13 @@ typedef $$LocationsTableUpdateCompanionBuilder =
       Value<PlaceType?> placeType,
       Value<String?> notes,
       Value<LocationSource> source,
+      Value<String?> externalProvider,
+      Value<String?> externalId,
+      Value<PoiCategory?> poiCategory,
+      Value<String?> description,
+      Value<String?> website,
+      Value<String?> openingHours,
+      Value<String?> wikidata,
       Value<int> rowid,
     });
 
@@ -18484,6 +20954,34 @@ final class $$LocationsTableReferences
     ).filter((f) => f.locationId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_activitiesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $SightseeingRouteStopsTable,
+    List<SightseeingRouteStop>
+  >
+  _sightseeingRouteStopsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sightseeingRouteStops,
+        aliasName: $_aliasNameGenerator(
+          db.locations.id,
+          db.sightseeingRouteStops.locationId,
+        ),
+      );
+
+  $$SightseeingRouteStopsTableProcessedTableManager
+  get sightseeingRouteStopsRefs {
+    final manager = $$SightseeingRouteStopsTableTableManager(
+      $_db,
+      $_db.sightseeingRouteStops,
+    ).filter((f) => f.locationId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _sightseeingRouteStopsRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -18541,6 +21039,42 @@ class $$LocationsTableFilterComposer
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
+  ColumnFilters<String> get externalProvider => $composableBuilder(
+    column: $table.externalProvider,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get externalId => $composableBuilder(
+    column: $table.externalId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<PoiCategory?, PoiCategory, String>
+  get poiCategory => $composableBuilder(
+    column: $table.poiCategory,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get website => $composableBuilder(
+    column: $table.website,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get openingHours => $composableBuilder(
+    column: $table.openingHours,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get wikidata => $composableBuilder(
+    column: $table.wikidata,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$TripsTableFilterComposer get tripId {
     final $$TripsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -18586,6 +21120,32 @@ class $$LocationsTableFilterComposer
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return f(composer);
+  }
+
+  Expression<bool> sightseeingRouteStopsRefs(
+    Expression<bool> Function($$SightseeingRouteStopsTableFilterComposer f) f,
+  ) {
+    final $$SightseeingRouteStopsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.sightseeingRouteStops,
+          getReferencedColumn: (t) => t.locationId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SightseeingRouteStopsTableFilterComposer(
+                $db: $db,
+                $table: $db.sightseeingRouteStops,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 }
@@ -18636,6 +21196,41 @@ class $$LocationsTableOrderingComposer
 
   ColumnOrderings<String> get source => $composableBuilder(
     column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get externalProvider => $composableBuilder(
+    column: $table.externalProvider,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get externalId => $composableBuilder(
+    column: $table.externalId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get poiCategory => $composableBuilder(
+    column: $table.poiCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get website => $composableBuilder(
+    column: $table.website,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get openingHours => $composableBuilder(
+    column: $table.openingHours,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get wikidata => $composableBuilder(
+    column: $table.wikidata,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -18696,6 +21291,38 @@ class $$LocationsTableAnnotationComposer
   GeneratedColumnWithTypeConverter<LocationSource, String> get source =>
       $composableBuilder(column: $table.source, builder: (column) => column);
 
+  GeneratedColumn<String> get externalProvider => $composableBuilder(
+    column: $table.externalProvider,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get externalId => $composableBuilder(
+    column: $table.externalId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<PoiCategory?, String> get poiCategory =>
+      $composableBuilder(
+        column: $table.poiCategory,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get website =>
+      $composableBuilder(column: $table.website, builder: (column) => column);
+
+  GeneratedColumn<String> get openingHours => $composableBuilder(
+    column: $table.openingHours,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get wikidata =>
+      $composableBuilder(column: $table.wikidata, builder: (column) => column);
+
   $$TripsTableAnnotationComposer get tripId {
     final $$TripsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -18743,6 +21370,32 @@ class $$LocationsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> sightseeingRouteStopsRefs<T extends Object>(
+    Expression<T> Function($$SightseeingRouteStopsTableAnnotationComposer a) f,
+  ) {
+    final $$SightseeingRouteStopsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.sightseeingRouteStops,
+          getReferencedColumn: (t) => t.locationId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SightseeingRouteStopsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sightseeingRouteStops,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$LocationsTableTableManager
@@ -18758,7 +21411,11 @@ class $$LocationsTableTableManager
           $$LocationsTableUpdateCompanionBuilder,
           (Location, $$LocationsTableReferences),
           Location,
-          PrefetchHooks Function({bool tripId, bool activitiesRefs})
+          PrefetchHooks Function({
+            bool tripId,
+            bool activitiesRefs,
+            bool sightseeingRouteStopsRefs,
+          })
         > {
   $$LocationsTableTableManager(_$AppDatabase db, $LocationsTable table)
     : super(
@@ -18782,6 +21439,13 @@ class $$LocationsTableTableManager
                 Value<PlaceType?> placeType = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<LocationSource> source = const Value.absent(),
+                Value<String?> externalProvider = const Value.absent(),
+                Value<String?> externalId = const Value.absent(),
+                Value<PoiCategory?> poiCategory = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<String?> website = const Value.absent(),
+                Value<String?> openingHours = const Value.absent(),
+                Value<String?> wikidata = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocationsCompanion(
                 id: id,
@@ -18793,6 +21457,13 @@ class $$LocationsTableTableManager
                 placeType: placeType,
                 notes: notes,
                 source: source,
+                externalProvider: externalProvider,
+                externalId: externalId,
+                poiCategory: poiCategory,
+                description: description,
+                website: website,
+                openingHours: openingHours,
+                wikidata: wikidata,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -18806,6 +21477,13 @@ class $$LocationsTableTableManager
                 Value<PlaceType?> placeType = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<LocationSource> source = const Value.absent(),
+                Value<String?> externalProvider = const Value.absent(),
+                Value<String?> externalId = const Value.absent(),
+                Value<PoiCategory?> poiCategory = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<String?> website = const Value.absent(),
+                Value<String?> openingHours = const Value.absent(),
+                Value<String?> wikidata = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocationsCompanion.insert(
                 id: id,
@@ -18817,6 +21495,13 @@ class $$LocationsTableTableManager
                 placeType: placeType,
                 notes: notes,
                 source: source,
+                externalProvider: externalProvider,
+                externalId: externalId,
+                poiCategory: poiCategory,
+                description: description,
+                website: website,
+                openingHours: openingHours,
+                wikidata: wikidata,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -18827,67 +21512,98 @@ class $$LocationsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({tripId = false, activitiesRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (activitiesRefs) db.activities],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (tripId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.tripId,
-                                referencedTable: $$LocationsTableReferences
-                                    ._tripIdTable(db),
-                                referencedColumn: $$LocationsTableReferences
-                                    ._tripIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({
+                tripId = false,
+                activitiesRefs = false,
+                sightseeingRouteStopsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (activitiesRefs) db.activities,
+                    if (sightseeingRouteStopsRefs) db.sightseeingRouteStops,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (tripId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.tripId,
+                                    referencedTable: $$LocationsTableReferences
+                                        ._tripIdTable(db),
+                                    referencedColumn: $$LocationsTableReferences
+                                        ._tripIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (activitiesRefs)
+                        await $_getPrefetchedData<
+                          Location,
+                          $LocationsTable,
+                          Activity
+                        >(
+                          currentTable: table,
+                          referencedTable: $$LocationsTableReferences
+                              ._activitiesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$LocationsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).activitiesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.locationId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (sightseeingRouteStopsRefs)
+                        await $_getPrefetchedData<
+                          Location,
+                          $LocationsTable,
+                          SightseeingRouteStop
+                        >(
+                          currentTable: table,
+                          referencedTable: $$LocationsTableReferences
+                              ._sightseeingRouteStopsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$LocationsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sightseeingRouteStopsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.locationId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (activitiesRefs)
-                    await $_getPrefetchedData<
-                      Location,
-                      $LocationsTable,
-                      Activity
-                    >(
-                      currentTable: table,
-                      referencedTable: $$LocationsTableReferences
-                          ._activitiesRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$LocationsTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).activitiesRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.locationId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -18904,7 +21620,11 @@ typedef $$LocationsTableProcessedTableManager =
       $$LocationsTableUpdateCompanionBuilder,
       (Location, $$LocationsTableReferences),
       Location,
-      PrefetchHooks Function({bool tripId, bool activitiesRefs})
+      PrefetchHooks Function({
+        bool tripId,
+        bool activitiesRefs,
+        bool sightseeingRouteStopsRefs,
+      })
     >;
 typedef $$ActivitiesTableCreateCompanionBuilder =
     ActivitiesCompanion Function({
@@ -19789,6 +22509,1449 @@ typedef $$ActivitiesTableProcessedTableManager =
         bool locationId,
       })
     >;
+typedef $$SightseeingRoutesTableCreateCompanionBuilder =
+    SightseeingRoutesCompanion Function({
+      required String id,
+      required String tripId,
+      Value<String?> dayId,
+      required String name,
+      Value<RouteTravelMode> travelMode,
+      Value<bool> optimized,
+      Value<bool> fixedStart,
+      Value<bool> returnToStart,
+      Value<int?> distanceMeters,
+      Value<int?> durationSeconds,
+      Value<String?> geometry,
+      Value<String?> lastManualOrder,
+      Value<DistanceSource> calcSource,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$SightseeingRoutesTableUpdateCompanionBuilder =
+    SightseeingRoutesCompanion Function({
+      Value<String> id,
+      Value<String> tripId,
+      Value<String?> dayId,
+      Value<String> name,
+      Value<RouteTravelMode> travelMode,
+      Value<bool> optimized,
+      Value<bool> fixedStart,
+      Value<bool> returnToStart,
+      Value<int?> distanceMeters,
+      Value<int?> durationSeconds,
+      Value<String?> geometry,
+      Value<String?> lastManualOrder,
+      Value<DistanceSource> calcSource,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$SightseeingRoutesTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SightseeingRoutesTable,
+          SightseeingRoute
+        > {
+  $$SightseeingRoutesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $TripsTable _tripIdTable(_$AppDatabase db) => db.trips.createAlias(
+    $_aliasNameGenerator(db.sightseeingRoutes.tripId, db.trips.id),
+  );
+
+  $$TripsTableProcessedTableManager get tripId {
+    final $_column = $_itemColumn<String>('trip_id')!;
+
+    final manager = $$TripsTableTableManager(
+      $_db,
+      $_db.trips,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tripIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $ItineraryDaysTable _dayIdTable(_$AppDatabase db) =>
+      db.itineraryDays.createAlias(
+        $_aliasNameGenerator(db.sightseeingRoutes.dayId, db.itineraryDays.id),
+      );
+
+  $$ItineraryDaysTableProcessedTableManager? get dayId {
+    final $_column = $_itemColumn<String>('day_id');
+    if ($_column == null) return null;
+    final manager = $$ItineraryDaysTableTableManager(
+      $_db,
+      $_db.itineraryDays,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_dayIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $SightseeingRouteStopsTable,
+    List<SightseeingRouteStop>
+  >
+  _sightseeingRouteStopsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sightseeingRouteStops,
+        aliasName: $_aliasNameGenerator(
+          db.sightseeingRoutes.id,
+          db.sightseeingRouteStops.routeId,
+        ),
+      );
+
+  $$SightseeingRouteStopsTableProcessedTableManager
+  get sightseeingRouteStopsRefs {
+    final manager = $$SightseeingRouteStopsTableTableManager(
+      $_db,
+      $_db.sightseeingRouteStops,
+    ).filter((f) => f.routeId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _sightseeingRouteStopsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$SightseeingRoutesTableFilterComposer
+    extends Composer<_$AppDatabase, $SightseeingRoutesTable> {
+  $$SightseeingRoutesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<RouteTravelMode, RouteTravelMode, String>
+  get travelMode => $composableBuilder(
+    column: $table.travelMode,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<bool> get optimized => $composableBuilder(
+    column: $table.optimized,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get fixedStart => $composableBuilder(
+    column: $table.fixedStart,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get returnToStart => $composableBuilder(
+    column: $table.returnToStart,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get distanceMeters => $composableBuilder(
+    column: $table.distanceMeters,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get durationSeconds => $composableBuilder(
+    column: $table.durationSeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get geometry => $composableBuilder(
+    column: $table.geometry,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastManualOrder => $composableBuilder(
+    column: $table.lastManualOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DistanceSource, DistanceSource, String>
+  get calcSource => $composableBuilder(
+    column: $table.calcSource,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$TripsTableFilterComposer get tripId {
+    final $$TripsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tripId,
+      referencedTable: $db.trips,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TripsTableFilterComposer(
+            $db: $db,
+            $table: $db.trips,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$ItineraryDaysTableFilterComposer get dayId {
+    final $$ItineraryDaysTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.dayId,
+      referencedTable: $db.itineraryDays,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ItineraryDaysTableFilterComposer(
+            $db: $db,
+            $table: $db.itineraryDays,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> sightseeingRouteStopsRefs(
+    Expression<bool> Function($$SightseeingRouteStopsTableFilterComposer f) f,
+  ) {
+    final $$SightseeingRouteStopsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.sightseeingRouteStops,
+          getReferencedColumn: (t) => t.routeId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SightseeingRouteStopsTableFilterComposer(
+                $db: $db,
+                $table: $db.sightseeingRouteStops,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$SightseeingRoutesTableOrderingComposer
+    extends Composer<_$AppDatabase, $SightseeingRoutesTable> {
+  $$SightseeingRoutesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get travelMode => $composableBuilder(
+    column: $table.travelMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get optimized => $composableBuilder(
+    column: $table.optimized,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get fixedStart => $composableBuilder(
+    column: $table.fixedStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get returnToStart => $composableBuilder(
+    column: $table.returnToStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get distanceMeters => $composableBuilder(
+    column: $table.distanceMeters,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get durationSeconds => $composableBuilder(
+    column: $table.durationSeconds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get geometry => $composableBuilder(
+    column: $table.geometry,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastManualOrder => $composableBuilder(
+    column: $table.lastManualOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get calcSource => $composableBuilder(
+    column: $table.calcSource,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$TripsTableOrderingComposer get tripId {
+    final $$TripsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tripId,
+      referencedTable: $db.trips,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TripsTableOrderingComposer(
+            $db: $db,
+            $table: $db.trips,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$ItineraryDaysTableOrderingComposer get dayId {
+    final $$ItineraryDaysTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.dayId,
+      referencedTable: $db.itineraryDays,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ItineraryDaysTableOrderingComposer(
+            $db: $db,
+            $table: $db.itineraryDays,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SightseeingRoutesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SightseeingRoutesTable> {
+  $$SightseeingRoutesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<RouteTravelMode, String> get travelMode =>
+      $composableBuilder(
+        column: $table.travelMode,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<bool> get optimized =>
+      $composableBuilder(column: $table.optimized, builder: (column) => column);
+
+  GeneratedColumn<bool> get fixedStart => $composableBuilder(
+    column: $table.fixedStart,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get returnToStart => $composableBuilder(
+    column: $table.returnToStart,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get distanceMeters => $composableBuilder(
+    column: $table.distanceMeters,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get durationSeconds => $composableBuilder(
+    column: $table.durationSeconds,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get geometry =>
+      $composableBuilder(column: $table.geometry, builder: (column) => column);
+
+  GeneratedColumn<String> get lastManualOrder => $composableBuilder(
+    column: $table.lastManualOrder,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<DistanceSource, String> get calcSource =>
+      $composableBuilder(
+        column: $table.calcSource,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$TripsTableAnnotationComposer get tripId {
+    final $$TripsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tripId,
+      referencedTable: $db.trips,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TripsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.trips,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$ItineraryDaysTableAnnotationComposer get dayId {
+    final $$ItineraryDaysTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.dayId,
+      referencedTable: $db.itineraryDays,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ItineraryDaysTableAnnotationComposer(
+            $db: $db,
+            $table: $db.itineraryDays,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> sightseeingRouteStopsRefs<T extends Object>(
+    Expression<T> Function($$SightseeingRouteStopsTableAnnotationComposer a) f,
+  ) {
+    final $$SightseeingRouteStopsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.sightseeingRouteStops,
+          getReferencedColumn: (t) => t.routeId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SightseeingRouteStopsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sightseeingRouteStops,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$SightseeingRoutesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SightseeingRoutesTable,
+          SightseeingRoute,
+          $$SightseeingRoutesTableFilterComposer,
+          $$SightseeingRoutesTableOrderingComposer,
+          $$SightseeingRoutesTableAnnotationComposer,
+          $$SightseeingRoutesTableCreateCompanionBuilder,
+          $$SightseeingRoutesTableUpdateCompanionBuilder,
+          (SightseeingRoute, $$SightseeingRoutesTableReferences),
+          SightseeingRoute,
+          PrefetchHooks Function({
+            bool tripId,
+            bool dayId,
+            bool sightseeingRouteStopsRefs,
+          })
+        > {
+  $$SightseeingRoutesTableTableManager(
+    _$AppDatabase db,
+    $SightseeingRoutesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SightseeingRoutesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SightseeingRoutesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SightseeingRoutesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> tripId = const Value.absent(),
+                Value<String?> dayId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<RouteTravelMode> travelMode = const Value.absent(),
+                Value<bool> optimized = const Value.absent(),
+                Value<bool> fixedStart = const Value.absent(),
+                Value<bool> returnToStart = const Value.absent(),
+                Value<int?> distanceMeters = const Value.absent(),
+                Value<int?> durationSeconds = const Value.absent(),
+                Value<String?> geometry = const Value.absent(),
+                Value<String?> lastManualOrder = const Value.absent(),
+                Value<DistanceSource> calcSource = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SightseeingRoutesCompanion(
+                id: id,
+                tripId: tripId,
+                dayId: dayId,
+                name: name,
+                travelMode: travelMode,
+                optimized: optimized,
+                fixedStart: fixedStart,
+                returnToStart: returnToStart,
+                distanceMeters: distanceMeters,
+                durationSeconds: durationSeconds,
+                geometry: geometry,
+                lastManualOrder: lastManualOrder,
+                calcSource: calcSource,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String tripId,
+                Value<String?> dayId = const Value.absent(),
+                required String name,
+                Value<RouteTravelMode> travelMode = const Value.absent(),
+                Value<bool> optimized = const Value.absent(),
+                Value<bool> fixedStart = const Value.absent(),
+                Value<bool> returnToStart = const Value.absent(),
+                Value<int?> distanceMeters = const Value.absent(),
+                Value<int?> durationSeconds = const Value.absent(),
+                Value<String?> geometry = const Value.absent(),
+                Value<String?> lastManualOrder = const Value.absent(),
+                Value<DistanceSource> calcSource = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SightseeingRoutesCompanion.insert(
+                id: id,
+                tripId: tripId,
+                dayId: dayId,
+                name: name,
+                travelMode: travelMode,
+                optimized: optimized,
+                fixedStart: fixedStart,
+                returnToStart: returnToStart,
+                distanceMeters: distanceMeters,
+                durationSeconds: durationSeconds,
+                geometry: geometry,
+                lastManualOrder: lastManualOrder,
+                calcSource: calcSource,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$SightseeingRoutesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                tripId = false,
+                dayId = false,
+                sightseeingRouteStopsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (sightseeingRouteStopsRefs) db.sightseeingRouteStops,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (tripId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.tripId,
+                                    referencedTable:
+                                        $$SightseeingRoutesTableReferences
+                                            ._tripIdTable(db),
+                                    referencedColumn:
+                                        $$SightseeingRoutesTableReferences
+                                            ._tripIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (dayId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.dayId,
+                                    referencedTable:
+                                        $$SightseeingRoutesTableReferences
+                                            ._dayIdTable(db),
+                                    referencedColumn:
+                                        $$SightseeingRoutesTableReferences
+                                            ._dayIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (sightseeingRouteStopsRefs)
+                        await $_getPrefetchedData<
+                          SightseeingRoute,
+                          $SightseeingRoutesTable,
+                          SightseeingRouteStop
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SightseeingRoutesTableReferences
+                              ._sightseeingRouteStopsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SightseeingRoutesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sightseeingRouteStopsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.routeId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$SightseeingRoutesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SightseeingRoutesTable,
+      SightseeingRoute,
+      $$SightseeingRoutesTableFilterComposer,
+      $$SightseeingRoutesTableOrderingComposer,
+      $$SightseeingRoutesTableAnnotationComposer,
+      $$SightseeingRoutesTableCreateCompanionBuilder,
+      $$SightseeingRoutesTableUpdateCompanionBuilder,
+      (SightseeingRoute, $$SightseeingRoutesTableReferences),
+      SightseeingRoute,
+      PrefetchHooks Function({
+        bool tripId,
+        bool dayId,
+        bool sightseeingRouteStopsRefs,
+      })
+    >;
+typedef $$SightseeingRouteStopsTableCreateCompanionBuilder =
+    SightseeingRouteStopsCompanion Function({
+      required String id,
+      required String routeId,
+      required String tripId,
+      required String locationId,
+      Value<int> sequenceIndex,
+      Value<int> rowid,
+    });
+typedef $$SightseeingRouteStopsTableUpdateCompanionBuilder =
+    SightseeingRouteStopsCompanion Function({
+      Value<String> id,
+      Value<String> routeId,
+      Value<String> tripId,
+      Value<String> locationId,
+      Value<int> sequenceIndex,
+      Value<int> rowid,
+    });
+
+final class $$SightseeingRouteStopsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SightseeingRouteStopsTable,
+          SightseeingRouteStop
+        > {
+  $$SightseeingRouteStopsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SightseeingRoutesTable _routeIdTable(_$AppDatabase db) =>
+      db.sightseeingRoutes.createAlias(
+        $_aliasNameGenerator(
+          db.sightseeingRouteStops.routeId,
+          db.sightseeingRoutes.id,
+        ),
+      );
+
+  $$SightseeingRoutesTableProcessedTableManager get routeId {
+    final $_column = $_itemColumn<String>('route_id')!;
+
+    final manager = $$SightseeingRoutesTableTableManager(
+      $_db,
+      $_db.sightseeingRoutes,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_routeIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $TripsTable _tripIdTable(_$AppDatabase db) => db.trips.createAlias(
+    $_aliasNameGenerator(db.sightseeingRouteStops.tripId, db.trips.id),
+  );
+
+  $$TripsTableProcessedTableManager get tripId {
+    final $_column = $_itemColumn<String>('trip_id')!;
+
+    final manager = $$TripsTableTableManager(
+      $_db,
+      $_db.trips,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tripIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $LocationsTable _locationIdTable(_$AppDatabase db) =>
+      db.locations.createAlias(
+        $_aliasNameGenerator(
+          db.sightseeingRouteStops.locationId,
+          db.locations.id,
+        ),
+      );
+
+  $$LocationsTableProcessedTableManager get locationId {
+    final $_column = $_itemColumn<String>('location_id')!;
+
+    final manager = $$LocationsTableTableManager(
+      $_db,
+      $_db.locations,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_locationIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SightseeingRouteStopsTableFilterComposer
+    extends Composer<_$AppDatabase, $SightseeingRouteStopsTable> {
+  $$SightseeingRouteStopsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sequenceIndex => $composableBuilder(
+    column: $table.sequenceIndex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SightseeingRoutesTableFilterComposer get routeId {
+    final $$SightseeingRoutesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.routeId,
+      referencedTable: $db.sightseeingRoutes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SightseeingRoutesTableFilterComposer(
+            $db: $db,
+            $table: $db.sightseeingRoutes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TripsTableFilterComposer get tripId {
+    final $$TripsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tripId,
+      referencedTable: $db.trips,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TripsTableFilterComposer(
+            $db: $db,
+            $table: $db.trips,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$LocationsTableFilterComposer get locationId {
+    final $$LocationsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.locationId,
+      referencedTable: $db.locations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LocationsTableFilterComposer(
+            $db: $db,
+            $table: $db.locations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SightseeingRouteStopsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SightseeingRouteStopsTable> {
+  $$SightseeingRouteStopsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sequenceIndex => $composableBuilder(
+    column: $table.sequenceIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SightseeingRoutesTableOrderingComposer get routeId {
+    final $$SightseeingRoutesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.routeId,
+      referencedTable: $db.sightseeingRoutes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SightseeingRoutesTableOrderingComposer(
+            $db: $db,
+            $table: $db.sightseeingRoutes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TripsTableOrderingComposer get tripId {
+    final $$TripsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tripId,
+      referencedTable: $db.trips,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TripsTableOrderingComposer(
+            $db: $db,
+            $table: $db.trips,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$LocationsTableOrderingComposer get locationId {
+    final $$LocationsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.locationId,
+      referencedTable: $db.locations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LocationsTableOrderingComposer(
+            $db: $db,
+            $table: $db.locations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SightseeingRouteStopsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SightseeingRouteStopsTable> {
+  $$SightseeingRouteStopsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get sequenceIndex => $composableBuilder(
+    column: $table.sequenceIndex,
+    builder: (column) => column,
+  );
+
+  $$SightseeingRoutesTableAnnotationComposer get routeId {
+    final $$SightseeingRoutesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.routeId,
+          referencedTable: $db.sightseeingRoutes,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SightseeingRoutesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sightseeingRoutes,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$TripsTableAnnotationComposer get tripId {
+    final $$TripsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tripId,
+      referencedTable: $db.trips,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TripsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.trips,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$LocationsTableAnnotationComposer get locationId {
+    final $$LocationsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.locationId,
+      referencedTable: $db.locations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LocationsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.locations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SightseeingRouteStopsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SightseeingRouteStopsTable,
+          SightseeingRouteStop,
+          $$SightseeingRouteStopsTableFilterComposer,
+          $$SightseeingRouteStopsTableOrderingComposer,
+          $$SightseeingRouteStopsTableAnnotationComposer,
+          $$SightseeingRouteStopsTableCreateCompanionBuilder,
+          $$SightseeingRouteStopsTableUpdateCompanionBuilder,
+          (SightseeingRouteStop, $$SightseeingRouteStopsTableReferences),
+          SightseeingRouteStop,
+          PrefetchHooks Function({bool routeId, bool tripId, bool locationId})
+        > {
+  $$SightseeingRouteStopsTableTableManager(
+    _$AppDatabase db,
+    $SightseeingRouteStopsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SightseeingRouteStopsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SightseeingRouteStopsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SightseeingRouteStopsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> routeId = const Value.absent(),
+                Value<String> tripId = const Value.absent(),
+                Value<String> locationId = const Value.absent(),
+                Value<int> sequenceIndex = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SightseeingRouteStopsCompanion(
+                id: id,
+                routeId: routeId,
+                tripId: tripId,
+                locationId: locationId,
+                sequenceIndex: sequenceIndex,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String routeId,
+                required String tripId,
+                required String locationId,
+                Value<int> sequenceIndex = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SightseeingRouteStopsCompanion.insert(
+                id: id,
+                routeId: routeId,
+                tripId: tripId,
+                locationId: locationId,
+                sequenceIndex: sequenceIndex,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$SightseeingRouteStopsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({routeId = false, tripId = false, locationId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (routeId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.routeId,
+                                    referencedTable:
+                                        $$SightseeingRouteStopsTableReferences
+                                            ._routeIdTable(db),
+                                    referencedColumn:
+                                        $$SightseeingRouteStopsTableReferences
+                                            ._routeIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (tripId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.tripId,
+                                    referencedTable:
+                                        $$SightseeingRouteStopsTableReferences
+                                            ._tripIdTable(db),
+                                    referencedColumn:
+                                        $$SightseeingRouteStopsTableReferences
+                                            ._tripIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (locationId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.locationId,
+                                    referencedTable:
+                                        $$SightseeingRouteStopsTableReferences
+                                            ._locationIdTable(db),
+                                    referencedColumn:
+                                        $$SightseeingRouteStopsTableReferences
+                                            ._locationIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$SightseeingRouteStopsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SightseeingRouteStopsTable,
+      SightseeingRouteStop,
+      $$SightseeingRouteStopsTableFilterComposer,
+      $$SightseeingRouteStopsTableOrderingComposer,
+      $$SightseeingRouteStopsTableAnnotationComposer,
+      $$SightseeingRouteStopsTableCreateCompanionBuilder,
+      $$SightseeingRouteStopsTableUpdateCompanionBuilder,
+      (SightseeingRouteStop, $$SightseeingRouteStopsTableReferences),
+      SightseeingRouteStop,
+      PrefetchHooks Function({bool routeId, bool tripId, bool locationId})
+    >;
+typedef $$PoiCacheEntriesTableCreateCompanionBuilder =
+    PoiCacheEntriesCompanion Function({
+      required String cacheKey,
+      required String payload,
+      Value<DateTime> fetchedAt,
+      Value<int> rowid,
+    });
+typedef $$PoiCacheEntriesTableUpdateCompanionBuilder =
+    PoiCacheEntriesCompanion Function({
+      Value<String> cacheKey,
+      Value<String> payload,
+      Value<DateTime> fetchedAt,
+      Value<int> rowid,
+    });
+
+class $$PoiCacheEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $PoiCacheEntriesTable> {
+  $$PoiCacheEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get cacheKey => $composableBuilder(
+    column: $table.cacheKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get fetchedAt => $composableBuilder(
+    column: $table.fetchedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PoiCacheEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $PoiCacheEntriesTable> {
+  $$PoiCacheEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get cacheKey => $composableBuilder(
+    column: $table.cacheKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get fetchedAt => $composableBuilder(
+    column: $table.fetchedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PoiCacheEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PoiCacheEntriesTable> {
+  $$PoiCacheEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get cacheKey =>
+      $composableBuilder(column: $table.cacheKey, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get fetchedAt =>
+      $composableBuilder(column: $table.fetchedAt, builder: (column) => column);
+}
+
+class $$PoiCacheEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PoiCacheEntriesTable,
+          PoiCacheEntry,
+          $$PoiCacheEntriesTableFilterComposer,
+          $$PoiCacheEntriesTableOrderingComposer,
+          $$PoiCacheEntriesTableAnnotationComposer,
+          $$PoiCacheEntriesTableCreateCompanionBuilder,
+          $$PoiCacheEntriesTableUpdateCompanionBuilder,
+          (
+            PoiCacheEntry,
+            BaseReferences<_$AppDatabase, $PoiCacheEntriesTable, PoiCacheEntry>,
+          ),
+          PoiCacheEntry,
+          PrefetchHooks Function()
+        > {
+  $$PoiCacheEntriesTableTableManager(
+    _$AppDatabase db,
+    $PoiCacheEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PoiCacheEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PoiCacheEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PoiCacheEntriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> cacheKey = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<DateTime> fetchedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PoiCacheEntriesCompanion(
+                cacheKey: cacheKey,
+                payload: payload,
+                fetchedAt: fetchedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String cacheKey,
+                required String payload,
+                Value<DateTime> fetchedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PoiCacheEntriesCompanion.insert(
+                cacheKey: cacheKey,
+                payload: payload,
+                fetchedAt: fetchedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PoiCacheEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PoiCacheEntriesTable,
+      PoiCacheEntry,
+      $$PoiCacheEntriesTableFilterComposer,
+      $$PoiCacheEntriesTableOrderingComposer,
+      $$PoiCacheEntriesTableAnnotationComposer,
+      $$PoiCacheEntriesTableCreateCompanionBuilder,
+      $$PoiCacheEntriesTableUpdateCompanionBuilder,
+      (
+        PoiCacheEntry,
+        BaseReferences<_$AppDatabase, $PoiCacheEntriesTable, PoiCacheEntry>,
+      ),
+      PoiCacheEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -19824,4 +23987,10 @@ class $AppDatabaseManager {
       $$LocationsTableTableManager(_db, _db.locations);
   $$ActivitiesTableTableManager get activities =>
       $$ActivitiesTableTableManager(_db, _db.activities);
+  $$SightseeingRoutesTableTableManager get sightseeingRoutes =>
+      $$SightseeingRoutesTableTableManager(_db, _db.sightseeingRoutes);
+  $$SightseeingRouteStopsTableTableManager get sightseeingRouteStops =>
+      $$SightseeingRouteStopsTableTableManager(_db, _db.sightseeingRouteStops);
+  $$PoiCacheEntriesTableTableManager get poiCacheEntries =>
+      $$PoiCacheEntriesTableTableManager(_db, _db.poiCacheEntries);
 }

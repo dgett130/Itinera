@@ -200,4 +200,205 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get backupReminder => 'Ricordati di fare un backup prima di partire.';
+
+  @override
+  String get sectionExplore => 'Luoghi e percorsi';
+
+  @override
+  String get exploreModuleSubtitle =>
+      'Scopri luoghi vicini e costruisci percorsi';
+
+  @override
+  String get exploreTitle => 'Luoghi e percorsi';
+
+  @override
+  String get exploreSearchArea => 'Cerca in quest\'area';
+
+  @override
+  String get exploreRadius => 'Raggio';
+
+  @override
+  String get exploreNoDestination =>
+      'Scegli una destinazione per vedere i luoghi vicini';
+
+  @override
+  String get exploreLoading => 'Cerco luoghi nei dintorni…';
+
+  @override
+  String get exploreEmpty => 'Nessun luogo trovato qui';
+
+  @override
+  String get exploreErrorNetwork =>
+      'Impossibile contattare il servizio dei luoghi';
+
+  @override
+  String get exploreRetry => 'Riprova';
+
+  @override
+  String get exploreOffline => 'Sei offline: mostro le ultime proposte salvate';
+
+  @override
+  String get exploreUpdatedOn => 'Aggiornato il';
+
+  @override
+  String get exploreAttribution => 'Dati © OpenStreetMap contributors';
+
+  @override
+  String get exploreSuggested => 'Suggeriti';
+
+  @override
+  String get exploreSaved => 'Luoghi salvati';
+
+  @override
+  String get exploreSavedEmpty =>
+      'Nessun luogo salvato. Tocca un suggerimento o la mappa.';
+
+  @override
+  String get exploreFromCenter => 'dal centro';
+
+  @override
+  String get exploreInUse =>
+      'Luogo usato in un percorso o in un\'attività: non eliminato';
+
+  @override
+  String get exploreAddManual => 'Aggiungi dalla mappa';
+
+  @override
+  String get exploreCategoryAll => 'Tutte';
+
+  @override
+  String get exploreCatMonument => 'Monumenti e storia';
+
+  @override
+  String get exploreCatMuseum => 'Musei e cultura';
+
+  @override
+  String get exploreCatNature => 'Natura e parchi';
+
+  @override
+  String get exploreCatViewpoint => 'Panorami';
+
+  @override
+  String get exploreCatReligious => 'Architettura e luoghi religiosi';
+
+  @override
+  String get exploreCatAttraction => 'Attrazioni';
+
+  @override
+  String get exploreCatOther => 'Altro';
+
+  @override
+  String get routesTitle => 'Percorsi';
+
+  @override
+  String get routesEmpty => 'Nessun percorso. Creane uno dai luoghi salvati.';
+
+  @override
+  String get routeNew => 'Nuovo percorso';
+
+  @override
+  String get routeDefaultName => 'Percorso di visita';
+
+  @override
+  String get routeRename => 'Rinomina percorso';
+
+  @override
+  String get routeDelete => 'Elimina percorso';
+
+  @override
+  String get routeDeleteConfirm => 'Eliminare questo percorso?';
+
+  @override
+  String get routeStops => 'Tappe';
+
+  @override
+  String get routeAddStop => 'Aggiungi tappa';
+
+  @override
+  String get routeMinStops => 'Aggiungi almeno 2 tappe.';
+
+  @override
+  String get routePickPlace => 'Scegli un luogo salvato';
+
+  @override
+  String get routeNoPlaceLeft =>
+      'Tutti i luoghi salvati sono già nel percorso.';
+
+  @override
+  String get routeMode => 'Mezzo';
+
+  @override
+  String get routeModeWalk => 'A piedi';
+
+  @override
+  String get routeModeBike => 'Bicicletta';
+
+  @override
+  String get routeModeCar => 'Auto';
+
+  @override
+  String get routeFixedStart => 'Partenza fissa';
+
+  @override
+  String get routeReturnToStart => 'Ritorno alla partenza';
+
+  @override
+  String get routeOptimize => 'Ottimizza percorso';
+
+  @override
+  String get routeRestoreManual => 'Ripristina ordine manuale';
+
+  @override
+  String get routeRecalculate => 'Ricalcola';
+
+  @override
+  String get routeOptimizedBadge => 'Ordine ottimizzato';
+
+  @override
+  String get routeAddToItinerary => 'Aggiungi all\'itinerario';
+
+  @override
+  String get routePickDay => 'Scegli il giorno';
+
+  @override
+  String get routeDayUnplanned => 'Non programmato';
+
+  @override
+  String get routeSourceOnline => 'Percorso stradale reale';
+
+  @override
+  String get routeSourceEstimate => 'Stima (linea d\'aria)';
+
+  @override
+  String get routeDistance => 'Distanza';
+
+  @override
+  String get routeDuration => 'Durata';
+
+  @override
+  String get routeComputing => 'Calcolo…';
+
+  @override
+  String routeAddedToItinerary(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tappe aggiunte all\'itinerario',
+      one: '1 tappa aggiunta all\'itinerario',
+      zero: 'Nessuna nuova tappa',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get unitKm => 'km';
+
+  @override
+  String get unitMeter => 'm';
+
+  @override
+  String get unitHour => 'h';
+
+  @override
+  String get unitMin => 'min';
 }
