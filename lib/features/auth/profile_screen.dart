@@ -74,7 +74,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _logout() async {
     await ref.read(authServiceProvider).signOut();
-    if (mounted) context.pop();
+    if (mounted) context.go('/');
   }
 
   Future<void> _deleteAccount() async {

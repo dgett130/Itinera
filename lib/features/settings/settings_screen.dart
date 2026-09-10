@@ -78,7 +78,7 @@ class SettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                Text('v1.2.0',
+                Text('v1.2.1',
                     style: TextStyle(
                       fontFamily: context.tokens.monoFont,
                       fontSize: 12,
@@ -240,7 +240,10 @@ class _AccountCard extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Esci'),
-            onTap: () => ref.read(authServiceProvider).signOut(),
+            onTap: () async {
+              await ref.read(authServiceProvider).signOut();
+              if (context.mounted) context.go('/');
+            },
           ),
         ],
       ),
