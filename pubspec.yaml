@@ -69,16 +69,21 @@ dev_dependencies:
   build_runner: ">=2.4.0 <2.5.0"
   flutter_launcher_icons: ^0.14.4
 
-# Icona dell'app. Uso la versione FULL-BLEED (mappa a tutto campo) come layer
-# di sfondo adattivo, cosi' le maschere tonde/squircle la ritagliano pulita
-# senza bordo bianco; il foreground e' trasparente (mostra solo lo sfondo).
+# Icona dell'app. I master v2 tengono il simbolo nella safe zone Android
+# 66/108 e separano sfondo/foreground per le maschere adaptive. Le varianti
+# dark e tinted coprono anche le appearance introdotte da iOS 18.
 flutter_launcher_icons:
-  image_path: "assets/icon/itinera_full.png"
+  image_path: "assets/icon/itinera_icon_v2_full.png"
   android: true
   min_sdk_android: 21
-  adaptive_icon_background: "assets/icon/itinera_full.png"
-  adaptive_icon_foreground: "assets/icon/itinera_fg.png"
+  adaptive_icon_background: "assets/icon/itinera_icon_v2_background.png"
+  adaptive_icon_foreground: "assets/icon/itinera_icon_v2_foreground.png"
+  adaptive_icon_foreground_inset: 0
+  adaptive_icon_monochrome: "assets/icon/itinera_icon_v2_monochrome.png"
   ios: true
+  image_path_ios: "assets/icon/itinera_icon_v2_full.png"
+  image_path_ios_dark_transparent: "assets/icon/itinera_icon_v2_ios_dark.png"
+  image_path_ios_tinted_grayscale: "assets/icon/itinera_icon_v2_ios_tinted.png"
   remove_alpha_ios: true
   background_color_ios: "#0E2340"
 
