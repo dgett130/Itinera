@@ -31,6 +31,7 @@ lib/
     packing/       # valigia
     transport/     # viaggio, carburante, spese, divisione
     itinerary/     # tabella di marcia
+    explore/       # luoghi e percorsi (POI OpenStreetMap, ottimizzazione ordine)
     settings/      # impostazioni + backup/restore
   l10n/            # stringhe ARB (it)
   main.dart · app.dart · router.dart · providers.dart
@@ -60,6 +61,12 @@ Dopo aver modificato tabelle Drift o file `.arb`, rilanciare `build_runner`.
   spese stima/reale, divisione tra viaggiatori e riepilogo "chi deve a chi".
 - **Itinerario**: timeline giorno per giorno, attività con orari/luogo/costo,
   rilevamento sovrapposizioni, riordino, apri luogo in mappa esterna.
+- **Luoghi e percorsi**: scopri POI reali vicino alla destinazione
+  (OpenStreetMap via Overpass), filtra per categoria e raggio, salvali (offline)
+  e costruisci percorsi — riordino drag&drop, **ottimizzazione dell'ordine**
+  (nearest-neighbor + 2-opt, offline), distanza/durata, aggiunta all'itinerario
+  come **evento unico**. Routing stradale reale per **piedi/bici/auto** (OSRM
+  FOSSGIS); offline → **stima etichettata**. Schema: `docs/supabase/explore.sql`.
 - **Backup**: export JSON completo via share; import (incolla JSON).
 - **Offline totale**: tutto funziona senza rete; dati locali (Drift/SQLite).
 

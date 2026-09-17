@@ -115,6 +115,7 @@ class _TripDetailBody extends ConsumerWidget {
                   typeIcon: trip.tripType.icon,
                   kicker: _kicker(),
                   meta: _meta(l10n),
+                  heroTag: 'trip-hero-${trip.id}',
                 ),
                 const SizedBox(height: 16),
                 _StatsRow(trip: trip, l10n: l10n),
@@ -126,13 +127,17 @@ class _TripDetailBody extends ConsumerWidget {
                 _TransportModuleCard(tripId: tripId),
                 const SizedBox(height: 12),
                 _ItineraryModuleCard(tripId: tripId),
+                const SizedBox(height: 12),
+                _ModuleCard(
+                  icon: Icons.explore_outlined,
+                  title: l10n.sectionExplore,
+                  subtitle: l10n.exploreModuleSubtitle,
+                  onTap: () => context.push('/trip/$tripId/explore'),
+                ),
                 if (trip.notes != null && trip.notes!.trim().isNotEmpty) ...[
                   SectionHeader(l10n.commonNotes),
                   ItineraCard(
-                    child: Text(
-                      trip.notes!,
-                      style: context.texts.bodyMedium,
-                    ),
+                    child: Text(trip.notes!, style: context.texts.bodyMedium),
                   ),
                 ],
               ],
@@ -151,7 +156,9 @@ class _TripDetailBody extends ConsumerWidget {
       }
       return trip.destination;
     }
-    return trip.country?.isNotEmpty == true ? trip.country : trip.tripType.label;
+    return trip.country?.isNotEmpty == true
+        ? trip.country
+        : trip.tripType.label;
   }
 
   String? _meta(AppLocalizations l10n) {
@@ -164,7 +171,10 @@ class _TripDetailBody extends ConsumerWidget {
     return null;
   }
 
-  Future<bool> _confirmDelete(BuildContext context, AppLocalizations l10n) async {
+  Future<bool> _confirmDelete(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) async {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -198,17 +208,23 @@ class _StatsRow extends StatelessWidget {
     final e = trip.endDate;
     if (s != null && e != null) {
       final days = e.difference(s).inDays + 1;
-      tiles.add(StatTile(value: '$days', label: days == 1 ? 'giorno' : 'giorni'));
+      tiles.add(
+        StatTile(value: '$days', label: days == 1 ? 'giorno' : 'giorni'),
+      );
     }
-    tiles.add(StatTile(
-      value: '${trip.travelerCount}',
-      label: trip.travelerCount == 1 ? 'viaggiatore' : 'viaggiatori',
-    ));
-    tiles.add(StatTile(
-      value: trip.startDate != null ? Fmt.dayMonth(trip.startDate!) : '—',
-      label: 'partenza',
-      mono: true,
-    ));
+    tiles.add(
+      StatTile(
+        value: '${trip.travelerCount}',
+        label: trip.travelerCount == 1 ? 'viaggiatore' : 'viaggiatori',
+      ),
+    );
+    tiles.add(
+      StatTile(
+        value: trip.startDate != null ? Fmt.dayMonth(trip.startDate!) : '—',
+        label: 'partenza',
+        mono: true,
+      ),
+    );
     return StatStrip(tiles: tiles);
   }
 }
@@ -257,8 +273,9 @@ class _ModuleCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   subtitle,
-                  style: context.texts.bodySmall
-                      ?.copyWith(color: scheme.onSurfaceVariant),
+                  style: context.texts.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
                 if (progress != null) ...[
                   const SizedBox(height: 10),
@@ -284,8 +301,9 @@ class _PackingModuleCard extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final items = ref.watch(packingItemsProvider(tripId)).value ?? const [];
     final total = items.length;
-    final packed =
-        items.where((i) => i.packedCount >= i.quantity && i.quantity > 0).length;
+    final packed = items
+        .where((i) => i.packedCount >= i.quantity && i.quantity > 0)
+        .length;
     final subtitle = total == 0
         ? 'Prepara e spunta il bagaglio'
         : '$packed di $total oggetti in valigia';
@@ -313,10 +331,14 @@ class _TransportModuleCard extends ConsumerWidget {
         .fold<int>(0, (a, e) => a + e.amountCents);
     final parts = <String>[];
     if (segments.isNotEmpty) {
-      parts.add(segments.length == 1 ? '1 tratta' : '${segments.length} tratte');
+      parts.add(
+        segments.length == 1 ? '1 tratta' : '${segments.length} tratte',
+      );
     }
     if (spent > 0) parts.add('${Fmt.currencyCents(spent)} spesi');
-    final subtitle = parts.isEmpty ? 'Tratte, carburante e spese' : parts.join(' · ');
+    final subtitle = parts.isEmpty
+        ? 'Tratte, carburante e spese'
+        : parts.join(' · ');
     return _ModuleCard(
       icon: Icons.route_outlined,
       title: l10n.sectionTransport,
@@ -338,13 +360,16 @@ class _ItineraryModuleCard extends ConsumerWidget {
     final dayCount = days.where((d) => d.date != null).length;
     final parts = <String>[];
     if (activities.isNotEmpty) {
-      parts.add(activities.length == 1
-          ? '1 attività'
-          : '${activities.length} attività');
+      parts.add(
+        activities.length == 1 ? '1 attività' : '${activities.length} attività',
+      );
     }
-    if (dayCount > 0) parts.add(dayCount == 1 ? '1 giorno' : '$dayCount giorni');
-    final subtitle =
-        parts.isEmpty ? 'Programma giorno per giorno' : parts.join(' · ');
+    if (dayCount > 0) {
+      parts.add(dayCount == 1 ? '1 giorno' : '$dayCount giorni');
+    }
+    final subtitle = parts.isEmpty
+        ? 'Programma giorno per giorno'
+        : parts.join(' · ');
     return _ModuleCard(
       icon: Icons.map_outlined,
       title: l10n.sectionItinerary,

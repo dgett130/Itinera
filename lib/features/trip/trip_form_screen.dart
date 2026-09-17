@@ -37,12 +37,18 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   Climate _climate = Climate.temperate;
   int _travelerCount = 1;
 
+  /// Coordinate della destinazione (dall'autocomplete). Invalidate se l'utente
+  /// modifica il testo a mano.
+  double? _destLat;
+  double? _destLng;
+
   /// null = automatico (dedotto dal tipo di viaggio).
   TripStyle? _style;
 
   bool _loading = false;
 
-  TripStyle get _effectiveStyle => _style ?? ItineraTheme.suggestStyle(_tripType);
+  TripStyle get _effectiveStyle =>
+      _style ?? ItineraTheme.suggestStyle(_tripType);
 
   @override
   void initState() {
@@ -58,6 +64,8 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
       _destCtrl.text = trip.destination ?? '';
       _countryCtrl.text = trip.country ?? '';
       _notesCtrl.text = trip.notes ?? '';
+      _destLat = trip.destinationLat;
+      _destLng = trip.destinationLng;
       setState(() {
         _startDate = trip.startDate;
         _endDate = trip.endDate;
@@ -109,9 +117,12 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
     final repo = ref.read(tripRepositoryProvider);
     final name = _nameCtrl.text.trim();
     final dest = _destCtrl.text.trim().isEmpty ? null : _destCtrl.text.trim();
-    final country =
-        _countryCtrl.text.trim().isEmpty ? null : _countryCtrl.text.trim();
-    final notes = _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim();
+    final country = _countryCtrl.text.trim().isEmpty
+        ? null
+        : _countryCtrl.text.trim();
+    final notes = _notesCtrl.text.trim().isEmpty
+        ? null
+        : _notesCtrl.text.trim();
 
     if (widget.isEditing) {
       await repo.updateTrip(
@@ -119,6 +130,8 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
         name: name,
         destination: dest,
         country: country,
+        destinationLat: dest == null ? null : _destLat,
+        destinationLng: dest == null ? null : _destLng,
         startDate: _startDate,
         endDate: _endDate,
         tripType: _tripType,
@@ -133,6 +146,8 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
         name: name,
         destination: dest,
         country: country,
+        destinationLat: dest == null ? null : _destLat,
+        destinationLng: dest == null ? null : _destLng,
         startDate: _startDate,
         endDate: _endDate,
         tripType: _tripType,
@@ -184,9 +199,16 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                     controller: _destCtrl,
                     label: l10n.tripDestination,
                     onSelected: (place) {
+                      _destLat = place.latitude;
+                      _destLng = place.longitude;
                       if (place.country != null && place.country!.isNotEmpty) {
                         _countryCtrl.text = place.country!;
                       }
+                    },
+                    onManualEdit: (_) {
+                      // Modifica manuale del testo: invalida le coordinate.
+                      _destLat = null;
+                      _destLng = null;
                     },
                   ),
                   const SizedBox(height: 12),
@@ -516,8 +538,9 @@ class _AutoStyleTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     'Segue il tipo di viaggio → ${meta.name}',
-                    style: context.texts.bodySmall
-                        ?.copyWith(color: scheme.onSurfaceVariant),
+                    style: context.texts.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -585,8 +608,9 @@ class _StyleOptionTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     meta.tagline,
-                    style: context.texts.bodySmall
-                        ?.copyWith(color: scheme.onSurfaceVariant),
+                    style: context.texts.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -604,8 +628,8 @@ class _StyleOptionTile extends StatelessWidget {
   }
 
   CustomPainter _miniPainter(TripStyle style, Color c) => switch (style) {
-        TripStyle.atlante => ContourPainter(c),
-        TripStyle.boardingPass => TicketPainter(c),
-        TripStyle.sunset => SunsetPreviewPainter(c),
-      };
+    TripStyle.atlante => ContourPainter(c),
+    TripStyle.boardingPass => TicketPainter(c),
+    TripStyle.sunset => SunsetPreviewPainter(c),
+  };
 }

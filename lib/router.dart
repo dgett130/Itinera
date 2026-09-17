@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/auth/password_reset_screen.dart';
 import 'features/auth/profile_screen.dart';
+import 'features/explore/explore_screen.dart';
+import 'features/explore/route_builder_screen.dart';
 import 'features/friends/friends_screen.dart';
 import 'features/itinerary/itinerary_screen.dart';
 import 'features/members/members_screen.dart';
@@ -17,18 +19,12 @@ import 'features/trip/trip_form_screen.dart';
 final appRouter = GoRouter(
   initialLocation: '/',
   routes: [
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const RootGate(),
-    ),
+    GoRoute(path: '/', builder: (context, state) => const RootGate()),
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsScreen(),
     ),
-    GoRoute(
-      path: '/auth',
-      builder: (context, state) => const AuthScreen(),
-    ),
+    GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
     GoRoute(
       path: '/profile',
       builder: (context, state) => const ProfileScreen(),
@@ -74,6 +70,18 @@ final appRouter = GoRouter(
       path: '/trip/:id/members',
       builder: (context, state) =>
           MembersScreen(tripId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/trip/:id/explore',
+      builder: (context, state) =>
+          ExploreScreen(tripId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/trip/:id/route/:routeId',
+      builder: (context, state) => RouteBuilderScreen(
+        tripId: state.pathParameters['id']!,
+        routeId: state.pathParameters['routeId']!,
+      ),
     ),
   ],
 );

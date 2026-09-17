@@ -1,0 +1,64 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../data/database.dart';
+import '../../providers.dart';
+import '../transport/routing_service.dart';
+import 'explore_repository.dart';
+import 'poi_discovery_service.dart';
+import 'route_planner.dart';
+import 'sightseeing_route_repository.dart';
+
+final routingServiceProvider = Provider<RoutingService>((ref) {
+  final s = RoutingService();
+  ref.onDispose(s.dispose);
+  return s;
+});
+
+final poiDiscoveryServiceProvider = Provider<PoiDiscoveryService>((ref) {
+  final s = OverpassPoiService();
+  ref.onDispose(s.dispose);
+  return s;
+});
+
+final routePlannerProvider = Provider<RoutePlanner>((ref) {
+  return RoutePlanner(ref.watch(routingServiceProvider));
+});
+
+final exploreRepositoryProvider = Provider<ExploreRepository>((ref) {
+  return ExploreRepository(
+    ref.watch(databaseProvider),
+    ref.watch(poiDiscoveryServiceProvider),
+  );
+});
+
+final sightseeingRouteRepositoryProvider = Provider<SightseeingRouteRepository>(
+  (ref) {
+    return SightseeingRouteRepository(ref.watch(databaseProvider));
+  },
+);
+
+final routesProvider = StreamProvider.family<List<SightseeingRoute>, String>((
+  ref,
+  tripId,
+) {
+  return ref.watch(sightseeingRouteRepositoryProvider).watchRoutes(tripId);
+});
+
+final routeStopsProvider =
+    StreamProvider.family<List<SightseeingRouteStop>, String>((ref, routeId) {
+      return ref.watch(sightseeingRouteRepositoryProvider).watchStops(routeId);
+    });
+
+final routeByIdProvider = StreamProvider.family<SightseeingRoute?, String>((
+  ref,
+  routeId,
+) {
+  return ref.watch(sightseeingRouteRepositoryProvider).watchRoute(routeId);
+});
+
+final savedLocationsProvider = StreamProvider.family<List<Location>, String>((
+  ref,
+  tripId,
+) {
+  return ref.watch(exploreRepositoryProvider).watchSavedLocations(tripId);
+});

@@ -404,3 +404,49 @@ Nessuna di queste blocca lo scaffolding — hanno tutte un default ragionevole �
 ## 14. Prossimo passo
 
 📌 **Attendo il tuo "OK"** (o eventuali modifiche a scope/priorità/risposte del §13). Al via libera parto con la **Fase 0 — scaffolding + CI + DB + primo modulo (Trip)**.
+
+---
+
+## 15. Luoghi e percorsi (feature v4)
+
+Quarta scheda del dettaglio viaggio (`/trip/:id/explore`): scoprire luoghi reali
+vicino alla destinazione, salvarli e comporre percorsi di visita.
+
+### Requisiti
+- **Destinazione con coordinate**: alla selezione dall'autocomplete si salvano
+  `destination_lat/lng` sul viaggio; la modifica manuale del testo le invalida.
+- **Scoperta POI**: OpenStreetMap via **Overpass** (node/way/relation, centro
+  ricavato per le geometrie). Solo elementi con nome e coordinate; categorie:
+  Monumenti e storia, Musei e cultura, Natura e parchi, Panorami, Architettura e
+  luoghi religiosi, Attrazioni. Preferenza `name:it` → `name`.
+- **Mappa + elenco** sincronizzati, filtri per categoria e **raggio** (2/5/10/25/50 km),
+  distinzione tra suggeriti / salvati; stati loading/vuoto/errore/offline/cache;
+  **attribuzione** OpenStreetMap sempre visibile.
+- **Luoghi salvati** = `Location` persistenti e sincronizzabili (dedup per
+  provider+external_id, poi per nome normalizzato + vicinanza).
+- **Percorsi** (`sightseeing_routes` + `sightseeing_route_stops`): ≥2 tappe,
+  riordino drag&drop, elimina tappa, mezzo (piedi/bici/auto), partenza fissa,
+  ritorno alla partenza, polyline su mappa, distanza/durata/fonte, **Ottimizza
+  percorso** + ripristino ordine manuale, salva/rinomina, **Aggiungi
+  all'itinerario** (attività senza orario, in ordine, senza duplicare i luoghi).
+- **Offline-first**: luoghi e percorsi salvati sempre consultabili; ultime
+  proposte da cache locale con data; nessuna schermata bloccata in attesa di rete.
+- **Sync/backup/duplicazione**: le nuove tabelle sono sincronizzate (RLS = owner
+  diretto o membro del viaggio, `docs/supabase/explore.sql`), incluse nel backup
+  JSON (v2, retrocompatibile); `duplicateTrip` copia luoghi, percorsi e tappe.
+
+### Limiti dichiarati
+- **Routing stradale reale per piedi/bici/auto** via le istanze OSRM pubbliche
+  FOSSGIS (`routed-foot`/`routed-bike`/`routed-car`): ogni mezzo segue davvero
+  strade/sentieri. Solo **offline** (o se il servizio non risponde) si ripiega su
+  una **stima etichettata** (linea d'aria × fattore documentato: piedi 1,25 /
+  bici 1,30 / auto 1,40; velocità medie 4,8 / 15 / 40 km/h).
+- **Aggiunta all'itinerario = evento unico**: il percorso diventa **una sola**
+  attività del giorno (non una per tappa); toccandola si apre il percorso.
+- **Ottimizzazione = euristica** (Haversine + nearest-neighbor + 2-opt,
+  deterministica, ≤25 tappe): migliora l'ordine ma **non promette l'ottimo
+  globale**; il risultato non è mai peggiore dell'ordine iniziale secondo la
+  matrice usata. Nessuna navigazione turn-by-turn.
+- **Cache POI locale con scadenza** (default 7 giorni), **non** sincronizzata e
+  **non** inclusa nei backup. Endpoint (Overpass/OSRM) configurabili, nessuna
+  chiave segreta nel client. Attribuzioni OpenStreetMap richieste dal fornitore.

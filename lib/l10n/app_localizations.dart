@@ -459,6 +459,390 @@ abstract class AppLocalizations {
   /// In it, this message translates to:
   /// **'Ricordati di fare un backup prima di partire.'**
   String get backupReminder;
+
+  /// No description provided for @sectionExplore.
+  ///
+  /// In it, this message translates to:
+  /// **'Luoghi e percorsi'**
+  String get sectionExplore;
+
+  /// No description provided for @exploreModuleSubtitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Scopri luoghi vicini e costruisci percorsi'**
+  String get exploreModuleSubtitle;
+
+  /// No description provided for @exploreTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Luoghi e percorsi'**
+  String get exploreTitle;
+
+  /// No description provided for @exploreSearchArea.
+  ///
+  /// In it, this message translates to:
+  /// **'Cerca in quest\'area'**
+  String get exploreSearchArea;
+
+  /// No description provided for @exploreRadius.
+  ///
+  /// In it, this message translates to:
+  /// **'Raggio'**
+  String get exploreRadius;
+
+  /// No description provided for @exploreNoDestination.
+  ///
+  /// In it, this message translates to:
+  /// **'Scegli una destinazione per vedere i luoghi vicini'**
+  String get exploreNoDestination;
+
+  /// No description provided for @exploreLoading.
+  ///
+  /// In it, this message translates to:
+  /// **'Cerco luoghi nei dintorni…'**
+  String get exploreLoading;
+
+  /// No description provided for @exploreEmpty.
+  ///
+  /// In it, this message translates to:
+  /// **'Nessun luogo trovato qui'**
+  String get exploreEmpty;
+
+  /// No description provided for @exploreErrorNetwork.
+  ///
+  /// In it, this message translates to:
+  /// **'Impossibile contattare il servizio dei luoghi'**
+  String get exploreErrorNetwork;
+
+  /// No description provided for @exploreRetry.
+  ///
+  /// In it, this message translates to:
+  /// **'Riprova'**
+  String get exploreRetry;
+
+  /// No description provided for @exploreOffline.
+  ///
+  /// In it, this message translates to:
+  /// **'Sei offline: mostro le ultime proposte salvate'**
+  String get exploreOffline;
+
+  /// No description provided for @exploreUpdatedOn.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiornato il'**
+  String get exploreUpdatedOn;
+
+  /// No description provided for @exploreAttribution.
+  ///
+  /// In it, this message translates to:
+  /// **'Dati © OpenStreetMap contributors'**
+  String get exploreAttribution;
+
+  /// No description provided for @exploreSuggested.
+  ///
+  /// In it, this message translates to:
+  /// **'Suggeriti'**
+  String get exploreSuggested;
+
+  /// No description provided for @exploreSaved.
+  ///
+  /// In it, this message translates to:
+  /// **'Luoghi salvati'**
+  String get exploreSaved;
+
+  /// No description provided for @exploreSavedEmpty.
+  ///
+  /// In it, this message translates to:
+  /// **'Nessun luogo salvato. Tocca un suggerimento o la mappa.'**
+  String get exploreSavedEmpty;
+
+  /// No description provided for @exploreShowMore.
+  ///
+  /// In it, this message translates to:
+  /// **'Mostra altri'**
+  String get exploreShowMore;
+
+  /// No description provided for @exploreFromCenter.
+  ///
+  /// In it, this message translates to:
+  /// **'dal centro'**
+  String get exploreFromCenter;
+
+  /// No description provided for @exploreInUse.
+  ///
+  /// In it, this message translates to:
+  /// **'Luogo usato in un percorso o in un\'attività: non eliminato'**
+  String get exploreInUse;
+
+  /// No description provided for @exploreAddManual.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiungi dalla mappa'**
+  String get exploreAddManual;
+
+  /// No description provided for @exploreCategoryAll.
+  ///
+  /// In it, this message translates to:
+  /// **'Tutte'**
+  String get exploreCategoryAll;
+
+  /// No description provided for @exploreCatMonument.
+  ///
+  /// In it, this message translates to:
+  /// **'Monumenti e storia'**
+  String get exploreCatMonument;
+
+  /// No description provided for @exploreCatMuseum.
+  ///
+  /// In it, this message translates to:
+  /// **'Musei e cultura'**
+  String get exploreCatMuseum;
+
+  /// No description provided for @exploreCatNature.
+  ///
+  /// In it, this message translates to:
+  /// **'Natura e parchi'**
+  String get exploreCatNature;
+
+  /// No description provided for @exploreCatViewpoint.
+  ///
+  /// In it, this message translates to:
+  /// **'Panorami'**
+  String get exploreCatViewpoint;
+
+  /// No description provided for @exploreCatReligious.
+  ///
+  /// In it, this message translates to:
+  /// **'Architettura e luoghi religiosi'**
+  String get exploreCatReligious;
+
+  /// No description provided for @exploreCatAttraction.
+  ///
+  /// In it, this message translates to:
+  /// **'Attrazioni'**
+  String get exploreCatAttraction;
+
+  /// No description provided for @exploreCatOther.
+  ///
+  /// In it, this message translates to:
+  /// **'Altro'**
+  String get exploreCatOther;
+
+  /// No description provided for @routesTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Percorsi'**
+  String get routesTitle;
+
+  /// No description provided for @routesEmpty.
+  ///
+  /// In it, this message translates to:
+  /// **'Nessun percorso. Creane uno dai luoghi salvati.'**
+  String get routesEmpty;
+
+  /// No description provided for @routeNew.
+  ///
+  /// In it, this message translates to:
+  /// **'Nuovo percorso'**
+  String get routeNew;
+
+  /// No description provided for @routeDefaultName.
+  ///
+  /// In it, this message translates to:
+  /// **'Percorso di visita'**
+  String get routeDefaultName;
+
+  /// No description provided for @routeRename.
+  ///
+  /// In it, this message translates to:
+  /// **'Rinomina percorso'**
+  String get routeRename;
+
+  /// No description provided for @routeDelete.
+  ///
+  /// In it, this message translates to:
+  /// **'Elimina percorso'**
+  String get routeDelete;
+
+  /// No description provided for @routeDeleteConfirm.
+  ///
+  /// In it, this message translates to:
+  /// **'Eliminare questo percorso?'**
+  String get routeDeleteConfirm;
+
+  /// No description provided for @routeStops.
+  ///
+  /// In it, this message translates to:
+  /// **'Tappe'**
+  String get routeStops;
+
+  /// No description provided for @routeAddStop.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiungi tappa'**
+  String get routeAddStop;
+
+  /// No description provided for @routeMinStops.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiungi almeno 2 tappe.'**
+  String get routeMinStops;
+
+  /// No description provided for @routePickPlace.
+  ///
+  /// In it, this message translates to:
+  /// **'Scegli un luogo salvato'**
+  String get routePickPlace;
+
+  /// No description provided for @routeNoPlaceLeft.
+  ///
+  /// In it, this message translates to:
+  /// **'Tutti i luoghi salvati sono già nel percorso.'**
+  String get routeNoPlaceLeft;
+
+  /// No description provided for @routeMode.
+  ///
+  /// In it, this message translates to:
+  /// **'Mezzo'**
+  String get routeMode;
+
+  /// No description provided for @routeModeWalk.
+  ///
+  /// In it, this message translates to:
+  /// **'A piedi'**
+  String get routeModeWalk;
+
+  /// No description provided for @routeModeBike.
+  ///
+  /// In it, this message translates to:
+  /// **'Bicicletta'**
+  String get routeModeBike;
+
+  /// No description provided for @routeModeCar.
+  ///
+  /// In it, this message translates to:
+  /// **'Auto'**
+  String get routeModeCar;
+
+  /// No description provided for @routeFixedStart.
+  ///
+  /// In it, this message translates to:
+  /// **'Partenza fissa'**
+  String get routeFixedStart;
+
+  /// No description provided for @routeReturnToStart.
+  ///
+  /// In it, this message translates to:
+  /// **'Ritorno alla partenza'**
+  String get routeReturnToStart;
+
+  /// No description provided for @routeOptimize.
+  ///
+  /// In it, this message translates to:
+  /// **'Ottimizza percorso'**
+  String get routeOptimize;
+
+  /// No description provided for @routeRestoreManual.
+  ///
+  /// In it, this message translates to:
+  /// **'Ripristina ordine manuale'**
+  String get routeRestoreManual;
+
+  /// No description provided for @routeRecalculate.
+  ///
+  /// In it, this message translates to:
+  /// **'Ricalcola'**
+  String get routeRecalculate;
+
+  /// No description provided for @routeOptimizedBadge.
+  ///
+  /// In it, this message translates to:
+  /// **'Ordine ottimizzato'**
+  String get routeOptimizedBadge;
+
+  /// No description provided for @routeAddToItinerary.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiungi all\'itinerario'**
+  String get routeAddToItinerary;
+
+  /// No description provided for @routePickDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Scegli il giorno'**
+  String get routePickDay;
+
+  /// No description provided for @routeDayUnplanned.
+  ///
+  /// In it, this message translates to:
+  /// **'Non programmato'**
+  String get routeDayUnplanned;
+
+  /// No description provided for @routeSourceOnline.
+  ///
+  /// In it, this message translates to:
+  /// **'Percorso stradale reale'**
+  String get routeSourceOnline;
+
+  /// No description provided for @routeSourceEstimate.
+  ///
+  /// In it, this message translates to:
+  /// **'Stima (linea d\'aria)'**
+  String get routeSourceEstimate;
+
+  /// No description provided for @routeDistance.
+  ///
+  /// In it, this message translates to:
+  /// **'Distanza'**
+  String get routeDistance;
+
+  /// No description provided for @routeDuration.
+  ///
+  /// In it, this message translates to:
+  /// **'Durata'**
+  String get routeDuration;
+
+  /// No description provided for @routeComputing.
+  ///
+  /// In it, this message translates to:
+  /// **'Calcolo…'**
+  String get routeComputing;
+
+  /// No description provided for @routeAddedToDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Percorso aggiunto all\'itinerario'**
+  String get routeAddedToDay;
+
+  /// No description provided for @routeAlreadyInDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Percorso già presente in quel giorno'**
+  String get routeAlreadyInDay;
+
+  /// No description provided for @unitKm.
+  ///
+  /// In it, this message translates to:
+  /// **'km'**
+  String get unitKm;
+
+  /// No description provided for @unitMeter.
+  ///
+  /// In it, this message translates to:
+  /// **'m'**
+  String get unitMeter;
+
+  /// No description provided for @unitHour.
+  ///
+  /// In it, this message translates to:
+  /// **'h'**
+  String get unitHour;
+
+  /// No description provided for @unitMin.
+  ///
+  /// In it, this message translates to:
+  /// **'min'**
+  String get unitMin;
 }
 
 class _AppLocalizationsDelegate

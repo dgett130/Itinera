@@ -14,7 +14,10 @@ class BackupService {
 
   final AppDatabase _db;
 
-  static const int backupVersion = 1;
+  // v2: aggiunge i percorsi di visita (sightseeing_routes/stops). La cache POI
+  // non viene inclusa nei backup. I backup v1 restano importabili (le chiavi
+  // mancanti diventano liste vuote).
+  static const int backupVersion = 2;
 
   Future<String> exportJson() async {
     final tables = <String, dynamic>{
@@ -34,6 +37,10 @@ class BackupService {
       'costItems': await _dump(_db.select(_db.costItems)),
       'costSplits': await _dump(_db.select(_db.costSplits)),
       'activities': await _dump(_db.select(_db.activities)),
+      'sightseeingRoutes': await _dump(_db.select(_db.sightseeingRoutes)),
+      'sightseeingRouteStops': await _dump(
+        _db.select(_db.sightseeingRouteStops),
+      ),
     };
     final root = <String, dynamic>{
       'app': 'itinera',
@@ -44,8 +51,7 @@ class BackupService {
     return const JsonEncoder.withIndent('  ').convert(root);
   }
 
-  Future<List<Map<String, dynamic>>> _dump(
-      Selectable<DataClass> query) async {
+  Future<List<Map<String, dynamic>>> _dump(Selectable<DataClass> query) async {
     final rows = await query.get();
     return rows.map((r) => r.toJson()).toList();
   }
@@ -68,6 +74,8 @@ class BackupService {
 
     await _db.transaction(() async {
       // Cancella dai figli verso i genitori.
+      await _db.delete(_db.sightseeingRouteStops).go();
+      await _db.delete(_db.sightseeingRoutes).go();
       await _db.delete(_db.activities).go();
       await _db.delete(_db.costSplits).go();
       await _db.delete(_db.costItems).go();
@@ -90,7 +98,9 @@ class BackupService {
         await _db.into(_db.appSettings).insert(AppSetting.fromJson(j));
       }
       for (final j in rows('packingCategories')) {
-        await _db.into(_db.packingCategories).insert(PackingCategory.fromJson(j));
+        await _db
+            .into(_db.packingCategories)
+            .insert(PackingCategory.fromJson(j));
       }
       for (final j in rows('activityCategories')) {
         await _db
@@ -101,7 +111,9 @@ class BackupService {
         await _db.into(_db.vehicles).insert(Vehicle.fromJson(j));
       }
       for (final j in rows('packingTemplates')) {
-        await _db.into(_db.packingTemplates).insert(PackingTemplate.fromJson(j));
+        await _db
+            .into(_db.packingTemplates)
+            .insert(PackingTemplate.fromJson(j));
       }
       for (final j in rows('packingTemplateItems')) {
         await _db
@@ -139,6 +151,16 @@ class BackupService {
       }
       for (final j in rows('activities')) {
         await _db.into(_db.activities).insert(Activity.fromJson(j));
+      }
+      for (final j in rows('sightseeingRoutes')) {
+        await _db
+            .into(_db.sightseeingRoutes)
+            .insert(SightseeingRoute.fromJson(j));
+      }
+      for (final j in rows('sightseeingRouteStops')) {
+        await _db
+            .into(_db.sightseeingRouteStops)
+            .insert(SightseeingRouteStop.fromJson(j));
       }
     });
   }
