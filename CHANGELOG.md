@@ -42,6 +42,9 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   **preferenze per categoria** (l'utente sceglie se e cosa ricevere), promemoria
   **scadenze locali** (valigia/partenza) e **messaggi di sistema** inviabili
   dall'admin (a tutti o a un utente).
+- **Novità del rilascio**: al primo avvio dopo un aggiornamento appare (una
+  volta) un pannello con un **viaggiatore animato** (Lottie) e l'elenco delle
+  nuove funzioni.
 
 ### Modificato
 - **Animazioni UI**: apertura del viaggio con Hero (la card della lista si
@@ -72,6 +75,9 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   `timezone`. Setup in **`docs/notifications-setup.md`**: `google-services.json`
   in `android/app/`, schema **`docs/supabase/notifications.sql`**, Edge Function
   **`supabase/functions/send-push`** e un Database Webhook su `notifications`.
+- Pannello Novità: aggiunge `lottie` + asset `assets/lottie/hiker.json` (licenza
+  Lottie Simple). Fallback disegnato a mano se l'asset manca. La costante
+  `kWhatsNewVersion` va allineata alla versione a ogni rilascio.
 - Sync più tollerante: se una tabella non esiste ancora su Supabase (client
   aggiornato prima dello schema SQL) il motore la salta invece di andare in
   errore.

@@ -8,6 +8,7 @@ import '../auth/auth_providers.dart';
 import '../auth/auth_screen.dart';
 import '../notifications/notifications_providers.dart';
 import '../trip/trips_screen.dart';
+import '../whatsnew/whats_new_gate.dart';
 
 /// Schermata radice ('/'): l'app e' basata su account.
 ///
@@ -32,7 +33,8 @@ class RootGate extends ConsumerWidget {
     ref.watch(pushControllerProvider);
     // Riprogramma le notifiche di scadenza sui viaggi correnti.
     ref.watch(deadlineSyncProvider);
-    return const TripsScreen();
+    // Mostra le novità una volta dopo ogni aggiornamento.
+    return const WhatsNewGate(child: TripsScreen());
   }
 }
 
