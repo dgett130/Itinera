@@ -62,6 +62,7 @@ dependencies:
   flutter_timezone: ^5.1.0
   flutter_file_dialog: ^3.0.3
   flutter_pdfview: ^1.4.5
+  lottie: ^3.3.3
 
 dev_dependencies:
   flutter_test:
@@ -112,6 +113,7 @@ flutter:
   assets:
     - assets/countries.json
     - assets/cars.json
+    - assets/lottie/
 
   # Font impacchettati (OFL) per restare offline-first. Ogni stile di viaggio
   # ha la sua identita' tipografica; Inter e Space Mono sono condivisi.

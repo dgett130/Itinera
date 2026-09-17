@@ -605,4 +605,10 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get adminMsgError => 'Invio non riuscito';
+
+  @override
+  String get whatsNewTitle => 'Novità';
+
+  @override
+  String get whatsNewGotIt => 'Ho capito';
 }

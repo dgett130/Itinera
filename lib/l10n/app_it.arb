@@ -209,5 +209,8 @@
   "adminMsgSend": "Invia",
   "adminMsgSent": "Inviato a {count} destinatari",
   "@adminMsgSent": {"placeholders": {"count": {"type": "int"}}},
-  "adminMsgError": "Invio non riuscito"
+  "adminMsgError": "Invio non riuscito",
+
+  "whatsNewTitle": "Novità",
+  "whatsNewGotIt": "Ho capito"
 }

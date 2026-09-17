@@ -1221,6 +1221,18 @@ abstract class AppLocalizations {
   /// In it, this message translates to:
   /// **'Invio non riuscito'**
   String get adminMsgError;
+
+  /// No description provided for @whatsNewTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Novità'**
+  String get whatsNewTitle;
+
+  /// No description provided for @whatsNewGotIt.
+  ///
+  /// In it, this message translates to:
+  /// **'Ho capito'**
+  String get whatsNewGotIt;
 }
 
 class _AppLocalizationsDelegate
