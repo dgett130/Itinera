@@ -10,6 +10,8 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ## [Non rilasciato]
 
+## [1.3.0] - 2026-09-17
+
 ### Aggiunto
 - **Luoghi e percorsi** (4ª sezione del viaggio): scoperta di POI reali vicino
   alla destinazione (OpenStreetMap via Overpass), filtri per categoria e per
