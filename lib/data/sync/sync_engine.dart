@@ -274,31 +274,36 @@ class SyncEngine {
           p.read<String>('row_id'),
       };
 
-      final appliedIds = <String>[];
       String maxWm = wm;
-      await db.transaction(() async {
-        for (final row in remote) {
-          final map = Map<String, dynamic>.from(row as Map);
-          final id = map['id'] as String;
-          final upd = map['updated_at'] as String?;
-          if (upd != null && upd.compareTo(maxWm) > 0) maxWm = upd;
-          if (pending.contains(id)) continue; // modifica locale in attesa: vince
-          if (map['deleted_at'] != null) {
-            await spec.deleteLocal(db, id);
-          } else {
-            await spec.applyRemote(db, map);
-          }
-          appliedIds.add(id);
+      for (final row in remote) {
+        final map = Map<String, dynamic>.from(row as Map);
+        final id = map['id'] as String;
+        final upd = map['updated_at'] as String?;
+        if (upd != null && upd.compareTo(maxWm) > 0) maxWm = upd;
+        if (pending.contains(id)) continue; // modifica locale in attesa: vince
+        // Una transazione PER RIGA: se una riga non e' applicabile (es. FK verso
+        // un genitore assente: orfana da una vecchia cancellazione) la salto
+        // senza rollare l'intero pull.
+        try {
+          await db.transaction(() async {
+            if (map['deleted_at'] != null) {
+              await spec.deleteLocal(db, id);
+            } else {
+              await spec.applyRemote(db, map);
+            }
+            // Soppressione dell'eco: la apply ha riacceso i trigger e riempito
+            // _outbox; rimuovo la voce appena creata per questa riga.
+            await db.customStatement(
+              'DELETE FROM _outbox WHERE tbl = ? AND row_id = ?',
+              [name, id],
+            );
+          });
+        } catch (e) {
+          // Salto la riga; il watermark avanza comunque, quindi non viene
+          // ritentata all'infinito.
+          debugPrint('[sync] skip $name/$id: $e');
         }
-        // Soppressione dell'eco: le applyRemote/deleteLocal hanno riacceso i
-        // trigger e riempito _outbox; rimuovo quelle voci appena create.
-        for (final id in appliedIds) {
-          await db.customStatement(
-            'DELETE FROM _outbox WHERE tbl = ? AND row_id = ?',
-            [name, id],
-          );
-        }
-      });
+      }
 
       if (maxWm != wm) await _setState('pull_wm_$name', maxWm);
     }

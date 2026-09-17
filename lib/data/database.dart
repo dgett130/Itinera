@@ -91,6 +91,10 @@ class AppDatabase extends _$AppDatabase {
     beforeOpen: (details) async {
       // Necessario perche' CASCADE/SET NULL vengano applicate da SQLite.
       await customStatement('PRAGMA foreign_keys = ON');
+      // Fa scattare i trigger AFTER DELETE anche sulle righe rimosse IN CASCATA:
+      // cosi' eliminare un viaggio propaga il soft-delete dei figli su Supabase
+      // (niente righe "orfane" che poi romperebbero il pull con FK 787).
+      await customStatement('PRAGMA recursive_triggers = ON');
       await ensureSyncInfrastructure();
     },
   );
@@ -106,10 +110,12 @@ class AppDatabase extends _$AppDatabase {
     'cost_splits',
     'itinerary_days',
     'locations',
-    'activities',
-    // Percorsi di visita: dopo locations/itinerary_days (dipendenze FK).
+    // Percorsi di visita PRIMA di activities: activities.route_id ha una FK
+    // verso sightseeing_routes, quindi in pull il percorso va applicato prima
+    // dell'attivita' che lo referenzia (altrimenti FOREIGN KEY constraint 787).
     'sightseeing_routes',
     'sightseeing_route_stops',
+    'activities',
   ];
 
   /// Crea (idempotente) la coda `_outbox`, lo stato `_sync_state` e i trigger

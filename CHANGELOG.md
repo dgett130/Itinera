@@ -32,6 +32,12 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   colori dello stile, rispetta "Riduci animazioni"), transizione dei valori del
   percorso (distanza/durata/fonte) al ricalcolo/ottimizzazione/cambio mezzo.
 
+### Corretto
+- **Sync più robusta**: le eliminazioni propagano il soft-delete dei figli
+  (`recursive_triggers`), l'ordine di applicazione rispetta la nuova FK
+  `activities.route_id`, e il pull **salta** eventuali righe orfane senza
+  bloccare l'intera sincronizzazione.
+
 ### Note tecniche
 - Migrazione database **v3 → v5** (non distruttiva); **backup v2**
   retrocompatibile; `duplicateTrip` copia luoghi, percorsi e tappe.
