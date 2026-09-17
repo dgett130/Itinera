@@ -412,6 +412,21 @@ class AppLocalizationsIt extends AppLocalizations {
   String get bachecaOpen => 'Apri';
 
   @override
+  String get bachecaDownload => 'Scarica';
+
+  @override
+  String get bachecaDownloaded => 'File salvato sul dispositivo';
+
+  @override
+  String get bachecaDownloadError => 'Download non riuscito';
+
+  @override
+  String get bachecaShare => 'Condividi';
+
+  @override
+  String get bachecaOpenExternal => 'Apri esternamente';
+
+  @override
   String get bachecaEmptyTitle => 'Nessun file';
 
   @override
@@ -478,4 +493,116 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get tripDriveOpenError => 'Impossibile aprire il link';
+
+  @override
+  String get notificationsTitle => 'Notifiche';
+
+  @override
+  String get notificationsMarkAllRead => 'Segna lette';
+
+  @override
+  String get notificationsEmptyTitle => 'Nessuna notifica';
+
+  @override
+  String get notificationsEmptyMessage =>
+      'Qui vedrai richieste di amicizia, viaggi condivisi e nuovi documenti.';
+
+  @override
+  String get notificationsPrefsTitle => 'Preferenze notifiche';
+
+  @override
+  String get notificationsPushMaster => 'Notifiche push';
+
+  @override
+  String get notificationsPushMasterHint =>
+      'Ricevi avvisi anche quando l\'app è chiusa';
+
+  @override
+  String get notificationsCategories => 'Categorie';
+
+  @override
+  String get notificationsFriendRequests => 'Richieste di amicizia';
+
+  @override
+  String get notificationsSharedTrips => 'Viaggi condivisi con me';
+
+  @override
+  String get notificationsNewDocuments => 'Nuovi documenti in bacheca';
+
+  @override
+  String get notificationsSystemMessages => 'Messaggi di sistema';
+
+  @override
+  String get notificationsLocalSection => 'Scadenze (locali)';
+
+  @override
+  String get notificationsDeadlines => 'Promemoria scadenze';
+
+  @override
+  String get notificationsDeadlinesHint =>
+      'Avvisi prima della partenza (valigia, backup). Restano sul dispositivo.';
+
+  @override
+  String get notificationsPrefsFooter =>
+      'Le preferenze valgono per tutti i tuoi dispositivi. Se disattivi le notifiche push non riceverai avvisi ad app chiusa.';
+
+  @override
+  String get timeJustNow => 'adesso';
+
+  @override
+  String timeMinutesAgo(int count) {
+    return '$count min fa';
+  }
+
+  @override
+  String timeHoursAgo(int count) {
+    return '$count h fa';
+  }
+
+  @override
+  String timeDaysAgo(int count) {
+    return '$count g fa';
+  }
+
+  @override
+  String get adminMsgTitle => 'Messaggio di sistema';
+
+  @override
+  String get adminMsgFieldTitle => 'Titolo';
+
+  @override
+  String get adminMsgFieldBody => 'Testo';
+
+  @override
+  String get adminMsgRecipients => 'Destinatari';
+
+  @override
+  String get adminMsgAll => 'Tutti';
+
+  @override
+  String get adminMsgOneUser => 'Un utente';
+
+  @override
+  String get adminMsgUser => 'Scegli un utente';
+
+  @override
+  String get adminMsgMyself => 'Io (me stesso)';
+
+  @override
+  String get adminMsgNoFriends =>
+      'Nessun contatto: aggiungi amici per inviare a un singolo utente.';
+
+  @override
+  String get adminMsgPickUser => 'Scegli un utente destinatario';
+
+  @override
+  String get adminMsgSend => 'Invia';
+
+  @override
+  String adminMsgSent(int count) {
+    return 'Inviato a $count destinatari';
+  }
+
+  @override
+  String get adminMsgError => 'Invio non riuscito';
 }

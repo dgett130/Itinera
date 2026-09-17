@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../app.dart';
 import '../../core/enums.dart';
@@ -11,6 +10,7 @@ import '../../ui/itinera_theme.dart';
 import '../../ui/widgets.dart';
 import '../trip/trip_providers.dart';
 import 'bacheca_providers.dart';
+import 'file_preview_screen.dart';
 
 /// Modulo Bacheca: file/documenti condivisi del viaggio (biglietti, programmi…).
 ///
@@ -113,19 +113,10 @@ class _BachecaScreenState extends ConsumerState<BachecaScreen> {
     }
   }
 
-  Future<void> _onOpen(TripFile file) async {
-    final l10n = AppLocalizations.of(context);
-    try {
-      final url = await ref.read(bachecaControllerProvider).signedUrl(file);
-      if (!mounted) return;
-      final ok = await launchUrl(
-        Uri.parse(url),
-        mode: LaunchMode.externalApplication,
-      );
-      if (!ok && mounted) _snack(l10n.bachecaOpenError);
-    } catch (e) {
-      if (mounted) _snack(l10n.bachecaOpenError);
-    }
+  void _onOpen(TripFile file) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => FilePreviewScreen(file: file)),
+    );
   }
 
   Future<void> _onDelete(TripFile file) async {

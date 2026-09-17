@@ -6,6 +6,7 @@ import '../../data/sync/sync_providers.dart';
 import '../../ui/widgets.dart';
 import '../auth/auth_providers.dart';
 import '../auth/auth_screen.dart';
+import '../notifications/notifications_providers.dart';
 import '../trip/trips_screen.dart';
 
 /// Schermata radice ('/'): l'app e' basata su account.
@@ -27,6 +28,10 @@ class RootGate extends ConsumerWidget {
 
     // Avvia (e mantiene vivo) il motore di sincronizzazione finche' loggato.
     ref.watch(syncEngineProvider);
+    // Avvia il push (init FCM + permesso + registrazione token).
+    ref.watch(pushControllerProvider);
+    // Riprogramma le notifiche di scadenza sui viaggi correnti.
+    ref.watch(deadlineSyncProvider);
     return const TripsScreen();
   }
 }

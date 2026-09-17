@@ -55,3 +55,13 @@ android/key.properties
 key.properties
 *.jks
 *.keystore
+
+# Firebase: config client tenuta fuori dal repo (per scelta)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Cartella dati locale: NON fa parte del repo
+/data/
+
+# Supabase CLI: stato locale
+supabase/.temp/

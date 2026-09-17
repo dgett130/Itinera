@@ -10,6 +10,7 @@ import '../../data/database.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/itinera_theme.dart';
 import '../../ui/widgets.dart';
+import '../notifications/notifications_providers.dart';
 import '../sync/sync_status_button.dart';
 import 'trip_providers.dart';
 
@@ -146,6 +147,7 @@ class _HomeHeader extends StatelessWidget {
               ),
             ),
             const SyncStatusButton(),
+            const _NotificationsBell(),
             IconButton(
               icon: const Icon(Icons.people_outline),
               tooltip: 'Amici',
@@ -159,6 +161,28 @@ class _HomeHeader extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Campanellino notifiche con badge del numero di non lette.
+class _NotificationsBell extends ConsumerWidget {
+  const _NotificationsBell();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unread = ref.watch(unreadCountProvider);
+    // Il badge avvolge l'icona (non l'IconButton) cosi' resta attaccato alla
+    // campanella invece che nell'angolo dell'area di tocco da 48px.
+    return IconButton(
+      icon: unread == 0
+          ? const Icon(Icons.notifications_none_outlined)
+          : Badge.count(
+              count: unread,
+              child: const Icon(Icons.notifications_none_outlined),
+            ),
+      tooltip: AppLocalizations.of(context).notificationsTitle,
+      onPressed: () => context.push('/notifications'),
     );
   }
 }

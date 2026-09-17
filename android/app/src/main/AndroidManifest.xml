@@ -1,11 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Serve per geocoding/routing/mappe e per la sincronizzazione remota. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Notifiche push (Android 13+ richiede il permesso a runtime). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="itinera"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
+        <!-- Canale di default per le notifiche FCM in background. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="itinera_default"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -9,6 +9,9 @@ import 'features/explore/route_builder_screen.dart';
 import 'features/friends/friends_screen.dart';
 import 'features/itinerary/itinerary_screen.dart';
 import 'features/members/members_screen.dart';
+import 'features/notifications/admin_message_screen.dart';
+import 'features/notifications/notification_prefs_screen.dart';
+import 'features/notifications/notifications_screen.dart';
 import 'features/onboarding/root_gate.dart';
 import 'features/packing/packing_screen.dart';
 import 'features/settings/settings_screen.dart';
@@ -33,6 +36,18 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/friends',
       builder: (context, state) => const FriendsScreen(),
+    ),
+    GoRoute(
+      path: '/notifications',
+      builder: (context, state) => const NotificationsScreen(),
+    ),
+    GoRoute(
+      path: '/settings/notifications',
+      builder: (context, state) => const NotificationPrefsScreen(),
+    ),
+    GoRoute(
+      path: '/admin/message',
+      builder: (context, state) => const AdminMessageScreen(),
     ),
     GoRoute(
       path: '/reset-password',

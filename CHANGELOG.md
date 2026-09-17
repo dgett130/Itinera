@@ -27,14 +27,21 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   testo è modificato a mano).
 - **Bacheca del viaggio**: carica e condividi file e documenti (biglietti,
   programmi…) tra i partecipanti. I byte stanno su Supabase Storage (bucket
-  privato, apertura via link firmato); l'elenco è consultabile offline. Limite
-  25 MB per file, eliminazione con conferma.
+  privato); l'elenco è consultabile offline. **Anteprima in-app** di foto (con
+  zoom) e **PDF**, **download** sul dispositivo o condivisione (niente browser).
+  Limite 25 MB per file, eliminazione con conferma.
 - **Link Drive per il viaggio**: campo nel form di creazione/modifica per una
   cartella Drive di condivisione foto; nel dettaglio diventa una scorciatoia
   "Foto del viaggio" che apre la cartella.
 - **Crea cartella Drive dall'app**: se l'account Google è collegato, un tocco
   crea la cartella "Itinera – <viaggio>" (condivisa con chi ha il link) e ne
   inserisce il link nel campo.
+- **Notifiche**: push **FCM** (anche ad app chiusa) + **centro notifiche**
+  in-app (campanellino con badge, lista in tempo reale) su eventi (richiesta di
+  amicizia, richiesta accettata, viaggio condiviso, nuovo documento in bacheca),
+  **preferenze per categoria** (l'utente sceglie se e cosa ricevere), promemoria
+  **scadenze locali** (valigia/partenza) e **messaggi di sistema** inviabili
+  dall'admin (a tutti o a un utente).
 
 ### Modificato
 - **Animazioni UI**: apertura del viaggio con Hero (la card della lista si
@@ -53,11 +60,18 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   retrocompatibile; `duplicateTrip` copia luoghi, percorsi e tappe.
 - Nuovo schema Supabase: eseguire **`docs/supabase/explore.sql`**,
   **`docs/supabase/bacheca.sql`** (crea anche il bucket Storage `trip-files`
-  con le policy) e **`docs/supabase/drive.sql`** (colonna `trips.drive_url`)
+  con le policy), **`docs/supabase/drive.sql`** (colonna `trips.drive_url`) e
+  **`docs/supabase/notifications.sql`** (tabelle notifiche + trigger + realtime)
   prima di distribuire le feature ai collaboratori.
+- Anteprima documenti bacheca: aggiunge `flutter_pdfview` (PDF) e
+  `flutter_file_dialog` (salvataggio sul dispositivo).
 - Creazione cartella Drive: richiede Google Drive API abilitata e lo scope
   `drive.file` sulla schermata di consenso OAuth — vedi
   **`docs/google-drive-setup.md`**.
+- Notifiche push: aggiunge Firebase (FCM) + `flutter_local_notifications` +
+  `timezone`. Setup in **`docs/notifications-setup.md`**: `google-services.json`
+  in `android/app/`, schema **`docs/supabase/notifications.sql`**, Edge Function
+  **`supabase/functions/send-push`** e un Database Webhook su `notifications`.
 - Sync più tollerante: se una tabella non esiste ancora su Supabase (client
   aggiornato prima dello schema SQL) il motore la salta invece di andare in
   errore.
