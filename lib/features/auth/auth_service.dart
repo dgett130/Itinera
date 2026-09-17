@@ -70,22 +70,28 @@ class AuthService {
 
   static bool _googleReady = false;
 
+  /// Inizializza (una sola volta) `GoogleSignIn` col Web client ID. Condiviso
+  /// tra login e autorizzazione degli scope (es. Drive), cosi' `initialize`
+  /// non viene chiamato due volte.
+  static Future<void> ensureGoogleInitialized() async {
+    if (_googleReady) return;
+    final serverId = SupabaseConfig.googleServerClientId;
+    if (serverId.isEmpty) {
+      throw const AuthException(
+          'Google non ancora configurato (manca il Web client ID).');
+    }
+    await GoogleSignIn.instance.initialize(serverClientId: serverId);
+    _googleReady = true;
+  }
+
   /// Accesso con Google **NATIVO**: mostra il popup di scelta account (niente
   /// browser) tramite `google_sign_in`, poi scambia l'ID token con Supabase
   /// (`signInWithIdToken`). Richiede su Google Cloud un client **Android**
   /// (package + SHA-1, fa apparire il popup) e un client **Web** il cui ID va
   /// in [SupabaseConfig.googleServerClientId] + nel provider Google di Supabase.
   Future<void> signInWithGoogle() async {
-    final serverId = SupabaseConfig.googleServerClientId;
-    if (serverId.isEmpty) {
-      throw const AuthException(
-          'Google non ancora configurato (manca il Web client ID).');
-    }
+    await ensureGoogleInitialized();
     final gsi = GoogleSignIn.instance;
-    if (!_googleReady) {
-      await gsi.initialize(serverClientId: serverId);
-      _googleReady = true;
-    }
     final account = await gsi.authenticate();
     final idToken = account.authentication.idToken;
     if (idToken == null) {

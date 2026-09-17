@@ -47,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forExecutor(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -91,6 +91,10 @@ class AppDatabase extends _$AppDatabase {
       if (from < 6) {
         // v6: bacheca del viaggio (file/documenti condivisi).
         await m.createTable(tripFiles);
+      }
+      if (from < 7) {
+        // v7: link a una cartella Drive condivisa per le foto del viaggio.
+        await m.addColumn(trips, trips.driveUrl);
       }
     },
     beforeOpen: (details) async {

@@ -2,10 +2,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database.dart';
 import '../../providers.dart';
+import 'google_drive_service.dart';
 import 'trip_repository.dart';
 
 final tripRepositoryProvider = Provider<TripRepository>((ref) {
   return TripRepository(ref.watch(databaseProvider));
+});
+
+final googleDriveServiceProvider = Provider<GoogleDriveService>((ref) {
+  return GoogleDriveService();
 });
 
 /// Tutti i viaggi (reattivo).

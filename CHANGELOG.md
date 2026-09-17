@@ -29,6 +29,12 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   programmi…) tra i partecipanti. I byte stanno su Supabase Storage (bucket
   privato, apertura via link firmato); l'elenco è consultabile offline. Limite
   25 MB per file, eliminazione con conferma.
+- **Link Drive per il viaggio**: campo nel form di creazione/modifica per una
+  cartella Drive di condivisione foto; nel dettaglio diventa una scorciatoia
+  "Foto del viaggio" che apre la cartella.
+- **Crea cartella Drive dall'app**: se l'account Google è collegato, un tocco
+  crea la cartella "Itinera – <viaggio>" (condivisa con chi ha il link) e ne
+  inserisce il link nel campo.
 
 ### Modificato
 - **Animazioni UI**: apertura del viaggio con Hero (la card della lista si
@@ -43,12 +49,15 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   bloccare l'intera sincronizzazione.
 
 ### Note tecniche
-- Migrazione database **v3 → v6** (non distruttiva); **backup v3**
+- Migrazione database **v3 → v7** (non distruttiva); **backup v3**
   retrocompatibile; `duplicateTrip` copia luoghi, percorsi e tappe.
-- Nuovo schema Supabase: eseguire **`docs/supabase/explore.sql`** e
-  **`docs/supabase/bacheca.sql`** (tabelle + RLS + realtime; la bacheca crea
-  anche il bucket Storage `trip-files` con le sue policy) prima di distribuire
-  le feature ai collaboratori.
+- Nuovo schema Supabase: eseguire **`docs/supabase/explore.sql`**,
+  **`docs/supabase/bacheca.sql`** (crea anche il bucket Storage `trip-files`
+  con le policy) e **`docs/supabase/drive.sql`** (colonna `trips.drive_url`)
+  prima di distribuire le feature ai collaboratori.
+- Creazione cartella Drive: richiede Google Drive API abilitata e lo scope
+  `drive.file` sulla schermata di consenso OAuth — vedi
+  **`docs/google-drive-setup.md`**.
 - Sync più tollerante: se una tabella non esiste ancora su Supabase (client
   aggiornato prima dello schema SQL) il motore la salta invece di andare in
   errore.

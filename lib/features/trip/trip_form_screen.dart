@@ -9,8 +9,10 @@ import '../../l10n/app_localizations.dart';
 import '../../ui/itinera_theme.dart';
 import '../../ui/signatures.dart';
 import '../../ui/widgets.dart';
+import '../auth/auth_providers.dart';
 import '../places/country_autocomplete_field.dart';
 import '../places/place_autocomplete_field.dart';
+import 'google_drive_service.dart';
 import 'trip_providers.dart';
 
 /// Form di creazione o modifica di un viaggio.
@@ -30,6 +32,10 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   final _destCtrl = TextEditingController();
   final _countryCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
+  final _driveCtrl = TextEditingController();
+
+  /// Creazione cartella Drive in corso.
+  bool _creatingDrive = false;
 
   DateTime? _startDate;
   DateTime? _endDate;
@@ -64,6 +70,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
       _destCtrl.text = trip.destination ?? '';
       _countryCtrl.text = trip.country ?? '';
       _notesCtrl.text = trip.notes ?? '';
+      _driveCtrl.text = trip.driveUrl ?? '';
       _destLat = trip.destinationLat;
       _destLng = trip.destinationLng;
       setState(() {
@@ -86,6 +93,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
     _destCtrl.dispose();
     _countryCtrl.dispose();
     _notesCtrl.dispose();
+    _driveCtrl.dispose();
     super.dispose();
   }
 
@@ -123,6 +131,9 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
     final notes = _notesCtrl.text.trim().isEmpty
         ? null
         : _notesCtrl.text.trim();
+    final drive = _driveCtrl.text.trim().isEmpty
+        ? null
+        : _driveCtrl.text.trim();
 
     if (widget.isEditing) {
       await repo.updateTrip(
@@ -139,6 +150,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
         travelerCount: _travelerCount,
         themeStyle: _style,
         notes: notes,
+        driveUrl: drive,
       );
       if (mounted) context.pop();
     } else {
@@ -155,15 +167,49 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
         travelerCount: _travelerCount,
         themeStyle: _style,
         notes: notes,
+        driveUrl: drive,
       );
       if (mounted) context.pushReplacement('/trip/$id');
     }
+  }
+
+  /// Crea una cartella Drive condivisa (nome = nome del viaggio) e ne inserisce
+  /// il link nel campo. Richiede l'account Google collegato.
+  Future<void> _createDriveFolder() async {
+    final l10n = AppLocalizations.of(context);
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) {
+      _snack(l10n.tripDriveNeedName);
+      return;
+    }
+    setState(() => _creatingDrive = true);
+    try {
+      final folder = await ref
+          .read(googleDriveServiceProvider)
+          .createSharedFolder('Itinera – $name');
+      if (!mounted) return;
+      setState(() => _driveCtrl.text = folder.webViewLink);
+      _snack(l10n.tripDriveCreated);
+    } on DriveException catch (e) {
+      if (mounted) _snack(e.message);
+    } catch (e) {
+      if (mounted) _snack(l10n.tripDriveError);
+    } finally {
+      if (mounted) setState(() => _creatingDrive = false);
+    }
+  }
+
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final brightness = Theme.of(context).brightness;
+    final googleLinked = ref.watch(googleLinkedProvider);
 
     // Il form stesso anticipa l'identita' scelta: si ri-tematizza in tempo reale.
     return Theme(
@@ -260,6 +306,41 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                     suggested: ItineraTheme.suggestStyle(_tripType),
                     onChanged: (s) => setState(() => _style = s),
                   ),
+                  SectionHeader(l10n.tripDriveSection),
+                  TextFormField(
+                    controller: _driveCtrl,
+                    decoration: InputDecoration(
+                      labelText: l10n.tripDriveLink,
+                      hintText: 'https://drive.google.com/…',
+                      prefixIcon: const Icon(Icons.folder_shared_outlined),
+                    ),
+                    keyboardType: TextInputType.url,
+                    autocorrect: false,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    l10n.tripDriveHint,
+                    style: context.texts.bodySmall?.copyWith(
+                      color: context.scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  if (googleLinked) ...[
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        onPressed: _creatingDrive ? null : _createDriveFolder,
+                        icon: _creatingDrive
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.add_to_drive_outlined),
+                        label: Text(l10n.tripDriveCreate),
+                      ),
+                    ),
+                  ],
                   SectionHeader(l10n.commonNotes),
                   TextFormField(
                     controller: _notesCtrl,

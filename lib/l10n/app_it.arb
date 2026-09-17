@@ -154,5 +154,16 @@
   "bachecaDeleted": "File eliminato",
   "bachecaDeleteError": "Eliminazione non riuscita",
   "bachecaDeleteConfirm": "Vuoi eliminare \"{name}\"?",
-  "@bachecaDeleteConfirm": {"placeholders": {"name": {"type": "String"}}}
+  "@bachecaDeleteConfirm": {"placeholders": {"name": {"type": "String"}}},
+
+  "tripDriveSection": "Foto e Drive",
+  "tripDriveLink": "Link cartella Drive",
+  "tripDriveHint": "Un link a una cartella Drive per condividere le foto del viaggio con il gruppo.",
+  "tripDriveCreate": "Crea cartella Drive",
+  "tripDriveNeedName": "Inserisci prima il nome del viaggio",
+  "tripDriveCreated": "Cartella Drive creata e link inserito",
+  "tripDriveError": "Creazione della cartella Drive non riuscita",
+  "tripDrivePhotos": "Foto del viaggio",
+  "tripDriveOpen": "Apri la cartella Drive condivisa",
+  "tripDriveOpenError": "Impossibile aprire il link"
 }

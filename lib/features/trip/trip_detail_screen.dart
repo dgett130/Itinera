@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app.dart';
 import '../../core/enum_labels.dart';
@@ -137,6 +138,16 @@ class _TripDetailBody extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 _BachecaModuleCard(tripId: tripId),
+                if (trip.driveUrl != null &&
+                    trip.driveUrl!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _ModuleCard(
+                    icon: Icons.photo_library_outlined,
+                    title: l10n.tripDrivePhotos,
+                    subtitle: l10n.tripDriveOpen,
+                    onTap: () => _openDrive(context, trip.driveUrl!.trim()),
+                  ),
+                ],
                 if (trip.notes != null && trip.notes!.trim().isNotEmpty) ...[
                   SectionHeader(l10n.commonNotes),
                   ItineraCard(
@@ -172,6 +183,19 @@ class _TripDetailBody extends ConsumerWidget {
     }
     if (s != null) return Fmt.date(s);
     return null;
+  }
+
+  Future<void> _openDrive(BuildContext context, String url) async {
+    var uri = Uri.tryParse(url);
+    if (uri != null && !uri.hasScheme) uri = Uri.tryParse('https://$url');
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
+    if (uri == null ||
+        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(l10n.tripDriveOpenError)));
+    }
   }
 
   Future<bool> _confirmDelete(

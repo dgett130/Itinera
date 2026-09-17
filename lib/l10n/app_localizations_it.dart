@@ -447,4 +447,35 @@ class AppLocalizationsIt extends AppLocalizations {
   String bachecaDeleteConfirm(String name) {
     return 'Vuoi eliminare \"$name\"?';
   }
+
+  @override
+  String get tripDriveSection => 'Foto e Drive';
+
+  @override
+  String get tripDriveLink => 'Link cartella Drive';
+
+  @override
+  String get tripDriveHint =>
+      'Un link a una cartella Drive per condividere le foto del viaggio con il gruppo.';
+
+  @override
+  String get tripDriveCreate => 'Crea cartella Drive';
+
+  @override
+  String get tripDriveNeedName => 'Inserisci prima il nome del viaggio';
+
+  @override
+  String get tripDriveCreated => 'Cartella Drive creata e link inserito';
+
+  @override
+  String get tripDriveError => 'Creazione della cartella Drive non riuscita';
+
+  @override
+  String get tripDrivePhotos => 'Foto del viaggio';
+
+  @override
+  String get tripDriveOpen => 'Apri la cartella Drive condivisa';
+
+  @override
+  String get tripDriveOpenError => 'Impossibile aprire il link';
 }

@@ -66,6 +66,10 @@ class Trips extends Table {
   /// per retrocompatibilita' con i backup/sync precedenti alla v3.
   TextColumn get themeStyle => textEnum<TripStyle>().nullable()();
   TextColumn get notes => text().nullable()();
+
+  /// Link a una cartella Drive condivisa per le foto del viaggio (schema v7).
+  /// Inserito a mano o creato dall'app se l'account Google e' collegato.
+  TextColumn get driveUrl => text().nullable()();
   DateTimeColumn get createdAt => dateTime().clientDefault(DateTime.now)();
   DateTimeColumn get updatedAt => dateTime().clientDefault(DateTime.now)();
 

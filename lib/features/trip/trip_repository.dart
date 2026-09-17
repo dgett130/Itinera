@@ -47,6 +47,7 @@ class TripRepository {
     int travelerCount = 1,
     TripStyle? themeStyle,
     String? notes,
+    String? driveUrl,
   }) async {
     final id = newId();
     await _db
@@ -66,6 +67,7 @@ class TripRepository {
             travelerCount: Value(travelerCount),
             themeStyle: Value(themeStyle),
             notes: Value(notes),
+            driveUrl: Value(driveUrl),
           ),
         );
     // Il viaggiatore "io" di default, per la divisione spese.
@@ -96,6 +98,7 @@ class TripRepository {
     required int travelerCount,
     TripStyle? themeStyle,
     String? notes,
+    String? driveUrl,
   }) async {
     await (_db.update(_db.trips)..where((t) => t.id.equals(id))).write(
       TripsCompanion(
@@ -111,6 +114,18 @@ class TripRepository {
         travelerCount: Value(travelerCount),
         themeStyle: Value(themeStyle),
         notes: Value(notes),
+        driveUrl: Value(driveUrl),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Imposta solo il link Drive del viaggio (usato dalla creazione automatica
+  /// della cartella Drive).
+  Future<void> setDriveUrl(String id, String? driveUrl) async {
+    await (_db.update(_db.trips)..where((t) => t.id.equals(id))).write(
+      TripsCompanion(
+        driveUrl: Value(driveUrl),
         updatedAt: Value(DateTime.now()),
       ),
     );

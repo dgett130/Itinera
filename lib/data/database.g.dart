@@ -973,6 +973,17 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _driveUrlMeta = const VerificationMeta(
+    'driveUrl',
+  );
+  @override
+  late final GeneratedColumn<String> driveUrl = GeneratedColumn<String>(
+    'drive_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1014,6 +1025,7 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
     coverImagePath,
     themeStyle,
     notes,
+    driveUrl,
     createdAt,
     updatedAt,
   ];
@@ -1120,6 +1132,12 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
       );
     }
+    if (data.containsKey('drive_url')) {
+      context.handle(
+        _driveUrlMeta,
+        driveUrl.isAcceptableOrUnknown(data['drive_url']!, _driveUrlMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1207,6 +1225,10 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       ),
+      driveUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}drive_url'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1256,6 +1278,10 @@ class Trip extends DataClass implements Insertable<Trip> {
   /// per retrocompatibilita' con i backup/sync precedenti alla v3.
   final TripStyle? themeStyle;
   final String? notes;
+
+  /// Link a una cartella Drive condivisa per le foto del viaggio (schema v7).
+  /// Inserito a mano o creato dall'app se l'account Google e' collegato.
+  final String? driveUrl;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Trip({
@@ -1274,6 +1300,7 @@ class Trip extends DataClass implements Insertable<Trip> {
     this.coverImagePath,
     this.themeStyle,
     this.notes,
+    this.driveUrl,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1323,6 +1350,9 @@ class Trip extends DataClass implements Insertable<Trip> {
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
+    if (!nullToAbsent || driveUrl != null) {
+      map['drive_url'] = Variable<String>(driveUrl);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1363,6 +1393,9 @@ class Trip extends DataClass implements Insertable<Trip> {
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
+      driveUrl: driveUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(driveUrl),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1395,6 +1428,7 @@ class Trip extends DataClass implements Insertable<Trip> {
         serializer.fromJson<String?>(json['themeStyle']),
       ),
       notes: serializer.fromJson<String?>(json['notes']),
+      driveUrl: serializer.fromJson<String?>(json['driveUrl']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1424,6 +1458,7 @@ class Trip extends DataClass implements Insertable<Trip> {
         $TripsTable.$converterthemeStylen.toJson(themeStyle),
       ),
       'notes': serializer.toJson<String?>(notes),
+      'driveUrl': serializer.toJson<String?>(driveUrl),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1445,6 +1480,7 @@ class Trip extends DataClass implements Insertable<Trip> {
     Value<String?> coverImagePath = const Value.absent(),
     Value<TripStyle?> themeStyle = const Value.absent(),
     Value<String?> notes = const Value.absent(),
+    Value<String?> driveUrl = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Trip(
@@ -1469,6 +1505,7 @@ class Trip extends DataClass implements Insertable<Trip> {
         : this.coverImagePath,
     themeStyle: themeStyle.present ? themeStyle.value : this.themeStyle,
     notes: notes.present ? notes.value : this.notes,
+    driveUrl: driveUrl.present ? driveUrl.value : this.driveUrl,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1503,6 +1540,7 @@ class Trip extends DataClass implements Insertable<Trip> {
           ? data.themeStyle.value
           : this.themeStyle,
       notes: data.notes.present ? data.notes.value : this.notes,
+      driveUrl: data.driveUrl.present ? data.driveUrl.value : this.driveUrl,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1526,6 +1564,7 @@ class Trip extends DataClass implements Insertable<Trip> {
           ..write('coverImagePath: $coverImagePath, ')
           ..write('themeStyle: $themeStyle, ')
           ..write('notes: $notes, ')
+          ..write('driveUrl: $driveUrl, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1549,6 +1588,7 @@ class Trip extends DataClass implements Insertable<Trip> {
     coverImagePath,
     themeStyle,
     notes,
+    driveUrl,
     createdAt,
     updatedAt,
   );
@@ -1571,6 +1611,7 @@ class Trip extends DataClass implements Insertable<Trip> {
           other.coverImagePath == this.coverImagePath &&
           other.themeStyle == this.themeStyle &&
           other.notes == this.notes &&
+          other.driveUrl == this.driveUrl &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1591,6 +1632,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
   final Value<String?> coverImagePath;
   final Value<TripStyle?> themeStyle;
   final Value<String?> notes;
+  final Value<String?> driveUrl;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1610,6 +1652,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     this.coverImagePath = const Value.absent(),
     this.themeStyle = const Value.absent(),
     this.notes = const Value.absent(),
+    this.driveUrl = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1630,6 +1673,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     this.coverImagePath = const Value.absent(),
     this.themeStyle = const Value.absent(),
     this.notes = const Value.absent(),
+    this.driveUrl = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1651,6 +1695,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     Expression<String>? coverImagePath,
     Expression<String>? themeStyle,
     Expression<String>? notes,
+    Expression<String>? driveUrl,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1671,6 +1716,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
       if (coverImagePath != null) 'cover_image_path': coverImagePath,
       if (themeStyle != null) 'theme_style': themeStyle,
       if (notes != null) 'notes': notes,
+      if (driveUrl != null) 'drive_url': driveUrl,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1693,6 +1739,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     Value<String?>? coverImagePath,
     Value<TripStyle?>? themeStyle,
     Value<String?>? notes,
+    Value<String?>? driveUrl,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -1713,6 +1760,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
       coverImagePath: coverImagePath ?? this.coverImagePath,
       themeStyle: themeStyle ?? this.themeStyle,
       notes: notes ?? this.notes,
+      driveUrl: driveUrl ?? this.driveUrl,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1773,6 +1821,9 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (driveUrl.present) {
+      map['drive_url'] = Variable<String>(driveUrl.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1803,6 +1854,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
           ..write('coverImagePath: $coverImagePath, ')
           ..write('themeStyle: $themeStyle, ')
           ..write('notes: $notes, ')
+          ..write('driveUrl: $driveUrl, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -13932,6 +13984,7 @@ typedef $$TripsTableCreateCompanionBuilder =
       Value<String?> coverImagePath,
       Value<TripStyle?> themeStyle,
       Value<String?> notes,
+      Value<String?> driveUrl,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -13953,6 +14006,7 @@ typedef $$TripsTableUpdateCompanionBuilder =
       Value<String?> coverImagePath,
       Value<TripStyle?> themeStyle,
       Value<String?> notes,
+      Value<String?> driveUrl,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -14267,6 +14321,11 @@ class $$TripsTableFilterComposer extends Composer<_$AppDatabase, $TripsTable> {
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get driveUrl => $composableBuilder(
+    column: $table.driveUrl,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14641,6 +14700,11 @@ class $$TripsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get driveUrl => $composableBuilder(
+    column: $table.driveUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -14720,6 +14784,9 @@ class $$TripsTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get driveUrl =>
+      $composableBuilder(column: $table.driveUrl, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -15061,6 +15128,7 @@ class $$TripsTableTableManager
                 Value<String?> coverImagePath = const Value.absent(),
                 Value<TripStyle?> themeStyle = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<String?> driveUrl = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -15080,6 +15148,7 @@ class $$TripsTableTableManager
                 coverImagePath: coverImagePath,
                 themeStyle: themeStyle,
                 notes: notes,
+                driveUrl: driveUrl,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -15101,6 +15170,7 @@ class $$TripsTableTableManager
                 Value<String?> coverImagePath = const Value.absent(),
                 Value<TripStyle?> themeStyle = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<String?> driveUrl = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -15120,6 +15190,7 @@ class $$TripsTableTableManager
                 coverImagePath: coverImagePath,
                 themeStyle: themeStyle,
                 notes: notes,
+                driveUrl: driveUrl,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

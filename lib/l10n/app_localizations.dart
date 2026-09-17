@@ -933,6 +933,66 @@ abstract class AppLocalizations {
   /// In it, this message translates to:
   /// **'Vuoi eliminare \"{name}\"?'**
   String bachecaDeleteConfirm(String name);
+
+  /// No description provided for @tripDriveSection.
+  ///
+  /// In it, this message translates to:
+  /// **'Foto e Drive'**
+  String get tripDriveSection;
+
+  /// No description provided for @tripDriveLink.
+  ///
+  /// In it, this message translates to:
+  /// **'Link cartella Drive'**
+  String get tripDriveLink;
+
+  /// No description provided for @tripDriveHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Un link a una cartella Drive per condividere le foto del viaggio con il gruppo.'**
+  String get tripDriveHint;
+
+  /// No description provided for @tripDriveCreate.
+  ///
+  /// In it, this message translates to:
+  /// **'Crea cartella Drive'**
+  String get tripDriveCreate;
+
+  /// No description provided for @tripDriveNeedName.
+  ///
+  /// In it, this message translates to:
+  /// **'Inserisci prima il nome del viaggio'**
+  String get tripDriveNeedName;
+
+  /// No description provided for @tripDriveCreated.
+  ///
+  /// In it, this message translates to:
+  /// **'Cartella Drive creata e link inserito'**
+  String get tripDriveCreated;
+
+  /// No description provided for @tripDriveError.
+  ///
+  /// In it, this message translates to:
+  /// **'Creazione della cartella Drive non riuscita'**
+  String get tripDriveError;
+
+  /// No description provided for @tripDrivePhotos.
+  ///
+  /// In it, this message translates to:
+  /// **'Foto del viaggio'**
+  String get tripDrivePhotos;
+
+  /// No description provided for @tripDriveOpen.
+  ///
+  /// In it, this message translates to:
+  /// **'Apri la cartella Drive condivisa'**
+  String get tripDriveOpen;
+
+  /// No description provided for @tripDriveOpenError.
+  ///
+  /// In it, this message translates to:
+  /// **'Impossibile aprire il link'**
+  String get tripDriveOpenError;
 }
 
 class _AppLocalizationsDelegate

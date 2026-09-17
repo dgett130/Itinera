@@ -82,6 +82,7 @@ List<SyncTable> buildSyncTables(AppDatabase db) => [
         'cover_image_path': t.coverImagePath,
         'theme_style': t.themeStyle?.name,
         'notes': t.notes,
+        'drive_url': t.driveUrl,
         'created_at': _dt(t.createdAt),
       };
     },
@@ -111,6 +112,7 @@ List<SyncTable> buildSyncTables(AppDatabase db) => [
                 _enumOrNull(TripStyle.values, m['theme_style']),
               ),
               notes: Value(m['notes'] as String?),
+              driveUrl: Value(m['drive_url'] as String?),
               createdAt: Value(_pd(m['created_at']) ?? DateTime.now()),
               updatedAt: Value(DateTime.now()),
             ),

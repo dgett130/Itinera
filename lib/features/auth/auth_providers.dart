@@ -27,6 +27,17 @@ final currentUserProvider = Provider<User?>((ref) {
   return _clientOrNull?.auth.currentUser;
 });
 
+/// True se l'utente corrente ha l'account Google collegato (login via Google):
+/// abilita azioni come la creazione della cartella Drive dall'app.
+final googleLinkedProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  final providers = user.appMetadata['providers'];
+  if (providers is List && providers.contains('google')) return true;
+  if (user.appMetadata['provider'] == 'google') return true;
+  return (user.identities ?? const []).any((i) => i.provider == 'google');
+});
+
 /// Profilo dell'utente corrente (null se non loggato).
 final profileProvider = FutureProvider<Profile?>((ref) async {
   final user = ref.watch(currentUserProvider);
