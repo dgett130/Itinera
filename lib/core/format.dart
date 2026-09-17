@@ -37,6 +37,15 @@ class Fmt {
 
   static String dayMonth(DateTime d) => _dayMonth.format(d);
 
+  /// Dimensione file leggibile: "820 KB", "3,4 MB".
+  static String fileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    final kb = bytes / 1024;
+    if (kb < 1024) return '${kb.round()} KB';
+    final mb = kb / 1024;
+    return '${_decimal1.format(mb)} MB';
+  }
+
   /// Minuti-da-mezzanotte -> "09:30". Ritorna "--:--" se null.
   static String timeOfDayMinutes(int? minutes) {
     if (minutes == null) return '--:--';

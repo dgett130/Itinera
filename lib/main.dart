@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -7,6 +9,7 @@ import 'app.dart';
 import 'core/supabase_config.dart';
 import 'data/database.dart';
 import 'data/seed.dart';
+import 'features/notifications/push_service.dart';
 import 'providers.dart';
 import 'router.dart';
 
@@ -37,6 +40,16 @@ Future<void> main() async {
     } catch (_) {
       supabaseReady = false;
     }
+  }
+
+  // Inizializzazione Firebase (per le notifiche push). Non fatale: se manca la
+  // config o fallisce, l'app continua senza push.
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    firebaseReady = true;
+  } catch (_) {
+    firebaseReady = false;
   }
 
   // Apertura DB + caricamento dati di default e viaggio di esempio.

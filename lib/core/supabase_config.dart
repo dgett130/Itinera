@@ -45,3 +45,7 @@ class SupabaseConfig {
 /// (impostato in `main()`); i provider auth lo usano per non toccare
 /// `Supabase.instance` quando l'inizializzazione e' fallita o assente.
 bool supabaseReady = false;
+
+/// Diventa `true` dopo un `Firebase.initializeApp` andato a buon fine (in
+/// `main()`). Se `false`, il push FCM e' disattivato ma l'app funziona lo stesso.
+bool firebaseReady = false;

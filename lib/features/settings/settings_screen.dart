@@ -14,6 +14,7 @@ import '../../providers.dart';
 import '../../ui/itinera_theme.dart';
 import '../../ui/widgets.dart';
 import '../auth/auth_providers.dart';
+import '../notifications/notifications_providers.dart';
 import 'theme_controller.dart';
 
 /// Impostazioni: modalita', backup/ripristino, valori carburante.
@@ -32,6 +33,10 @@ class SettingsScreen extends ConsumerWidget {
           const _AccountCard(),
           SectionHeader('Aspetto'),
           const ItineraCard(child: _ThemeSelector()),
+          if (SupabaseConfig.hasCredentials && supabaseReady) ...[
+            SectionHeader('Notifiche'),
+            const _NotificationsSettingsCard(),
+          ],
           SectionHeader('Backup ed esporta'),
           ItineraCard(
             padding: EdgeInsets.zero,
@@ -167,6 +172,40 @@ class SettingsScreen extends ConsumerWidget {
         SnackBar(content: Text('Errore nell\'importazione: $e')),
       );
     }
+  }
+}
+
+class _NotificationsSettingsCard extends ConsumerWidget {
+  const _NotificationsSettingsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
+    final isAdmin = ref.watch(isAdminProvider).value ?? false;
+    return ItineraCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          ListTile(
+            leading: Icon(Icons.notifications_none_outlined, color: tokens.accent),
+            title: const Text('Preferenze notifiche'),
+            subtitle: const Text('Scegli quali avvisi ricevere'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/notifications'),
+          ),
+          if (isAdmin) ...[
+            Divider(height: 1, color: tokens.hairline),
+            ListTile(
+              leading: Icon(Icons.campaign_outlined, color: tokens.accent),
+              title: const Text('Invia messaggio di sistema'),
+              subtitle: const Text('Solo amministratori'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/admin/message'),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

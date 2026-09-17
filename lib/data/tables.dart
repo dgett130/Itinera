@@ -66,6 +66,10 @@ class Trips extends Table {
   /// per retrocompatibilita' con i backup/sync precedenti alla v3.
   TextColumn get themeStyle => textEnum<TripStyle>().nullable()();
   TextColumn get notes => text().nullable()();
+
+  /// Link a una cartella Drive condivisa per le foto del viaggio (schema v7).
+  /// Inserito a mano o creato dall'app se l'account Google e' collegato.
+  TextColumn get driveUrl => text().nullable()();
   DateTimeColumn get createdAt => dateTime().clientDefault(DateTime.now)();
   DateTimeColumn get updatedAt => dateTime().clientDefault(DateTime.now)();
 
@@ -476,4 +480,28 @@ class PoiCacheEntries extends Table {
 
   @override
   Set<Column> get primaryKey => {cacheKey};
+}
+
+/// Un file della "bacheca" del viaggio (documento condiviso: biglietti,
+/// programmi, PDF, immagini). Il file vive su Supabase Storage; qui restano i
+/// metadati, sincronizzati (cosi' la lista appare su tutti i device/collaboratori).
+/// Schema v6.
+class TripFiles extends Table {
+  TextColumn get id => text()();
+  TextColumn get tripId =>
+      text().references(Trips, #id, onDelete: KeyAction.cascade)();
+  TextColumn get name => text()();
+
+  /// Percorso nel bucket Storage (convenzione: `<tripId>/<id>`).
+  TextColumn get storagePath => text()();
+  TextColumn get mimeType => text().nullable()();
+  IntColumn get sizeBytes => integer().nullable()();
+
+  /// Id dell'utente che ha caricato il file (per mostrare "chi").
+  TextColumn get uploadedBy => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().clientDefault(DateTime.now)();
+  DateTimeColumn get updatedAt => dateTime().clientDefault(DateTime.now)();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }

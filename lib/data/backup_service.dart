@@ -14,10 +14,11 @@ class BackupService {
 
   final AppDatabase _db;
 
-  // v2: aggiunge i percorsi di visita (sightseeing_routes/stops). La cache POI
-  // non viene inclusa nei backup. I backup v1 restano importabili (le chiavi
-  // mancanti diventano liste vuote).
-  static const int backupVersion = 2;
+  // v2: aggiunge i percorsi di visita (sightseeing_routes/stops).
+  // v3: aggiunge la bacheca (trip_files); i file veri stanno su Storage, qui
+  // solo i metadati. La cache POI non viene inclusa nei backup. I backup piu'
+  // vecchi restano importabili (le chiavi mancanti diventano liste vuote).
+  static const int backupVersion = 3;
 
   Future<String> exportJson() async {
     final tables = <String, dynamic>{
@@ -41,6 +42,7 @@ class BackupService {
       'sightseeingRouteStops': await _dump(
         _db.select(_db.sightseeingRouteStops),
       ),
+      'tripFiles': await _dump(_db.select(_db.tripFiles)),
     };
     final root = <String, dynamic>{
       'app': 'itinera',
@@ -74,6 +76,7 @@ class BackupService {
 
     await _db.transaction(() async {
       // Cancella dai figli verso i genitori.
+      await _db.delete(_db.tripFiles).go();
       await _db.delete(_db.sightseeingRouteStops).go();
       await _db.delete(_db.sightseeingRoutes).go();
       await _db.delete(_db.activities).go();
@@ -161,6 +164,9 @@ class BackupService {
         await _db
             .into(_db.sightseeingRouteStops)
             .insert(SightseeingRouteStop.fromJson(j));
+      }
+      for (final j in rows('tripFiles')) {
+        await _db.into(_db.tripFiles).insert(TripFile.fromJson(j));
       }
     });
   }

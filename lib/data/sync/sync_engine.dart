@@ -147,6 +147,17 @@ class SyncEngine {
         e.message.toLowerCase().contains('jwt');
   }
 
+  /// La tabella non esiste ancora su Supabase (schema SQL non eseguito). Cosi'
+  /// un client aggiornato prima dello schema non manda tutto il sync in errore.
+  bool _isMissingTable(PostgrestException e) {
+    final c = e.code ?? '';
+    if (c == '42P01' || c == 'PGRST205') return true;
+    final m = e.message.toLowerCase();
+    return m.contains('does not exist') ||
+        m.contains('could not find the table') ||
+        m.contains('schema cache');
+  }
+
   /// Sessione non piu' valida (token scaduto/revocato): esce, cosi' il
   /// RootGate riporta alla schermata di accesso.
   Future<void> _forceReauth() async {
@@ -228,25 +239,36 @@ class SyncEngine {
         await _dropOutbox(tbl, id);
         continue;
       }
-      if (op == 'delete') {
-        await client.from(tbl).update({
-          'deleted_at': _nowIso(),
-          'updated_at': _nowIso(),
-        }).eq('id', id);
-      } else {
-        final map = await spec.toRemote(db, id);
-        if (map != null) {
-          // owner_id esplicito (il default auth.uid() non e' affidabile per la
-          // WITH CHECK). Per i viaggi condivisi, un trigger DB impedisce che
-          // owner_id di `trips` cambi in update (la proprieta' resta all'autore).
-          map['owner_id'] = userId;
-          map['updated_at'] = _nowIso();
-          map['deleted_at'] = null;
-          await client.from(tbl).upsert(map);
-          // La membership 'owner' e' creata dal trigger DB add_owner_membership
-          // all'INSERT del viaggio: nessuna auto-iscrizione lato client (che
-          // altrimenti farebbe auto-iscrivere owner anche chi non lo e').
+      try {
+        if (op == 'delete') {
+          await client.from(tbl).update({
+            'deleted_at': _nowIso(),
+            'updated_at': _nowIso(),
+          }).eq('id', id);
+        } else {
+          final map = await spec.toRemote(db, id);
+          if (map != null) {
+            // owner_id esplicito (il default auth.uid() non e' affidabile per la
+            // WITH CHECK). Per i viaggi condivisi, un trigger DB impedisce che
+            // owner_id di `trips` cambi in update (la proprieta' resta all'autore).
+            map['owner_id'] = userId;
+            map['updated_at'] = _nowIso();
+            map['deleted_at'] = null;
+            await client.from(tbl).upsert(map);
+            // La membership 'owner' e' creata dal trigger DB add_owner_membership
+            // all'INSERT del viaggio: nessuna auto-iscrizione lato client (che
+            // altrimenti farebbe auto-iscrivere owner anche chi non lo e').
+          }
         }
+      } on PostgrestException catch (e) {
+        // Tabella non ancora presente su Supabase (client aggiornato prima
+        // dello schema SQL): lascio la riga in coda, verra' spinta dopo. Non
+        // mando l'intero sync in errore.
+        if (_isMissingTable(e)) {
+          debugPrint('[sync] push skip $tbl: tabella assente su Supabase');
+          continue;
+        }
+        rethrow;
       }
       await _dropOutbox(tbl, id);
     }
@@ -259,11 +281,21 @@ class SyncEngine {
     for (final name in AppDatabase.syncedTables) {
       final spec = _tables[name]!;
       final wm = await _getState('pull_wm_$name') ?? '1970-01-01T00:00:00.000Z';
-      final remote = await client
-          .from(name)
-          .select()
-          .gt('updated_at', wm)
-          .order('updated_at', ascending: true);
+      final List<dynamic> remote;
+      try {
+        remote = await client
+            .from(name)
+            .select()
+            .gt('updated_at', wm)
+            .order('updated_at', ascending: true);
+      } on PostgrestException catch (e) {
+        // Tabella non ancora creata su Supabase: salto senza rompere il pull.
+        if (_isMissingTable(e)) {
+          debugPrint('[sync] pull skip $name: tabella assente su Supabase');
+          continue;
+        }
+        rethrow;
+      }
       if (remote.isEmpty) continue;
 
       final pending = <String>{

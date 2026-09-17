@@ -843,6 +843,384 @@ abstract class AppLocalizations {
   /// In it, this message translates to:
   /// **'min'**
   String get unitMin;
+
+  /// No description provided for @bachecaTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Bacheca'**
+  String get bachecaTitle;
+
+  /// No description provided for @bachecaModuleSubtitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Documenti e file condivisi del viaggio'**
+  String get bachecaModuleSubtitle;
+
+  /// No description provided for @bachecaAdd.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiungi file'**
+  String get bachecaAdd;
+
+  /// No description provided for @bachecaOpen.
+  ///
+  /// In it, this message translates to:
+  /// **'Apri'**
+  String get bachecaOpen;
+
+  /// No description provided for @bachecaDownload.
+  ///
+  /// In it, this message translates to:
+  /// **'Scarica'**
+  String get bachecaDownload;
+
+  /// No description provided for @bachecaDownloaded.
+  ///
+  /// In it, this message translates to:
+  /// **'File salvato sul dispositivo'**
+  String get bachecaDownloaded;
+
+  /// No description provided for @bachecaDownloadError.
+  ///
+  /// In it, this message translates to:
+  /// **'Download non riuscito'**
+  String get bachecaDownloadError;
+
+  /// No description provided for @bachecaShare.
+  ///
+  /// In it, this message translates to:
+  /// **'Condividi'**
+  String get bachecaShare;
+
+  /// No description provided for @bachecaOpenExternal.
+  ///
+  /// In it, this message translates to:
+  /// **'Apri esternamente'**
+  String get bachecaOpenExternal;
+
+  /// No description provided for @bachecaEmptyTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Nessun file'**
+  String get bachecaEmptyTitle;
+
+  /// No description provided for @bachecaEmptyMessage.
+  ///
+  /// In it, this message translates to:
+  /// **'Carica biglietti, programmi e documenti da condividere con il gruppo.'**
+  String get bachecaEmptyMessage;
+
+  /// No description provided for @bachecaNoAccountTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Serve un account'**
+  String get bachecaNoAccountTitle;
+
+  /// No description provided for @bachecaNoAccountMessage.
+  ///
+  /// In it, this message translates to:
+  /// **'Accedi per caricare e condividere i file del viaggio.'**
+  String get bachecaNoAccountMessage;
+
+  /// No description provided for @bachecaUploaded.
+  ///
+  /// In it, this message translates to:
+  /// **'File caricato'**
+  String get bachecaUploaded;
+
+  /// No description provided for @bachecaUploadError.
+  ///
+  /// In it, this message translates to:
+  /// **'Caricamento non riuscito'**
+  String get bachecaUploadError;
+
+  /// No description provided for @bachecaTooBig.
+  ///
+  /// In it, this message translates to:
+  /// **'File troppo grande (max 25 MB)'**
+  String get bachecaTooBig;
+
+  /// No description provided for @bachecaOpenError.
+  ///
+  /// In it, this message translates to:
+  /// **'Impossibile aprire il file'**
+  String get bachecaOpenError;
+
+  /// No description provided for @bachecaDeleted.
+  ///
+  /// In it, this message translates to:
+  /// **'File eliminato'**
+  String get bachecaDeleted;
+
+  /// No description provided for @bachecaDeleteError.
+  ///
+  /// In it, this message translates to:
+  /// **'Eliminazione non riuscita'**
+  String get bachecaDeleteError;
+
+  /// No description provided for @bachecaDeleteConfirm.
+  ///
+  /// In it, this message translates to:
+  /// **'Vuoi eliminare \"{name}\"?'**
+  String bachecaDeleteConfirm(String name);
+
+  /// No description provided for @tripDriveSection.
+  ///
+  /// In it, this message translates to:
+  /// **'Foto e Drive'**
+  String get tripDriveSection;
+
+  /// No description provided for @tripDriveLink.
+  ///
+  /// In it, this message translates to:
+  /// **'Link cartella Drive'**
+  String get tripDriveLink;
+
+  /// No description provided for @tripDriveHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Un link a una cartella Drive per condividere le foto del viaggio con il gruppo.'**
+  String get tripDriveHint;
+
+  /// No description provided for @tripDriveCreate.
+  ///
+  /// In it, this message translates to:
+  /// **'Crea cartella Drive'**
+  String get tripDriveCreate;
+
+  /// No description provided for @tripDriveNeedName.
+  ///
+  /// In it, this message translates to:
+  /// **'Inserisci prima il nome del viaggio'**
+  String get tripDriveNeedName;
+
+  /// No description provided for @tripDriveCreated.
+  ///
+  /// In it, this message translates to:
+  /// **'Cartella Drive creata e link inserito'**
+  String get tripDriveCreated;
+
+  /// No description provided for @tripDriveError.
+  ///
+  /// In it, this message translates to:
+  /// **'Creazione della cartella Drive non riuscita'**
+  String get tripDriveError;
+
+  /// No description provided for @tripDrivePhotos.
+  ///
+  /// In it, this message translates to:
+  /// **'Foto del viaggio'**
+  String get tripDrivePhotos;
+
+  /// No description provided for @tripDriveOpen.
+  ///
+  /// In it, this message translates to:
+  /// **'Apri la cartella Drive condivisa'**
+  String get tripDriveOpen;
+
+  /// No description provided for @tripDriveOpenError.
+  ///
+  /// In it, this message translates to:
+  /// **'Impossibile aprire il link'**
+  String get tripDriveOpenError;
+
+  /// No description provided for @notificationsTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Notifiche'**
+  String get notificationsTitle;
+
+  /// No description provided for @notificationsMarkAllRead.
+  ///
+  /// In it, this message translates to:
+  /// **'Segna lette'**
+  String get notificationsMarkAllRead;
+
+  /// No description provided for @notificationsEmptyTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Nessuna notifica'**
+  String get notificationsEmptyTitle;
+
+  /// No description provided for @notificationsEmptyMessage.
+  ///
+  /// In it, this message translates to:
+  /// **'Qui vedrai richieste di amicizia, viaggi condivisi e nuovi documenti.'**
+  String get notificationsEmptyMessage;
+
+  /// No description provided for @notificationsPrefsTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Preferenze notifiche'**
+  String get notificationsPrefsTitle;
+
+  /// No description provided for @notificationsPushMaster.
+  ///
+  /// In it, this message translates to:
+  /// **'Notifiche push'**
+  String get notificationsPushMaster;
+
+  /// No description provided for @notificationsPushMasterHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Ricevi avvisi anche quando l\'app è chiusa'**
+  String get notificationsPushMasterHint;
+
+  /// No description provided for @notificationsCategories.
+  ///
+  /// In it, this message translates to:
+  /// **'Categorie'**
+  String get notificationsCategories;
+
+  /// No description provided for @notificationsFriendRequests.
+  ///
+  /// In it, this message translates to:
+  /// **'Richieste di amicizia'**
+  String get notificationsFriendRequests;
+
+  /// No description provided for @notificationsSharedTrips.
+  ///
+  /// In it, this message translates to:
+  /// **'Viaggi condivisi con me'**
+  String get notificationsSharedTrips;
+
+  /// No description provided for @notificationsNewDocuments.
+  ///
+  /// In it, this message translates to:
+  /// **'Nuovi documenti in bacheca'**
+  String get notificationsNewDocuments;
+
+  /// No description provided for @notificationsSystemMessages.
+  ///
+  /// In it, this message translates to:
+  /// **'Messaggi di sistema'**
+  String get notificationsSystemMessages;
+
+  /// No description provided for @notificationsLocalSection.
+  ///
+  /// In it, this message translates to:
+  /// **'Scadenze (locali)'**
+  String get notificationsLocalSection;
+
+  /// No description provided for @notificationsDeadlines.
+  ///
+  /// In it, this message translates to:
+  /// **'Promemoria scadenze'**
+  String get notificationsDeadlines;
+
+  /// No description provided for @notificationsDeadlinesHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Avvisi prima della partenza (valigia, backup). Restano sul dispositivo.'**
+  String get notificationsDeadlinesHint;
+
+  /// No description provided for @notificationsPrefsFooter.
+  ///
+  /// In it, this message translates to:
+  /// **'Le preferenze valgono per tutti i tuoi dispositivi. Se disattivi le notifiche push non riceverai avvisi ad app chiusa.'**
+  String get notificationsPrefsFooter;
+
+  /// No description provided for @timeJustNow.
+  ///
+  /// In it, this message translates to:
+  /// **'adesso'**
+  String get timeJustNow;
+
+  /// No description provided for @timeMinutesAgo.
+  ///
+  /// In it, this message translates to:
+  /// **'{count} min fa'**
+  String timeMinutesAgo(int count);
+
+  /// No description provided for @timeHoursAgo.
+  ///
+  /// In it, this message translates to:
+  /// **'{count} h fa'**
+  String timeHoursAgo(int count);
+
+  /// No description provided for @timeDaysAgo.
+  ///
+  /// In it, this message translates to:
+  /// **'{count} g fa'**
+  String timeDaysAgo(int count);
+
+  /// No description provided for @adminMsgTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Messaggio di sistema'**
+  String get adminMsgTitle;
+
+  /// No description provided for @adminMsgFieldTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Titolo'**
+  String get adminMsgFieldTitle;
+
+  /// No description provided for @adminMsgFieldBody.
+  ///
+  /// In it, this message translates to:
+  /// **'Testo'**
+  String get adminMsgFieldBody;
+
+  /// No description provided for @adminMsgRecipients.
+  ///
+  /// In it, this message translates to:
+  /// **'Destinatari'**
+  String get adminMsgRecipients;
+
+  /// No description provided for @adminMsgAll.
+  ///
+  /// In it, this message translates to:
+  /// **'Tutti'**
+  String get adminMsgAll;
+
+  /// No description provided for @adminMsgOneUser.
+  ///
+  /// In it, this message translates to:
+  /// **'Un utente'**
+  String get adminMsgOneUser;
+
+  /// No description provided for @adminMsgUser.
+  ///
+  /// In it, this message translates to:
+  /// **'Scegli un utente'**
+  String get adminMsgUser;
+
+  /// No description provided for @adminMsgMyself.
+  ///
+  /// In it, this message translates to:
+  /// **'Io (me stesso)'**
+  String get adminMsgMyself;
+
+  /// No description provided for @adminMsgNoFriends.
+  ///
+  /// In it, this message translates to:
+  /// **'Nessun contatto: aggiungi amici per inviare a un singolo utente.'**
+  String get adminMsgNoFriends;
+
+  /// No description provided for @adminMsgPickUser.
+  ///
+  /// In it, this message translates to:
+  /// **'Scegli un utente destinatario'**
+  String get adminMsgPickUser;
+
+  /// No description provided for @adminMsgSend.
+  ///
+  /// In it, this message translates to:
+  /// **'Invia'**
+  String get adminMsgSend;
+
+  /// No description provided for @adminMsgSent.
+  ///
+  /// In it, this message translates to:
+  /// **'Inviato a {count} destinatari'**
+  String adminMsgSent(int count);
+
+  /// No description provided for @adminMsgError.
+  ///
+  /// In it, this message translates to:
+  /// **'Invio non riuscito'**
+  String get adminMsgError;
 }
 
 class _AppLocalizationsDelegate
