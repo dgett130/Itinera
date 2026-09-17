@@ -843,6 +843,96 @@ abstract class AppLocalizations {
   /// In it, this message translates to:
   /// **'min'**
   String get unitMin;
+
+  /// No description provided for @bachecaTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Bacheca'**
+  String get bachecaTitle;
+
+  /// No description provided for @bachecaModuleSubtitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Documenti e file condivisi del viaggio'**
+  String get bachecaModuleSubtitle;
+
+  /// No description provided for @bachecaAdd.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiungi file'**
+  String get bachecaAdd;
+
+  /// No description provided for @bachecaOpen.
+  ///
+  /// In it, this message translates to:
+  /// **'Apri'**
+  String get bachecaOpen;
+
+  /// No description provided for @bachecaEmptyTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Nessun file'**
+  String get bachecaEmptyTitle;
+
+  /// No description provided for @bachecaEmptyMessage.
+  ///
+  /// In it, this message translates to:
+  /// **'Carica biglietti, programmi e documenti da condividere con il gruppo.'**
+  String get bachecaEmptyMessage;
+
+  /// No description provided for @bachecaNoAccountTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Serve un account'**
+  String get bachecaNoAccountTitle;
+
+  /// No description provided for @bachecaNoAccountMessage.
+  ///
+  /// In it, this message translates to:
+  /// **'Accedi per caricare e condividere i file del viaggio.'**
+  String get bachecaNoAccountMessage;
+
+  /// No description provided for @bachecaUploaded.
+  ///
+  /// In it, this message translates to:
+  /// **'File caricato'**
+  String get bachecaUploaded;
+
+  /// No description provided for @bachecaUploadError.
+  ///
+  /// In it, this message translates to:
+  /// **'Caricamento non riuscito'**
+  String get bachecaUploadError;
+
+  /// No description provided for @bachecaTooBig.
+  ///
+  /// In it, this message translates to:
+  /// **'File troppo grande (max 25 MB)'**
+  String get bachecaTooBig;
+
+  /// No description provided for @bachecaOpenError.
+  ///
+  /// In it, this message translates to:
+  /// **'Impossibile aprire il file'**
+  String get bachecaOpenError;
+
+  /// No description provided for @bachecaDeleted.
+  ///
+  /// In it, this message translates to:
+  /// **'File eliminato'**
+  String get bachecaDeleted;
+
+  /// No description provided for @bachecaDeleteError.
+  ///
+  /// In it, this message translates to:
+  /// **'Eliminazione non riuscita'**
+  String get bachecaDeleteError;
+
+  /// No description provided for @bachecaDeleteConfirm.
+  ///
+  /// In it, this message translates to:
+  /// **'Vuoi eliminare \"{name}\"?'**
+  String bachecaDeleteConfirm(String name);
 }
 
 class _AppLocalizationsDelegate

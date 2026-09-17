@@ -137,5 +137,22 @@
   "unitKm": "km",
   "unitMeter": "m",
   "unitHour": "h",
-  "unitMin": "min"
+  "unitMin": "min",
+
+  "bachecaTitle": "Bacheca",
+  "bachecaModuleSubtitle": "Documenti e file condivisi del viaggio",
+  "bachecaAdd": "Aggiungi file",
+  "bachecaOpen": "Apri",
+  "bachecaEmptyTitle": "Nessun file",
+  "bachecaEmptyMessage": "Carica biglietti, programmi e documenti da condividere con il gruppo.",
+  "bachecaNoAccountTitle": "Serve un account",
+  "bachecaNoAccountMessage": "Accedi per caricare e condividere i file del viaggio.",
+  "bachecaUploaded": "File caricato",
+  "bachecaUploadError": "Caricamento non riuscito",
+  "bachecaTooBig": "File troppo grande (max 25 MB)",
+  "bachecaOpenError": "Impossibile aprire il file",
+  "bachecaDeleted": "File eliminato",
+  "bachecaDeleteError": "Eliminazione non riuscita",
+  "bachecaDeleteConfirm": "Vuoi eliminare \"{name}\"?",
+  "@bachecaDeleteConfirm": {"placeholders": {"name": {"type": "String"}}}
 }

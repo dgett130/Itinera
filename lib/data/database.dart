@@ -37,6 +37,7 @@ part 'database.g.dart';
     SightseeingRoutes,
     SightseeingRouteStops,
     PoiCacheEntries,
+    TripFiles,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -46,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forExecutor(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -87,6 +88,10 @@ class AppDatabase extends _$AppDatabase {
         // v5: un'attivita' puo' rappresentare un intero percorso di visita.
         await m.addColumn(activities, activities.routeId);
       }
+      if (from < 6) {
+        // v6: bacheca del viaggio (file/documenti condivisi).
+        await m.createTable(tripFiles);
+      }
     },
     beforeOpen: (details) async {
       // Necessario perche' CASCADE/SET NULL vengano applicate da SQLite.
@@ -116,6 +121,8 @@ class AppDatabase extends _$AppDatabase {
     'sightseeing_routes',
     'sightseeing_route_stops',
     'activities',
+    // Bacheca: referenzia solo trips (gia' in testa), ordine indifferente.
+    'trip_files',
   ];
 
   /// Crea (idempotente) la coda `_outbox`, lo stato `_sync_state` e i trigger

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/auth/password_reset_screen.dart';
 import 'features/auth/profile_screen.dart';
+import 'features/bacheca/bacheca_screen.dart';
 import 'features/explore/explore_screen.dart';
 import 'features/explore/route_builder_screen.dart';
 import 'features/friends/friends_screen.dart';
@@ -75,6 +76,11 @@ final appRouter = GoRouter(
       path: '/trip/:id/explore',
       builder: (context, state) =>
           ExploreScreen(tripId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/trip/:id/files',
+      builder: (context, state) =>
+          BachecaScreen(tripId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/trip/:id/route/:routeId',

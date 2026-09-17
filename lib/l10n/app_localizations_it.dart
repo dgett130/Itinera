@@ -398,4 +398,53 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get unitMin => 'min';
+
+  @override
+  String get bachecaTitle => 'Bacheca';
+
+  @override
+  String get bachecaModuleSubtitle => 'Documenti e file condivisi del viaggio';
+
+  @override
+  String get bachecaAdd => 'Aggiungi file';
+
+  @override
+  String get bachecaOpen => 'Apri';
+
+  @override
+  String get bachecaEmptyTitle => 'Nessun file';
+
+  @override
+  String get bachecaEmptyMessage =>
+      'Carica biglietti, programmi e documenti da condividere con il gruppo.';
+
+  @override
+  String get bachecaNoAccountTitle => 'Serve un account';
+
+  @override
+  String get bachecaNoAccountMessage =>
+      'Accedi per caricare e condividere i file del viaggio.';
+
+  @override
+  String get bachecaUploaded => 'File caricato';
+
+  @override
+  String get bachecaUploadError => 'Caricamento non riuscito';
+
+  @override
+  String get bachecaTooBig => 'File troppo grande (max 25 MB)';
+
+  @override
+  String get bachecaOpenError => 'Impossibile aprire il file';
+
+  @override
+  String get bachecaDeleted => 'File eliminato';
+
+  @override
+  String get bachecaDeleteError => 'Eliminazione non riuscita';
+
+  @override
+  String bachecaDeleteConfirm(String name) {
+    return 'Vuoi eliminare \"$name\"?';
+  }
 }

@@ -693,4 +693,44 @@ List<SyncTable> buildSyncTables(AppDatabase db) => [
       db.sightseeingRouteStops,
     )..where((x) => x.id.equals(id))).go(),
   ),
+
+  // trip_files (bacheca del viaggio) ------------------------------------
+  SyncTable(
+    name: 'trip_files',
+    toRemote: (db, id) async {
+      final f = await (db.select(
+        db.tripFiles,
+      )..where((x) => x.id.equals(id))).getSingleOrNull();
+      if (f == null) return null;
+      return {
+        'id': f.id,
+        'trip_id': f.tripId,
+        'name': f.name,
+        'storage_path': f.storagePath,
+        'mime_type': f.mimeType,
+        'size_bytes': f.sizeBytes,
+        'uploaded_by': f.uploadedBy,
+        'created_at': _dt(f.createdAt),
+      };
+    },
+    applyRemote: (db, m) async {
+      await db
+          .into(db.tripFiles)
+          .insertOnConflictUpdate(
+            TripFilesCompanion(
+              id: Value(m['id'] as String),
+              tripId: Value(m['trip_id'] as String),
+              name: Value(m['name'] as String? ?? ''),
+              storagePath: Value(m['storage_path'] as String? ?? ''),
+              mimeType: Value(m['mime_type'] as String?),
+              sizeBytes: Value(_pi(m['size_bytes'])),
+              uploadedBy: Value(m['uploaded_by'] as String?),
+              createdAt: Value(_pd(m['created_at']) ?? DateTime.now()),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
+    },
+    deleteLocal: (db, id) =>
+        (db.delete(db.tripFiles)..where((x) => x.id.equals(id))).go(),
+  ),
 ];

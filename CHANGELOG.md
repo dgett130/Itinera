@@ -25,6 +25,10 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   giorno; toccandolo si riapre il percorso (mappa + tappe).
 - Coordinate della destinazione salvate dall'autocomplete (invalidate se il
   testo è modificato a mano).
+- **Bacheca del viaggio**: carica e condividi file e documenti (biglietti,
+  programmi…) tra i partecipanti. I byte stanno su Supabase Storage (bucket
+  privato, apertura via link firmato); l'elenco è consultabile offline. Limite
+  25 MB per file, eliminazione con conferma.
 
 ### Modificato
 - **Animazioni UI**: apertura del viaggio con Hero (la card della lista si
@@ -39,10 +43,15 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   bloccare l'intera sincronizzazione.
 
 ### Note tecniche
-- Migrazione database **v3 → v5** (non distruttiva); **backup v2**
+- Migrazione database **v3 → v6** (non distruttiva); **backup v3**
   retrocompatibile; `duplicateTrip` copia luoghi, percorsi e tappe.
-- Nuovo schema Supabase: eseguire **`docs/supabase/explore.sql`** (tabelle + RLS
-  + realtime) prima di distribuire la feature ai collaboratori.
+- Nuovo schema Supabase: eseguire **`docs/supabase/explore.sql`** e
+  **`docs/supabase/bacheca.sql`** (tabelle + RLS + realtime; la bacheca crea
+  anche il bucket Storage `trip-files` con le sue policy) prima di distribuire
+  le feature ai collaboratori.
+- Sync più tollerante: se una tabella non esiste ancora su Supabase (client
+  aggiornato prima dello schema SQL) il motore la salta invece di andare in
+  errore.
 
 ## [1.2.2] - 2026-09-10
 

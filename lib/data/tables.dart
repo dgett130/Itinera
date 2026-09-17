@@ -477,3 +477,27 @@ class PoiCacheEntries extends Table {
   @override
   Set<Column> get primaryKey => {cacheKey};
 }
+
+/// Un file della "bacheca" del viaggio (documento condiviso: biglietti,
+/// programmi, PDF, immagini). Il file vive su Supabase Storage; qui restano i
+/// metadati, sincronizzati (cosi' la lista appare su tutti i device/collaboratori).
+/// Schema v6.
+class TripFiles extends Table {
+  TextColumn get id => text()();
+  TextColumn get tripId =>
+      text().references(Trips, #id, onDelete: KeyAction.cascade)();
+  TextColumn get name => text()();
+
+  /// Percorso nel bucket Storage (convenzione: `<tripId>/<id>`).
+  TextColumn get storagePath => text()();
+  TextColumn get mimeType => text().nullable()();
+  IntColumn get sizeBytes => integer().nullable()();
+
+  /// Id dell'utente che ha caricato il file (per mostrare "chi").
+  TextColumn get uploadedBy => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().clientDefault(DateTime.now)();
+  DateTimeColumn get updatedAt => dateTime().clientDefault(DateTime.now)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}

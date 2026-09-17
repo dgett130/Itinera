@@ -13,6 +13,7 @@ import '../../l10n/app_localizations.dart';
 import '../../ui/itinera_theme.dart';
 import '../../ui/signatures.dart';
 import '../../ui/widgets.dart';
+import '../bacheca/bacheca_providers.dart';
 import '../itinerary/itinerary_providers.dart';
 import '../packing/packing_providers.dart';
 import '../transport/transport_providers.dart';
@@ -134,6 +135,8 @@ class _TripDetailBody extends ConsumerWidget {
                   subtitle: l10n.exploreModuleSubtitle,
                   onTap: () => context.push('/trip/$tripId/explore'),
                 ),
+                const SizedBox(height: 12),
+                _BachecaModuleCard(tripId: tripId),
                 if (trip.notes != null && trip.notes!.trim().isNotEmpty) ...[
                   SectionHeader(l10n.commonNotes),
                   ItineraCard(
@@ -344,6 +347,26 @@ class _TransportModuleCard extends ConsumerWidget {
       title: l10n.sectionTransport,
       subtitle: subtitle,
       onTap: () => context.push('/trip/$tripId/transport'),
+    );
+  }
+}
+
+class _BachecaModuleCard extends ConsumerWidget {
+  const _BachecaModuleCard({required this.tripId});
+  final String tripId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final files = ref.watch(tripFilesProvider(tripId)).value ?? const [];
+    final subtitle = files.isEmpty
+        ? l10n.bachecaModuleSubtitle
+        : (files.length == 1 ? '1 file' : '${files.length} file');
+    return _ModuleCard(
+      icon: Icons.folder_shared_outlined,
+      title: l10n.bachecaTitle,
+      subtitle: subtitle,
+      onTap: () => context.push('/trip/$tripId/files'),
     );
   }
 }
