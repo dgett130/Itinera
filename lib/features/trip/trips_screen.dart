@@ -80,7 +80,11 @@ class TripsScreen extends ConsumerWidget {
                           for (final t in past)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: _TripCard(trip: t, l10n: l10n, faded: true),
+                              child: _TripCard(
+                                trip: t,
+                                l10n: l10n,
+                                faded: true,
+                              ),
                             ),
                         ],
                       ],
@@ -133,8 +137,9 @@ class _HomeHeader extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
                         count == 1 ? '1 viaggio' : '$count viaggi',
-                        style: context.texts.bodyMedium
-                            ?.copyWith(color: scheme.onSurfaceVariant),
+                        style: context.texts.bodyMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                 ],
@@ -182,7 +187,10 @@ class _TripCard extends ConsumerWidget {
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  _CoverTile(icon: trip.tripType.icon, colors: swatch),
+                  Hero(
+                    tag: 'trip-hero-${trip.id}',
+                    child: _CoverTile(icon: trip.tripType.icon, colors: swatch),
+                  ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
@@ -197,8 +205,9 @@ class _TripCard extends ConsumerWidget {
                         const SizedBox(height: 3),
                         Text(
                           _subtitle(),
-                          style: context.texts.bodySmall
-                              ?.copyWith(color: scheme.onSurfaceVariant),
+                          style: context.texts.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -370,12 +379,8 @@ class _TripMenu extends ConsumerWidget {
   }
 
   Widget _menuRow(IconData icon, String label) => Row(
-        children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 12),
-          Text(label),
-        ],
-      );
+    children: [Icon(icon, size: 20), const SizedBox(width: 12), Text(label)],
+  );
 
   Future<bool> _confirmDelete(BuildContext context) async {
     final result = await showDialog<bool>(

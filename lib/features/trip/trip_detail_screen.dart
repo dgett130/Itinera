@@ -115,6 +115,7 @@ class _TripDetailBody extends ConsumerWidget {
                   typeIcon: trip.tripType.icon,
                   kicker: _kicker(),
                   meta: _meta(l10n),
+                  heroTag: 'trip-hero-${trip.id}',
                 ),
                 const SizedBox(height: 16),
                 _StatsRow(trip: trip, l10n: l10n),

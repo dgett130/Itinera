@@ -549,12 +549,30 @@ class _RouteBuilderScreenState extends ConsumerState<RouteBuilderScreen> {
             ),
           ),
         if (label.isNotEmpty) const SizedBox(height: 4),
-        Text(
-          value,
-          textAlign: TextAlign.center,
-          style: small ? context.texts.bodySmall : context.texts.titleMedium,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+        // I valori (distanza/durata/fonte) scorrono e sfumano quando cambiano
+        // (ricalcolo, ottimizzazione, cambio mezzo).
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 320),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          transitionBuilder: (child, anim) => FadeTransition(
+            opacity: anim,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.35),
+                end: Offset.zero,
+              ).animate(anim),
+              child: child,
+            ),
+          ),
+          child: Text(
+            value,
+            key: ValueKey(value),
+            textAlign: TextAlign.center,
+            style: small ? context.texts.bodySmall : context.texts.titleMedium,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     );
