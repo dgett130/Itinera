@@ -291,6 +291,58 @@ class AppLocalizationsIt extends AppLocalizations {
   String get exploreCatOther => 'Altro';
 
   @override
+  String get placeOpeningHours => 'Orari di apertura';
+
+  @override
+  String get placeHoursUnknown => 'Non disponibili: verifica prima di andare';
+
+  @override
+  String placeVisitAbout(String duration) {
+    return 'Visita di circa $duration';
+  }
+
+  @override
+  String get placeVisitHint =>
+      'Stima indicativa: potrai cambiarla nel percorso';
+
+  @override
+  String get placeOpenInMaps => 'Apri in Mappe';
+
+  @override
+  String get placeAbout => 'Descrizione';
+
+  @override
+  String get placeWebsite => 'Sito web';
+
+  @override
+  String get placeNotes => 'Le tue note';
+
+  @override
+  String get placeNotesHint =>
+      'Es. prenotare, biglietto cumulativo, da vedere al tramonto…';
+
+  @override
+  String get placeNotesNeedSave => 'Salva il luogo per scrivere le tue note.';
+
+  @override
+  String get placeSave => 'Salva luogo';
+
+  @override
+  String get placeUnsave => 'Rimuovi dai salvati';
+
+  @override
+  String get placeSavedToast => 'Luogo salvato';
+
+  @override
+  String get placeRemovedToast => 'Luogo rimosso';
+
+  @override
+  String get placeRemoveFromRoute => 'Togli dal percorso';
+
+  @override
+  String get placeNoCoords => 'Posizione sulla mappa mancante';
+
+  @override
   String get routesTitle => 'Percorsi';
 
   @override

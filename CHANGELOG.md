@@ -10,6 +10,22 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ## [Non rilasciato]
 
+### Aggiunto
+- **Scheda del luogo** in "Luoghi e percorsi": toccando un luogo (pin sulla
+  mappa, elenco dei suggeriti, luoghi salvati, tappe del percorso) si apre un
+  pannello trascinabile con **orari di apertura in italiano leggibile**,
+  **durata di visita stimata**, indirizzo e "Apri in Mappe", descrizione, sito
+  web e **note personali** (salvate in automatico). Il pin sulla mappa non
+  salva più il luogo "alla cieca".
+
+### Modificato
+- Durate senza "0 min" superflui (es. "1 h" invece di "1 h 0 min").
+- Tappa senza posizione sulla mappa: messaggio chiaro invece di "Altro" in rosso.
+
+### Note tecniche
+- Redesign a passi di "Luoghi e percorsi" descritto in
+  **`docs/03-luoghi-e-percorsi-redesign.md`** (questo è l'incremento 1 di 5).
+
 ## [1.3.0] - 2026-09-17
 
 ### Aggiunto

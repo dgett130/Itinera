@@ -203,6 +203,16 @@ class ExploreRepository {
     return id;
   }
 
+  /// Aggiorna le note personali di un luogo (stringa vuota = nessuna nota).
+  Future<void> updateLocationNotes(String locationId, String notes) async {
+    final trimmed = notes.trim();
+    await (_db.update(
+      _db.locations,
+    )..where((l) => l.id.equals(locationId))).write(
+      LocationsCompanion(notes: Value(trimmed.isEmpty ? null : trimmed)),
+    );
+  }
+
   /// Elimina un luogo salvato SOLO se non e' usato da tappe di percorso o
   /// attivita' (evita cancellazioni a cascata inattese). Ritorna false se in
   /// uso.

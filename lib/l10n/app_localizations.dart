@@ -628,6 +628,102 @@ abstract class AppLocalizations {
   /// **'Altro'**
   String get exploreCatOther;
 
+  /// No description provided for @placeOpeningHours.
+  ///
+  /// In it, this message translates to:
+  /// **'Orari di apertura'**
+  String get placeOpeningHours;
+
+  /// No description provided for @placeHoursUnknown.
+  ///
+  /// In it, this message translates to:
+  /// **'Non disponibili: verifica prima di andare'**
+  String get placeHoursUnknown;
+
+  /// No description provided for @placeVisitAbout.
+  ///
+  /// In it, this message translates to:
+  /// **'Visita di circa {duration}'**
+  String placeVisitAbout(String duration);
+
+  /// No description provided for @placeVisitHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Stima indicativa: potrai cambiarla nel percorso'**
+  String get placeVisitHint;
+
+  /// No description provided for @placeOpenInMaps.
+  ///
+  /// In it, this message translates to:
+  /// **'Apri in Mappe'**
+  String get placeOpenInMaps;
+
+  /// No description provided for @placeAbout.
+  ///
+  /// In it, this message translates to:
+  /// **'Descrizione'**
+  String get placeAbout;
+
+  /// No description provided for @placeWebsite.
+  ///
+  /// In it, this message translates to:
+  /// **'Sito web'**
+  String get placeWebsite;
+
+  /// No description provided for @placeNotes.
+  ///
+  /// In it, this message translates to:
+  /// **'Le tue note'**
+  String get placeNotes;
+
+  /// No description provided for @placeNotesHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Es. prenotare, biglietto cumulativo, da vedere al tramonto…'**
+  String get placeNotesHint;
+
+  /// No description provided for @placeNotesNeedSave.
+  ///
+  /// In it, this message translates to:
+  /// **'Salva il luogo per scrivere le tue note.'**
+  String get placeNotesNeedSave;
+
+  /// No description provided for @placeSave.
+  ///
+  /// In it, this message translates to:
+  /// **'Salva luogo'**
+  String get placeSave;
+
+  /// No description provided for @placeUnsave.
+  ///
+  /// In it, this message translates to:
+  /// **'Rimuovi dai salvati'**
+  String get placeUnsave;
+
+  /// No description provided for @placeSavedToast.
+  ///
+  /// In it, this message translates to:
+  /// **'Luogo salvato'**
+  String get placeSavedToast;
+
+  /// No description provided for @placeRemovedToast.
+  ///
+  /// In it, this message translates to:
+  /// **'Luogo rimosso'**
+  String get placeRemovedToast;
+
+  /// No description provided for @placeRemoveFromRoute.
+  ///
+  /// In it, this message translates to:
+  /// **'Togli dal percorso'**
+  String get placeRemoveFromRoute;
+
+  /// No description provided for @placeNoCoords.
+  ///
+  /// In it, this message translates to:
+  /// **'Posizione sulla mappa mancante'**
+  String get placeNoCoords;
+
   /// No description provided for @routesTitle.
   ///
   /// In it, this message translates to:

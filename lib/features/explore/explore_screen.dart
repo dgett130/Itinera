@@ -19,6 +19,7 @@ import '../trip/trip_providers.dart';
 import 'explore_providers.dart';
 import 'explore_repository.dart';
 import 'explore_ui.dart';
+import 'place_sheet.dart';
 import 'poi_discovery_service.dart';
 import 'poi_parser.dart';
 
@@ -126,6 +127,65 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     } else {
       await repo.savePoi(widget.tripId, p);
     }
+  }
+
+  /// Distanza dal centro di ricerca, leggibile ("350 m dal centro").
+  String? _distanceLabel(double? lat, double? lng) {
+    final c = _center;
+    if (c == null || lat == null || lng == null) return null;
+    final l10n = AppLocalizations.of(context);
+    final m = const Distance().as(LengthUnit.Meter, c, LatLng(lat, lng));
+    return '${formatDistance(l10n, m)} ${l10n.exploreFromCenter}';
+  }
+
+  /// Scheda di un suggerimento: se è già salvato mostra il luogo salvato
+  /// (con note), altrimenti propone di salvarlo.
+  Future<void> _openSuggestion(PoiSuggestion p, List<Location> saved) async {
+    final match = saved.firstWhereOrNull(
+      (l) => l.externalProvider == p.provider && l.externalId == p.externalId,
+    );
+    if (match != null) return _openLocation(match);
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    await showPlaceSheet(
+      context,
+      place: PlaceInfo.fromSuggestion(p),
+      distanceLabel: _distanceLabel(p.lat, p.lng),
+      action: PlaceSheetAction(
+        label: l10n.placeSave,
+        icon: Icons.bookmark_add_outlined,
+        onPressed: () async {
+          await ref.read(exploreRepositoryProvider).savePoi(widget.tripId, p);
+          messenger.showSnackBar(SnackBar(content: Text(l10n.placeSavedToast)));
+        },
+      ),
+    );
+  }
+
+  /// Scheda di un luogo salvato (note modificabili, azione "Rimuovi").
+  Future<void> _openLocation(Location l) async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    await showPlaceSheet(
+      context,
+      place: PlaceInfo.fromLocation(l),
+      distanceLabel: _distanceLabel(l.latitude, l.longitude),
+      action: PlaceSheetAction(
+        label: l10n.placeUnsave,
+        icon: Icons.bookmark_remove_outlined,
+        destructive: true,
+        onPressed: () async {
+          final ok = await ref
+              .read(exploreRepositoryProvider)
+              .deleteSavedLocation(l.id);
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(ok ? l10n.placeRemovedToast : l10n.exploreInUse),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _newRoute() async {
@@ -283,10 +343,13 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         width: 34,
                         height: 34,
                         alignment: Alignment.topCenter,
-                        child: Icon(
-                          Icons.check_circle,
-                          color: context.tokens.accent,
-                          size: 30,
+                        child: GestureDetector(
+                          onTap: () => _openLocation(l),
+                          child: Icon(
+                            Icons.check_circle,
+                            color: context.tokens.accent,
+                            size: 30,
+                          ),
                         ),
                       ),
                     for (final p in pois)
@@ -296,7 +359,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           width: 30,
                           height: 30,
                           child: GestureDetector(
-                            onTap: () => _toggle(p, saved),
+                            onTap: () => _openSuggestion(p, saved),
                             child: Icon(
                               Icons.circle,
                               color: poiCategoryColor(p.category),
@@ -482,6 +545,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: ListTile(
         contentPadding: EdgeInsets.zero,
+        onTap: () => _openSuggestion(p, saved),
         leading: CircleAvatar(
           backgroundColor: poiCategoryColor(p.category).withValues(alpha: 0.15),
           child: Icon(
@@ -534,6 +598,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: ListTile(
               contentPadding: EdgeInsets.zero,
+              onTap: () => _openLocation(l),
               leading: Icon(
                 l.poiCategory != null
                     ? poiCategoryIcon(l.poiCategory!)

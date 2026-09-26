@@ -14,6 +14,7 @@ import '../itinerary/itinerary_providers.dart';
 import 'explore_providers.dart';
 import 'explore_ui.dart';
 import 'geo_codec.dart';
+import 'place_sheet.dart';
 import 'route_math.dart';
 
 /// Costruttore di un percorso di visita: riordino drag&drop, mezzo, partenza/
@@ -224,6 +225,26 @@ class _RouteBuilderScreenState extends ConsumerState<RouteBuilderScreen> {
     }
   }
 
+  /// Scheda della tappa (dettagli + note) con l'azione "Togli dal percorso".
+  Future<void> _openStop(SightseeingRouteStop stop, Location location) async {
+    final l10n = AppLocalizations.of(context);
+    await showPlaceSheet(
+      context,
+      place: PlaceInfo.fromLocation(location),
+      action: PlaceSheetAction(
+        label: l10n.placeRemoveFromRoute,
+        icon: Icons.remove_circle_outline,
+        destructive: true,
+        onPressed: () async {
+          await ref
+              .read(sightseeingRouteRepositoryProvider)
+              .removeStop(stop.id);
+          await _recompute();
+        },
+      ),
+    );
+  }
+
   Future<void> _addToItinerary() async {
     final l10n = AppLocalizations.of(context);
     final itineraryRepo = ref.read(itineraryRepositoryProvider);
@@ -421,10 +442,12 @@ class _RouteBuilderScreenState extends ConsumerState<RouteBuilderScreen> {
     Map<String, Location> locById,
   ) {
     final stopPts = <LatLng>[];
+    final stopRefs = <(SightseeingRouteStop, Location)>[];
     for (final s in stops) {
       final l = locById[s.locationId];
       if (l != null && l.latitude != null && l.longitude != null) {
         stopPts.add(LatLng(l.latitude!, l.longitude!));
+        stopRefs.add((s, l));
       }
     }
     final geometry = decodeGeometry(route.geometry);
@@ -464,14 +487,17 @@ class _RouteBuilderScreenState extends ConsumerState<RouteBuilderScreen> {
                     point: stopPts[i],
                     width: 30,
                     height: 30,
-                    child: CircleAvatar(
-                      backgroundColor: context.tokens.accent,
-                      child: Text(
-                        '${i + 1}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                    child: GestureDetector(
+                      onTap: () => _openStop(stopRefs[i].$1, stopRefs[i].$2),
+                      child: CircleAvatar(
+                        backgroundColor: context.tokens.accent,
+                        child: Text(
+                          '${i + 1}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -639,6 +665,7 @@ class _RouteBuilderScreenState extends ConsumerState<RouteBuilderScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             child: ListTile(
               contentPadding: EdgeInsets.zero,
+              onTap: l != null ? () => _openStop(s, l) : null,
               leading: CircleAvatar(
                 backgroundColor: context.tokens.accentSoft,
                 child: Text(
@@ -652,7 +679,7 @@ class _RouteBuilderScreenState extends ConsumerState<RouteBuilderScreen> {
               title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
               subtitle: !hasCoords
                   ? Text(
-                      l10n.exploreCatOther,
+                      l10n.placeNoCoords,
                       style: TextStyle(color: context.scheme.error),
                     )
                   : (l?.address != null

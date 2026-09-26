@@ -66,11 +66,12 @@ String formatDistance(AppLocalizations l10n, num meters) {
   return '$s ${l10n.unitKm}';
 }
 
-/// Durata leggibile: "h min" oppure "min".
+/// Durata leggibile: "h min", "h" (ore tonde) oppure "min".
 String formatDuration(AppLocalizations l10n, num seconds) {
   final total = seconds.round();
   final h = total ~/ 3600;
   final m = (total % 3600) ~/ 60;
+  if (h > 0 && m == 0) return '$h ${l10n.unitHour}';
   if (h > 0) return '$h ${l10n.unitHour} $m ${l10n.unitMin}';
   return '$m ${l10n.unitMin}';
 }
