@@ -12,11 +12,14 @@ import 'package:itinera/core/visit_duration.dart';
 import 'package:itinera/data/database.dart';
 import 'package:itinera/data/seed.dart';
 import 'package:itinera/features/explore/explore_providers.dart';
-import 'package:itinera/features/explore/explore_screen.dart';
 import 'package:itinera/features/explore/opening_hours.dart';
 import 'package:itinera/features/explore/poi_discovery_service.dart';
 import 'package:itinera/features/explore/poi_parser.dart';
-import 'package:itinera/features/explore/route_builder_screen.dart';
+import 'package:itinera/features/explore/route_flow_screen.dart';
+import 'package:itinera/features/explore/route_math.dart';
+import 'package:itinera/features/explore/route_planner.dart';
+import 'package:itinera/features/transport/routing_service.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:itinera/features/explore/sightseeing_route_repository.dart';
 import 'package:itinera/l10n/app_localizations.dart';
 import 'package:itinera/providers.dart';
@@ -32,6 +35,28 @@ class _FakePoiService implements PoiDiscoveryService {
   }) async => _pois;
 }
 
+class _OfflinePlanner implements RoutePlanner {
+  @override
+  Future<RouteResult> plan(
+    List<LatLng> orderedPoints,
+    RouteTravelMode mode, {
+    bool returnToStart = false,
+  }) async {
+    final est = estimateTravel(
+      orderedPoints: orderedPoints,
+      mode: mode,
+      returnToStart: returnToStart,
+    );
+    return RouteResult(
+      geometry: orderedPoints,
+      distanceMeters: est.distanceMeters,
+      durationSeconds: est.durationSeconds,
+      source: DistanceSource.straightLine,
+      effectiveMode: mode,
+    );
+  }
+}
+
 Widget _app(AppDatabase db, PoiDiscoveryService svc, Widget home) {
   final router = GoRouter(
     routes: [GoRoute(path: '/', builder: (_, _) => home)],
@@ -40,6 +65,7 @@ Widget _app(AppDatabase db, PoiDiscoveryService svc, Widget home) {
     overrides: [
       databaseProvider.overrideWithValue(db),
       poiDiscoveryServiceProvider.overrideWithValue(svc),
+      routePlannerProvider.overrideWithValue(_OfflinePlanner()),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -97,10 +123,9 @@ void main() {
       expect(humanizeOpeningHours('24/7'), ['Sempre aperto']);
     });
     test('liste di giorni e più fasce orarie', () {
-      expect(
-        humanizeOpeningHours('Mo,We,Fr 10:00-12:00,15:00-17:00'),
-        ['Lun, Mer, Ven 10:00–12:00, 15:00–17:00'],
-      );
+      expect(humanizeOpeningHours('Mo,We,Fr 10:00-12:00,15:00-17:00'), [
+        'Lun, Mer, Ven 10:00–12:00, 15:00–17:00',
+      ]);
     });
     test('mesi e festivi', () {
       expect(humanizeOpeningHours('Apr-Oct Mo-Su 09:00-19:00; PH off'), [
@@ -113,14 +138,17 @@ void main() {
     });
   });
 
-  testWidgets('Esplora: tocco su un suggerimento apre la scheda e "Salva" '
-      'lo salva', (tester) async {
+  testWidgets('Scegli: tocco su un suggerimento apre la scheda; "Aggiungi al '
+      'percorso" lo aggiunge', (tester) async {
     tester.view.physicalSize = const Size(1200, 4000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     final db = AppDatabase.forExecutor(NativeDatabase.memory());
     await AppSeed.ensureSeeded(db);
     final tripId = await _trip(db);
+    final routeId = await SightseeingRouteRepository(
+      db,
+    ).createRoute(tripId: tripId, name: 'Centro');
     final svc = _FakePoiService([
       const PoiSuggestion(
         provider: 'osm',
@@ -134,8 +162,14 @@ void main() {
       ),
     ]);
 
-    await tester.pumpWidget(_app(db, svc, ExploreScreen(tripId: tripId)));
-    await _settle(tester);
+    await tester.pumpWidget(
+      _app(
+        db,
+        svc,
+        RouteFlowScreen(tripId: tripId, routeId: routeId, startNew: true),
+      ),
+    );
+    await _settle(tester, 14);
 
     await tester.tap(find.text('Colosseo'));
     await _settle(tester);
@@ -143,20 +177,22 @@ void main() {
     // Scheda: orari leggibili, durata stimata, azione principale.
     expect(find.text('Lun–Dom 09:00–19:00'), findsOneWidget);
     expect(find.text('Visita di circa 45 min'), findsOneWidget);
-    expect(find.text('Salva luogo'), findsOneWidget);
+    expect(find.text('Aggiungi al percorso'), findsOneWidget);
 
-    await tester.tap(find.text('Salva luogo'));
-    await _settle(tester);
+    await tester.tap(find.text('Aggiungi al percorso'));
+    await _settle(tester, 12);
 
     final saved = await db.select(db.locations).get();
     expect(saved.map((l) => l.label), ['Colosseo']);
     expect(saved.single.openingHours, 'Mo-Su 09:00-19:00');
-    expect(find.text('Luogo salvato'), findsOneWidget);
+    expect(await db.select(db.sightseeingRouteStops).get(), hasLength(1));
 
+    await tester.pumpWidget(const SizedBox());
+    await _settle(tester, 12);
     await db.close();
   });
 
-  testWidgets('Percorso: tocco su una tappa apre la scheda con '
+  testWidgets('Ordina: tocco su una tappa apre la scheda con note e '
       '"Togli dal percorso"', (tester) async {
     tester.view.physicalSize = const Size(1200, 4000);
     tester.view.devicePixelRatio = 1.0;
@@ -191,24 +227,25 @@ void main() {
       _app(
         db,
         _FakePoiService(const []),
-        RouteBuilderScreen(tripId: tripId, routeId: routeId),
+        RouteFlowScreen(tripId: tripId, routeId: routeId),
       ),
     );
-    await _settle(tester);
+    await _settle(tester, 14);
 
     await tester.tap(find.text('Pantheon'));
     await _settle(tester);
 
     expect(find.text('Togli dal percorso'), findsOneWidget);
-    // Note personali già presenti, modificabili.
     expect(find.widgetWithText(TextField, 'Prenotare'), findsOneWidget);
 
     await tester.tap(find.text('Togli dal percorso'));
-    await _settle(tester);
+    await _settle(tester, 12);
 
     final stops = await db.select(db.sightseeingRouteStops).get();
     expect(stops.map((s) => s.locationId), [l1]);
 
+    await tester.pumpWidget(const SizedBox());
+    await _settle(tester, 12);
     await db.close();
   });
 }

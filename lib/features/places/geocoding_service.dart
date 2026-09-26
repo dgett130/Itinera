@@ -30,11 +30,19 @@ class GeocodingService {
 
   static final Uri _endpoint = Uri.parse('https://photon.komoot.io/api/');
 
-  Future<List<PlaceResult>> search(String query, {int limit = 6}) async {
+  /// Con [lat]/[lon] i risultati vicini a quel punto hanno la precedenza
+  /// (es. "Pantheon" cercato da Roma trova quello di Roma, non di Parigi).
+  Future<List<PlaceResult>> search(
+    String query, {
+    int limit = 6,
+    double? lat,
+    double? lon,
+  }) async {
     final q = query.trim();
     if (q.length < 3) return const [];
     final uri = _endpoint.replace(queryParameters: {
       'q': q,
+      if (lat != null && lon != null) ...{'lat': '$lat', 'lon': '$lon'},
       // Photon supporta solo default/de/en/fr: 'default' restituisce i nomi
       // nella lingua locale del luogo (per l'Italia => italiano). 'it' viene
       // rifiutato con HTTP 400 e nessun suggerimento.

@@ -244,10 +244,7 @@ class PlaceSheet extends StatelessWidget {
             muted: true,
           ),
           if (place.address != null && place.address!.trim().isNotEmpty)
-            _InfoRow(
-              icon: Icons.place_outlined,
-              title: place.address!,
-            ),
+            _InfoRow(icon: Icons.place_outlined, title: place.address!),
           if (place.hasCoords || place.address != null)
             Align(
               alignment: Alignment.centerLeft,

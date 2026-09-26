@@ -4,8 +4,8 @@ import 'features/auth/auth_screen.dart';
 import 'features/auth/password_reset_screen.dart';
 import 'features/auth/profile_screen.dart';
 import 'features/bacheca/bacheca_screen.dart';
-import 'features/explore/explore_screen.dart';
-import 'features/explore/route_builder_screen.dart';
+import 'features/explore/places_home_screen.dart';
+import 'features/explore/route_flow_screen.dart';
 import 'features/friends/friends_screen.dart';
 import 'features/itinerary/itinerary_screen.dart';
 import 'features/members/members_screen.dart';
@@ -90,7 +90,7 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/trip/:id/explore',
       builder: (context, state) =>
-          ExploreScreen(tripId: state.pathParameters['id']!),
+          PlacesHomeScreen(tripId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/trip/:id/files',
@@ -99,9 +99,10 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/trip/:id/route/:routeId',
-      builder: (context, state) => RouteBuilderScreen(
+      builder: (context, state) => RouteFlowScreen(
         tripId: state.pathParameters['id']!,
         routeId: state.pathParameters['routeId']!,
+        startNew: state.uri.queryParameters['new'] == '1',
       ),
     ),
   ],

@@ -724,6 +724,258 @@ abstract class AppLocalizations {
   /// **'Posizione sulla mappa mancante'**
   String get placeNoCoords;
 
+  /// No description provided for @placeAddToRoute.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiungi al percorso'**
+  String get placeAddToRoute;
+
+  /// No description provided for @placesHomeEmptyTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Crea il tuo primo percorso'**
+  String get placesHomeEmptyTitle;
+
+  /// No description provided for @placesHomeEmptyMessage.
+  ///
+  /// In it, this message translates to:
+  /// **'Scegli cosa vedere, noi lo mettiamo in ordine.'**
+  String get placesHomeEmptyMessage;
+
+  /// No description provided for @placesHomeDrafts.
+  ///
+  /// In it, this message translates to:
+  /// **'Da programmare'**
+  String get placesHomeDrafts;
+
+  /// No description provided for @placesDraftBadge.
+  ///
+  /// In it, this message translates to:
+  /// **'Bozza'**
+  String get placesDraftBadge;
+
+  /// No description provided for @routeStopsCount.
+  ///
+  /// In it, this message translates to:
+  /// **'{count, plural, =0{Nessuna tappa} =1{1 tappa} other{{count} tappe}}'**
+  String routeStopsCount(int count);
+
+  /// No description provided for @routeSavedPlacesName.
+  ///
+  /// In it, this message translates to:
+  /// **'Luoghi salvati'**
+  String get routeSavedPlacesName;
+
+  /// No description provided for @routeNewName.
+  ///
+  /// In it, this message translates to:
+  /// **'Percorso {n}'**
+  String routeNewName(int n);
+
+  /// No description provided for @routeFixedStartHint.
+  ///
+  /// In it, this message translates to:
+  /// **'L\'ordine automatico non la sposta'**
+  String get routeFixedStartHint;
+
+  /// No description provided for @flowStepChoose.
+  ///
+  /// In it, this message translates to:
+  /// **'Scegli'**
+  String get flowStepChoose;
+
+  /// No description provided for @flowStepOrder.
+  ///
+  /// In it, this message translates to:
+  /// **'Ordina'**
+  String get flowStepOrder;
+
+  /// No description provided for @flowStepPlan.
+  ///
+  /// In it, this message translates to:
+  /// **'Pianifica'**
+  String get flowStepPlan;
+
+  /// No description provided for @flowNextOrder.
+  ///
+  /// In it, this message translates to:
+  /// **'Avanti: ordina'**
+  String get flowNextOrder;
+
+  /// No description provided for @flowNextPlan.
+  ///
+  /// In it, this message translates to:
+  /// **'Avanti: pianifica'**
+  String get flowNextPlan;
+
+  /// No description provided for @flowChooseTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Scegli cosa vedere'**
+  String get flowChooseTitle;
+
+  /// No description provided for @flowInRoute.
+  ///
+  /// In it, this message translates to:
+  /// **'{count, plural, =0{Nessun luogo} =1{1 luogo} other{{count} luoghi}}'**
+  String flowInRoute(int count);
+
+  /// No description provided for @flowSearchHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Cerca un luogo per nome'**
+  String get flowSearchHint;
+
+  /// No description provided for @flowSearchHere.
+  ///
+  /// In it, this message translates to:
+  /// **'Cerca qui'**
+  String get flowSearchHere;
+
+  /// No description provided for @flowNoResults.
+  ///
+  /// In it, this message translates to:
+  /// **'Nessun risultato: prova con un altro nome'**
+  String get flowNoResults;
+
+  /// No description provided for @flowWhereTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Dove vuoi esplorare?'**
+  String get flowWhereTitle;
+
+  /// No description provided for @flowWhereMessage.
+  ///
+  /// In it, this message translates to:
+  /// **'Cerca una città o un luogo qui sopra, oppure sposta la mappa e tocca «Cerca qui».'**
+  String get flowWhereMessage;
+
+  /// No description provided for @flowOfflineHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Puoi comunque tenere premuto sulla mappa per aggiungere un punto.'**
+  String get flowOfflineHint;
+
+  /// No description provided for @flowPinHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Tieni premuto sulla mappa per aggiungere un punto qualsiasi.'**
+  String get flowPinHint;
+
+  /// No description provided for @flowPinTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiungi un punto qui'**
+  String get flowPinTitle;
+
+  /// No description provided for @flowPinNameHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Es. hotel, punto d\'incontro'**
+  String get flowPinNameHint;
+
+  /// No description provided for @flowPinDefaultName.
+  ///
+  /// In it, this message translates to:
+  /// **'Punto sulla mappa'**
+  String get flowPinDefaultName;
+
+  /// No description provided for @flowAdded.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiunto: {name}'**
+  String flowAdded(String name);
+
+  /// No description provided for @flowRemoved.
+  ///
+  /// In it, this message translates to:
+  /// **'Tolto: {name}'**
+  String flowRemoved(String name);
+
+  /// No description provided for @flowUndo.
+  ///
+  /// In it, this message translates to:
+  /// **'Annulla'**
+  String get flowUndo;
+
+  /// No description provided for @flowOrderTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Metti in ordine'**
+  String get flowOrderTitle;
+
+  /// No description provided for @flowOrderNeedTwo.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiungi almeno 2 luoghi per scegliere l\'ordine.'**
+  String get flowOrderNeedTwo;
+
+  /// No description provided for @flowAddPlaces.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiungi luoghi'**
+  String get flowAddPlaces;
+
+  /// No description provided for @flowPlanTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Pianifica'**
+  String get flowPlanTitle;
+
+  /// No description provided for @flowRouteName.
+  ///
+  /// In it, this message translates to:
+  /// **'Nome del percorso'**
+  String get flowRouteName;
+
+  /// No description provided for @flowWhichDay.
+  ///
+  /// In it, this message translates to:
+  /// **'In quale giorno?'**
+  String get flowWhichDay;
+
+  /// No description provided for @flowInItinerary.
+  ///
+  /// In it, this message translates to:
+  /// **'Già nella tabella di marcia: {day}'**
+  String flowInItinerary(String day);
+
+  /// No description provided for @flowPlanInfo.
+  ///
+  /// In it, this message translates to:
+  /// **'Il percorso diventa un unico evento nella tabella di marcia: toccandolo lo riapri.'**
+  String get flowPlanInfo;
+
+  /// No description provided for @flowAddedToDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiunto alla tabella di marcia'**
+  String get flowAddedToDay;
+
+  /// No description provided for @flowMovedToDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Spostato nel giorno scelto'**
+  String get flowMovedToDay;
+
+  /// No description provided for @flowAlreadyInDay.
+  ///
+  /// In it, this message translates to:
+  /// **'È già in quel giorno'**
+  String get flowAlreadyInDay;
+
+  /// No description provided for @flowView.
+  ///
+  /// In it, this message translates to:
+  /// **'Vedi'**
+  String get flowView;
+
+  /// No description provided for @flowPickDayFirst.
+  ///
+  /// In it, this message translates to:
+  /// **'Scegli prima un giorno'**
+  String get flowPickDayFirst;
+
   /// No description provided for @routesTitle.
   ///
   /// In it, this message translates to:
@@ -823,25 +1075,25 @@ abstract class AppLocalizations {
   /// No description provided for @routeFixedStart.
   ///
   /// In it, this message translates to:
-  /// **'Partenza fissa'**
+  /// **'Parti sempre dalla prima tappa'**
   String get routeFixedStart;
 
   /// No description provided for @routeReturnToStart.
   ///
   /// In it, this message translates to:
-  /// **'Ritorno alla partenza'**
+  /// **'Torna alla prima tappa alla fine'**
   String get routeReturnToStart;
 
   /// No description provided for @routeOptimize.
   ///
   /// In it, this message translates to:
-  /// **'Ottimizza percorso'**
+  /// **'Ordine più veloce'**
   String get routeOptimize;
 
   /// No description provided for @routeRestoreManual.
   ///
   /// In it, this message translates to:
-  /// **'Ripristina ordine manuale'**
+  /// **'Torna al mio ordine'**
   String get routeRestoreManual;
 
   /// No description provided for @routeRecalculate.
@@ -877,13 +1129,13 @@ abstract class AppLocalizations {
   /// No description provided for @routeSourceOnline.
   ///
   /// In it, this message translates to:
-  /// **'Percorso stradale reale'**
+  /// **'Tempi calcolati sulle strade'**
   String get routeSourceOnline;
 
   /// No description provided for @routeSourceEstimate.
   ///
   /// In it, this message translates to:
-  /// **'Stima (linea d\'aria)'**
+  /// **'Tempi stimati (senza rete)'**
   String get routeSourceEstimate;
 
   /// No description provided for @routeDistance.

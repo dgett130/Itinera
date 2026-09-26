@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database.dart';
 import '../../providers.dart';
+import '../places/geocoding_service.dart';
 import '../transport/routing_service.dart';
 import 'explore_repository.dart';
 import 'poi_discovery_service.dart';
@@ -19,6 +20,10 @@ final poiDiscoveryServiceProvider = Provider<PoiDiscoveryService>((ref) {
   ref.onDispose(s.dispose);
   return s;
 });
+
+final geocodingServiceProvider = Provider<GeocodingService>(
+  (ref) => GeocodingService(),
+);
 
 final routePlannerProvider = Provider<RoutePlanner>((ref) {
   return RoutePlanner(ref.watch(routingServiceProvider));
@@ -62,3 +67,11 @@ final savedLocationsProvider = StreamProvider.family<List<Location>, String>((
 ) {
   return ref.watch(exploreRepositoryProvider).watchSavedLocations(tripId);
 });
+
+/// Tutte le tappe del viaggio (conteggi nella pagina iniziale).
+final tripStopsProvider =
+    StreamProvider.family<List<SightseeingRouteStop>, String>((ref, tripId) {
+      return ref
+          .watch(sightseeingRouteRepositoryProvider)
+          .watchTripStops(tripId);
+    });

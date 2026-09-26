@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/enums.dart';
+import '../../data/database.dart';
 import '../../l10n/app_localizations.dart';
 
 /// Etichette, icone, colori e formattazioni condivise dalle schermate
@@ -74,4 +75,19 @@ String formatDuration(AppLocalizations l10n, num seconds) {
   if (h > 0 && m == 0) return '$h ${l10n.unitHour}';
   if (h > 0) return '$h ${l10n.unitHour} $m ${l10n.unitMin}';
   return '$m ${l10n.unitMin}';
+}
+
+/// Giorni dell'itinerario per le scelte dell'utente: prima quelli con una
+/// data (in ordine), poi quelli senza ("Non programmato") in fondo.
+List<ItineraryDay> sortDaysForPicker(List<ItineraryDay> days) {
+  final sorted = [...days];
+  sorted.sort((a, b) {
+    final da = a.date;
+    final db = b.date;
+    if (da != null && db != null) return da.compareTo(db);
+    if (da != null) return -1;
+    if (db != null) return 1;
+    return a.sortIndex.compareTo(b.sortIndex);
+  });
+  return sorted;
 }

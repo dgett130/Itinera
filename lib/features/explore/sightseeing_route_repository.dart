@@ -1,10 +1,21 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../core/enums.dart';
 import '../../core/id.dart';
 import '../../data/database.dart';
+
+/// Tappa appena tolta, con quanto serve per annullare la rimozione.
+class RemovedStop {
+  const RemovedStop({required this.stop, this.location});
+  final SightseeingRouteStop stop;
+
+  /// Valorizzato se, togliendo la tappa, anche il luogo è stato eliminato
+  /// (non era usato altrove).
+  final Location? location;
+}
 
 /// Accesso ai dati dei percorsi di visita (percorsi + tappe). Solo DB: il
 /// calcolo online e l'ottimizzazione (che richiedono coordinate/rete) sono
@@ -19,6 +30,12 @@ class SightseeingRouteRepository {
             ..where((r) => r.tripId.equals(tripId))
             ..orderBy([(r) => OrderingTerm(expression: r.createdAt)]))
           .watch();
+
+  /// Tutte le tappe del viaggio (per i conteggi nella pagina iniziale).
+  Stream<List<SightseeingRouteStop>> watchTripStops(String tripId) =>
+      (_db.select(
+        _db.sightseeingRouteStops,
+      )..where((s) => s.tripId.equals(tripId))).watch();
 
   Stream<List<SightseeingRouteStop>> watchStops(String routeId) =>
       (_db.select(_db.sightseeingRouteStops)
@@ -92,10 +109,46 @@ class SightseeingRouteRepository {
     );
   }
 
+  /// Elimina il percorso e i suoi luoghi non usati altrove: nel modello a
+  /// percorsi un luogo esiste solo come tappa, un orfano sarebbe invisibile.
   Future<void> deleteRoute(String id) async {
+    await _db.transaction(() async {
+      final locIds = (await stopsFor(id)).map((s) => s.locationId).toSet();
+      await (_db.delete(
+        _db.sightseeingRoutes,
+      )..where((r) => r.id.equals(id))).go();
+      for (final l in locIds) {
+        await _deleteLocationIfOrphan(l);
+      }
+    });
+  }
+
+  /// Elimina un percorso rimasto senza tappe (bozza abbandonata).
+  Future<void> deleteIfEmpty(String id) async {
+    if ((await stopsFor(id)).isEmpty) await deleteRoute(id);
+  }
+
+  Future<Location?> _deleteLocationIfOrphan(String locationId) async {
+    final inStop =
+        await (_db.select(_db.sightseeingRouteStops)
+              ..where((s) => s.locationId.equals(locationId))
+              ..limit(1))
+            .getSingleOrNull();
+    if (inStop != null) return null;
+    final inActivity =
+        await (_db.select(_db.activities)
+              ..where((a) => a.locationId.equals(locationId))
+              ..limit(1))
+            .getSingleOrNull();
+    if (inActivity != null) return null;
+    final loc = await (_db.select(
+      _db.locations,
+    )..where((l) => l.id.equals(locationId))).getSingleOrNull();
+    if (loc == null) return null;
     await (_db.delete(
-      _db.sightseeingRoutes,
-    )..where((r) => r.id.equals(id))).go();
+      _db.locations,
+    )..where((l) => l.id.equals(locationId))).go();
+    return loc;
   }
 
   Future<void> setMode(String routeId, RouteTravelMode mode) =>
@@ -107,10 +160,11 @@ class SightseeingRouteRepository {
   Future<void> setFixedStart(String routeId, bool v) =>
       _patch(routeId, SightseeingRoutesCompanion(fixedStart: Value(v)));
 
-  /// Aggiunge una tappa (evita di duplicare la stessa Location nel percorso).
-  Future<void> addStop(String routeId, String tripId, String locationId) async {
+  /// Aggiunge una tappa in coda (evita di duplicare la stessa Location nel
+  /// percorso). Ritorna false se il luogo era già una tappa.
+  Future<bool> addStop(String routeId, String tripId, String locationId) async {
     final stops = await stopsFor(routeId);
-    if (stops.any((s) => s.locationId == locationId)) return;
+    if (stops.any((s) => s.locationId == locationId)) return false;
     final next = stops.isEmpty
         ? 0
         : stops.map((s) => s.sequenceIndex).reduce((a, b) => a > b ? a : b) + 1;
@@ -126,16 +180,113 @@ class SightseeingRouteRepository {
           ),
         );
     await _touch(routeId);
+    return true;
   }
 
-  Future<void> removeStop(String stopId) async {
-    final stop = await (_db.select(
-      _db.sightseeingRouteStops,
-    )..where((s) => s.id.equals(stopId))).getSingleOrNull();
-    await (_db.delete(
-      _db.sightseeingRouteStops,
-    )..where((s) => s.id.equals(stopId))).go();
-    if (stop != null) await _touch(stop.routeId);
+  /// Toglie una tappa; se il luogo non è usato altrove lo elimina. Ritorna
+  /// ciò che serve per [restoreStop] (null se la tappa non esiste).
+  Future<RemovedStop?> removeStop(String stopId) async {
+    return _db.transaction(() async {
+      final stop = await (_db.select(
+        _db.sightseeingRouteStops,
+      )..where((s) => s.id.equals(stopId))).getSingleOrNull();
+      if (stop == null) return null;
+      await (_db.delete(
+        _db.sightseeingRouteStops,
+      )..where((s) => s.id.equals(stopId))).go();
+      final loc = await _deleteLocationIfOrphan(stop.locationId);
+      await _touch(stop.routeId);
+      return RemovedStop(stop: stop, location: loc);
+    });
+  }
+
+  /// Annulla [removeStop]: rimette luogo (se eliminato) e tappa nella stessa
+  /// posizione, con gli stessi id.
+  Future<void> restoreStop(RemovedStop removed) async {
+    await _db.transaction(() async {
+      final loc = removed.location;
+      if (loc != null) {
+        await _db.into(_db.locations).insertOnConflictUpdate(loc);
+      }
+      final ids = (await stopsFor(
+        removed.stop.routeId,
+      )).map((s) => s.id).toList();
+      await _db
+          .into(_db.sightseeingRouteStops)
+          .insertOnConflictUpdate(removed.stop);
+      final at = removed.stop.sequenceIndex.clamp(0, ids.length);
+      ids.insert(at, removed.stop.id);
+      for (var i = 0; i < ids.length; i++) {
+        await (_db.update(_db.sightseeingRouteStops)
+              ..where((s) => s.id.equals(ids[i])))
+            .write(SightseeingRouteStopsCompanion(sequenceIndex: Value(i)));
+      }
+      await _touch(removed.stop.routeId);
+    });
+  }
+
+  /// Migrazione dei vecchi "luoghi salvati" (modello pre-redesign): i luoghi
+  /// scelti da "Luoghi e percorsi" che non sono tappe né usati da attività
+  /// vengono raccolti in una bozza [name]. Id DETERMINISTICI (UUID v5), così
+  /// più dispositivi o membri producono la stessa bozza invece di duplicarla.
+  /// Idempotente. Ritorna l'id del percorso, o null se non c'era nulla.
+  Future<String?> ensureSavedPlacesRoute(String tripId, String name) async {
+    return _db.transaction(() async {
+      final used = <String>{
+        for (final s in await (_db.select(
+          _db.sightseeingRouteStops,
+        )..where((s) => s.tripId.equals(tripId))).get())
+          s.locationId,
+        for (final a in await (_db.select(
+          _db.activities,
+        )..where((a) => a.tripId.equals(tripId))).get())
+          ?a.locationId,
+      };
+      final candidates =
+          await (_db.select(_db.locations)
+                ..where(
+                  (l) =>
+                      l.tripId.equals(tripId) &
+                      l.source.isIn([
+                        LocationSource.osm.name,
+                        LocationSource.mapPick.name,
+                      ]),
+                )
+                ..orderBy([(l) => OrderingTerm(expression: l.label)]))
+              .get();
+      final todo = candidates.where((l) => !used.contains(l.id)).toList();
+      if (todo.isEmpty) return null;
+
+      const uuid = Uuid();
+      final routeId = uuid.v5(Namespace.url.value, 'itinera:saved:$tripId');
+      await _db
+          .into(_db.sightseeingRoutes)
+          .insertOnConflictUpdate(
+            SightseeingRoutesCompanion.insert(
+              id: routeId,
+              tripId: tripId,
+              name: name,
+            ),
+          );
+      var next = (await stopsFor(routeId)).length;
+      for (final l in todo) {
+        await _db
+            .into(_db.sightseeingRouteStops)
+            .insertOnConflictUpdate(
+              SightseeingRouteStopsCompanion.insert(
+                id: uuid.v5(
+                  Namespace.url.value,
+                  'itinera:stop:$routeId:${l.id}',
+                ),
+                routeId: routeId,
+                tripId: tripId,
+                locationId: l.id,
+                sequenceIndex: Value(next++),
+              ),
+            );
+      }
+      return routeId;
+    });
   }
 
   /// Riscrive `sequenceIndex` secondo il nuovo ordine visuale. Se [markManual]
@@ -230,9 +381,9 @@ class SightseeingRouteRepository {
 
   /// Aggancia il percorso a [dayId] come UNICO evento della tabella di marcia:
   /// crea una sola attivita' che rappresenta il percorso (Activities.routeId),
-  /// senza orario (tutto il giorno). Idempotente: se l'evento del percorso e'
-  /// gia' nel giorno aggiorna solo l'aggancio. Ritorna 1 se creato, 0 se
-  /// gia' presente. Transazionale.
+  /// senza orario (tutto il giorno). Idempotente. Ritorna 1 se creato, 2 se
+  /// spostato da un altro giorno, 0 se gia' presente nel giorno.
+  /// Transazionale.
   Future<int> addToItinerary(
     String routeId,
     String dayId,
@@ -241,10 +392,12 @@ class SightseeingRouteRepository {
     final route = await getRoute(routeId);
     if (route == null) return 0;
     return _db.transaction(() async {
+      // Un percorso = un evento: se è già in un altro giorno lo SPOSTO
+      // (prima veniva duplicato).
       final existing =
-          await (_db.select(_db.activities)..where(
-                (a) => a.dayId.equals(dayId) & a.routeId.equals(routeId),
-              ))
+          await (_db.select(_db.activities)
+                ..where((a) => a.routeId.equals(routeId))
+                ..limit(1))
               .getSingleOrNull();
       // Aggancia comunque il percorso al giorno.
       await (_db.update(
@@ -255,13 +408,25 @@ class SightseeingRouteRepository {
           updatedAt: Value(DateTime.now()),
         ),
       );
-      if (existing != null) return 0;
       final all = await (_db.select(
         _db.activities,
       )..where((a) => a.dayId.equals(dayId))).get();
       final sort = all.isEmpty
           ? 0
           : all.map((a) => a.sortIndex).reduce((a, b) => a > b ? a : b) + 1;
+      if (existing != null) {
+        if (existing.dayId == dayId) return 0;
+        await (_db.update(
+          _db.activities,
+        )..where((a) => a.id.equals(existing.id))).write(
+          ActivitiesCompanion(
+            dayId: Value(dayId),
+            sortIndex: Value(sort),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
+        return 2;
+      }
       await _db
           .into(_db.activities)
           .insert(

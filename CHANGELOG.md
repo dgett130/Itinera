@@ -17,14 +17,35 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   **durata di visita stimata**, indirizzo e "Apri in Mappe", descrizione, sito
   web e **note personali** (salvate in automatico). Il pin sulla mappa non
   salva più il luogo "alla cieca".
+- **Luoghi e percorsi a passi**: nuova pagina iniziale con i percorsi
+  raggruppati per giorno (le bozze in "Da programmare") e un grande "Nuovo
+  percorso". La costruzione avviene su **mappa a schermo pieno** con un
+  vassoio trascinabile e tre passi saltabili: **① Scegli → ② Ordina →
+  ③ Pianifica**, bottone principale sempre sotto il pollice.
+- **Scegli**: ricerca nell'**area visibile** della mappa ("Cerca qui" quando la
+  sposti, niente più raggio in km), **ricerca per nome**, filtri, e **pin a
+  mano** tenendo premuto sulla mappa. Il [+] aggiunge il luogo direttamente al
+  percorso; togliere una tappa si può **annullare**.
 
 ### Modificato
+- **Niente più "luoghi salvati" separati**: i luoghi vivono dentro i percorsi.
+  Quelli salvati in precedenza vengono raccolti in una bozza **"Luoghi
+  salvati"** (una sola, anche tra più dispositivi e membri).
+- Un nuovo percorso parte **vuoto** (prima conteneva tutti i luoghi salvati);
+  una bozza lasciata senza tappe viene eliminata.
+- Testi più chiari nell'ordinamento: "Parti sempre dalla prima tappa", "Torna
+  alla prima tappa alla fine", "Ordine più veloce", "Torna al mio ordine";
+  ricalcolo automatico (via "Ricalcola").
 - Durate senza "0 min" superflui (es. "1 h" invece di "1 h 0 min").
 - Tappa senza posizione sulla mappa: messaggio chiaro invece di "Altro" in rosso.
 
+### Corretto
+- Aggiungere all'itinerario un percorso già presente in un altro giorno ora lo
+  **sposta** invece di duplicare l'evento.
+
 ### Note tecniche
 - Redesign a passi di "Luoghi e percorsi" descritto in
-  **`docs/03-luoghi-e-percorsi-redesign.md`** (questo è l'incremento 1 di 5).
+  **`docs/03-luoghi-e-percorsi-redesign.md`** (incrementi 1 e 2 di 5).
 
 ## [1.3.0] - 2026-09-17
 
