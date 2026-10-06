@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// IMPORTANTE: al rilascio, allineala alla versione di `pubspec.yaml` e
 /// aggiorna [kWhatsNewItems]. Il pannello "Novità" appare una sola volta quando
 /// questa stringa cambia rispetto a quella già vista sul dispositivo.
-const String kWhatsNewVersion = '1.3.0';
+const String kWhatsNewVersion = '1.4.0';
 
 /// Una voce dell'elenco novità (icona + titolo + descrizione breve).
 class WhatsNewItem {
@@ -18,27 +18,35 @@ class WhatsNewItem {
 /// Novità curate per la versione corrente (in italiano, testo per l'utente).
 const List<WhatsNewItem> kWhatsNewItems = [
   WhatsNewItem(
-    Icons.notifications_active_outlined,
-    'Notifiche',
-    'Avvisi push anche ad app chiusa per amici, viaggi condivisi e nuovi '
-        'documenti, con un centro notifiche e preferenze per categoria.',
+    Icons.route_outlined,
+    'Percorsi in tre passi',
+    'Scegli, Ordina, Pianifica: tutto su una mappa a schermo pieno. Cerca '
+        'nella zona che stai guardando o per nome, oppure tieni premuto per '
+        'un punto qualsiasi. I luoghi che avevi salvato sono nella bozza '
+        '«Luoghi salvati».',
   ),
   WhatsNewItem(
-    Icons.folder_shared_outlined,
-    'Bacheca del viaggio',
-    'Carica e condividi documenti; ora con anteprima in-app di foto e PDF e '
-        'download sul dispositivo.',
+    Icons.place_outlined,
+    'Scheda del luogo',
+    'Orari in italiano, se è aperto adesso, ingresso, durata della visita, '
+        'sito web e le tue note.',
   ),
   WhatsNewItem(
-    Icons.add_to_drive_outlined,
-    'Foto su Drive',
-    'Aggiungi il link a una cartella Drive per le foto, o creala dall’app se '
-        'hai l’account Google collegato.',
+    Icons.directions_walk,
+    'Tempi tra le tappe',
+    'Quanto ci metti da una tappa all’altra, da dove parti, se torni al '
+        'punto di partenza e un suggerimento per l’ordine più veloce.',
   ),
   WhatsNewItem(
-    Icons.explore_outlined,
-    'Luoghi e percorsi',
-    'Scopri luoghi vicini e costruisci percorsi a piedi, in bici o in auto, da '
-        'aggiungere alla tabella di marcia.',
+    Icons.schedule,
+    'Scaletta della giornata',
+    'Scegli giorno e ora di partenza: vedi a che ora arrivi a ogni tappa e '
+        'quando finisci. Nella tabella di marcia il percorso ha i suoi orari.',
+  ),
+  WhatsNewItem(
+    Icons.warning_amber_outlined,
+    'Avvisi utili',
+    'Ti avvisa se un luogo è chiuso quando arrivi, se la giornata è lunga o '
+        'la strada è tanta. Le soglie si cambiano in Impostazioni.',
   ),
 ];

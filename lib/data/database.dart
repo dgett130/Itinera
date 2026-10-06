@@ -47,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forExecutor(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -95,6 +95,17 @@ class AppDatabase extends _$AppDatabase {
       if (from < 7) {
         // v7: link a una cartella Drive condivisa per le foto del viaggio.
         await m.addColumn(trips, trips.driveUrl);
+      }
+      if (from < 8) {
+        // v8: percorsi a passi — ora di partenza e tratti del percorso,
+        // durata di visita per tappa, ingresso dei luoghi.
+        await m.addColumn(sightseeingRoutes, sightseeingRoutes.startMinutes);
+        await m.addColumn(sightseeingRoutes, sightseeingRoutes.legs);
+        await m.addColumn(
+          sightseeingRouteStops,
+          sightseeingRouteStops.visitMinutes,
+        );
+        await m.addColumn(locations, locations.fee);
       }
     },
     beforeOpen: (details) async {

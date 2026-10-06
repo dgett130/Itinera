@@ -291,6 +291,444 @@ class AppLocalizationsIt extends AppLocalizations {
   String get exploreCatOther => 'Altro';
 
   @override
+  String get placeOpeningHours => 'Orari di apertura';
+
+  @override
+  String get placeHoursUnknown => 'Non disponibili: verifica prima di andare';
+
+  @override
+  String placeVisitAbout(String duration) {
+    return 'Visita di circa $duration';
+  }
+
+  @override
+  String get placeVisitHint => 'Stima indicativa: puoi cambiarla in Pianifica';
+
+  @override
+  String get placeVisitChosen => 'Durata scelta in Pianifica';
+
+  @override
+  String get placeOpenInMaps => 'Apri in Mappe';
+
+  @override
+  String get placeAbout => 'Descrizione';
+
+  @override
+  String get placeWebsite => 'Sito web';
+
+  @override
+  String get placeNotes => 'Le tue note';
+
+  @override
+  String get placeNotesHint =>
+      'Es. prenotare, biglietto cumulativo, da vedere al tramonto…';
+
+  @override
+  String get placeNotesNeedSave => 'Salva il luogo per scrivere le tue note.';
+
+  @override
+  String get placeSave => 'Salva luogo';
+
+  @override
+  String get placeUnsave => 'Rimuovi dai salvati';
+
+  @override
+  String get placeSavedToast => 'Luogo salvato';
+
+  @override
+  String get placeRemovedToast => 'Luogo rimosso';
+
+  @override
+  String get placeRemoveFromRoute => 'Togli dal percorso';
+
+  @override
+  String get placeNoCoords => 'Posizione sulla mappa mancante';
+
+  @override
+  String get placeAddToRoute => 'Aggiungi al percorso';
+
+  @override
+  String get placesHomeEmptyTitle => 'Crea il tuo primo percorso';
+
+  @override
+  String get placesHomeEmptyMessage =>
+      'Scegli cosa vedere, noi lo mettiamo in ordine.';
+
+  @override
+  String get placesHomeDrafts => 'Da programmare';
+
+  @override
+  String get placesDraftBadge => 'Bozza';
+
+  @override
+  String routeStopsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tappe',
+      one: '1 tappa',
+      zero: 'Nessuna tappa',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get routeSavedPlacesName => 'Luoghi salvati';
+
+  @override
+  String routeNewName(int n) {
+    return 'Percorso $n';
+  }
+
+  @override
+  String get flowStepChoose => 'Scegli';
+
+  @override
+  String get flowStepOrder => 'Ordina';
+
+  @override
+  String get flowStepPlan => 'Pianifica';
+
+  @override
+  String get flowNextOrder => 'Avanti: ordina';
+
+  @override
+  String get flowNextPlan => 'Avanti: pianifica';
+
+  @override
+  String get flowChooseTitle => 'Scegli cosa vedere';
+
+  @override
+  String flowInRoute(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count luoghi',
+      one: '1 luogo',
+      zero: 'Nessun luogo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get flowSearchHint => 'Cerca un luogo per nome';
+
+  @override
+  String get flowSearchHere => 'Cerca qui';
+
+  @override
+  String get flowNoResults => 'Nessun risultato: prova con un altro nome';
+
+  @override
+  String get flowWhereTitle => 'Dove vuoi esplorare?';
+
+  @override
+  String get flowWhereMessage =>
+      'Cerca una città o un luogo qui sopra, oppure sposta la mappa e tocca «Cerca qui».';
+
+  @override
+  String get flowOfflineHint =>
+      'Puoi comunque tenere premuto sulla mappa per aggiungere un punto.';
+
+  @override
+  String get flowPinHint =>
+      'Tieni premuto sulla mappa per aggiungere un punto qualsiasi.';
+
+  @override
+  String get flowPinTitle => 'Aggiungi un punto qui';
+
+  @override
+  String get flowPinNameHint => 'Es. hotel, punto d\'incontro';
+
+  @override
+  String get flowPinDefaultName => 'Punto sulla mappa';
+
+  @override
+  String flowAdded(String name) {
+    return 'Aggiunto: $name';
+  }
+
+  @override
+  String flowRemoved(String name) {
+    return 'Tolto: $name';
+  }
+
+  @override
+  String get flowUndo => 'Annulla';
+
+  @override
+  String get flowOrderTitle => 'Metti in ordine';
+
+  @override
+  String get flowOrderNeedTwo =>
+      'Aggiungi almeno 2 luoghi per scegliere l\'ordine.';
+
+  @override
+  String get flowAddPlaces => 'Aggiungi luoghi';
+
+  @override
+  String get flowStartFrom => 'Parti da';
+
+  @override
+  String get flowStartAny => 'Dalla tappa più comoda';
+
+  @override
+  String get flowStartAnyHint =>
+      'L\'ordine più veloce può cambiare anche la prima tappa';
+
+  @override
+  String get flowStartPickTitle => 'Da dove parti?';
+
+  @override
+  String get flowStartOnly => 'Solo punto di partenza';
+
+  @override
+  String get flowStartOnlyHint =>
+      'Ad esempio l\'albergo: nessun tempo di visita';
+
+  @override
+  String flowReturnTo(String name) {
+    return 'Torno a $name alla fine';
+  }
+
+  @override
+  String flowLegBack(String name) {
+    return 'Ritorno a $name';
+  }
+
+  @override
+  String get flowHowTitle => 'Come ti sposti?';
+
+  @override
+  String flowSuggestion(String duration) {
+    return 'Ordine più veloce: circa $duration in meno';
+  }
+
+  @override
+  String get flowApply => 'Applica';
+
+  @override
+  String get flowOrderChanged => 'Ordine cambiato';
+
+  @override
+  String flowAbout(String value) {
+    return 'circa $value';
+  }
+
+  @override
+  String get flowPlanTitle => 'Pianifica';
+
+  @override
+  String get flowRouteName => 'Nome del percorso';
+
+  @override
+  String get flowWhichDay => 'In quale giorno?';
+
+  @override
+  String flowInItinerary(String day) {
+    return 'Già nella tabella di marcia: $day';
+  }
+
+  @override
+  String get flowPlanInfo =>
+      'Il percorso diventa un unico evento nella tabella di marcia, con gli orari se scegli la partenza: toccandolo vedi la scaletta.';
+
+  @override
+  String get planStart => 'Partenza';
+
+  @override
+  String get planStartNone => 'Senza orario';
+
+  @override
+  String get planStartClear => 'Togli l\'orario';
+
+  @override
+  String get planScheduleTitle => 'Scaletta';
+
+  @override
+  String get planNoTimeHint =>
+      'Scegli l\'ora di partenza per vedere gli orari della giornata.';
+
+  @override
+  String get planCalculating => 'Sto calcolando i tempi tra le tappe…';
+
+  @override
+  String planEndAt(String time) {
+    return 'Fine prevista alle $time';
+  }
+
+  @override
+  String planTotal(String duration) {
+    return 'Durata totale $duration';
+  }
+
+  @override
+  String planBreakdown(String distance, String travel, String visit) {
+    return '$distance · $travel in movimento · $visit di visita';
+  }
+
+  @override
+  String get planVisitTitle => 'Quanto ti fermi?';
+
+  @override
+  String get planDay => 'Giorno';
+
+  @override
+  String get planDayPick => 'Da scegliere';
+
+  @override
+  String planVisitDefault(String duration) {
+    return 'Come suggerito (circa $duration)';
+  }
+
+  @override
+  String get planPassOnly => 'Solo passaggio';
+
+  @override
+  String get itineraryRouteOpen => 'tocca per vedere';
+
+  @override
+  String get warnTitle => 'Da tenere d\'occhio';
+
+  @override
+  String get warnClosedDay => 'Chiuso quel giorno';
+
+  @override
+  String warnOpensLater(String open, String arrive) {
+    return 'Apre alle $open, arrivi alle $arrive';
+  }
+
+  @override
+  String warnClosedEarlier(String close, String arrive) {
+    return 'Chiude alle $close, arrivi alle $arrive';
+  }
+
+  @override
+  String warnClosedAtArrival(String arrive) {
+    return 'Chiuso quando arrivi ($arrive)';
+  }
+
+  @override
+  String warnClosesDuringVisit(String close) {
+    return 'Chiude alle $close: avrai meno tempo per la visita';
+  }
+
+  @override
+  String warnLateEnd(String time) {
+    return 'La giornata finisce tardi, alle $time';
+  }
+
+  @override
+  String warnLongDay(String duration) {
+    return 'Giornata lunga: $duration in tutto';
+  }
+
+  @override
+  String warnFarWalk(String distance) {
+    return 'Tanta strada a piedi: $distance';
+  }
+
+  @override
+  String warnFarBike(String distance) {
+    return 'Tanta strada in bici: $distance';
+  }
+
+  @override
+  String placeOpenUntil(String time) {
+    return 'Aperto ora · chiude alle $time';
+  }
+
+  @override
+  String get placeOpenNow => 'Aperto ora';
+
+  @override
+  String placeClosedUntil(String time) {
+    return 'Chiuso ora · apre alle $time';
+  }
+
+  @override
+  String get placeClosedNow => 'Chiuso ora';
+
+  @override
+  String get placeHoursCheck => 'Orari da verificare';
+
+  @override
+  String get placeFee => 'Ingresso';
+
+  @override
+  String get placeFeeFree => 'Gratuito';
+
+  @override
+  String get placeFeePaid => 'A pagamento';
+
+  @override
+  String get placeFeeDonation => 'Offerta libera';
+
+  @override
+  String get rwTitle => 'Percorsi e avvisi';
+
+  @override
+  String get rwSubtitle => 'Quando avvisarti mentre pianifichi un percorso';
+
+  @override
+  String get rwHours => 'Luoghi chiusi';
+
+  @override
+  String get rwHoursSub =>
+      'Se un luogo è chiuso quando arrivi o chiude durante la visita';
+
+  @override
+  String get rwLateEnd => 'Giornata che finisce tardi';
+
+  @override
+  String rwLateEndSub(String time) {
+    return 'Dopo le $time';
+  }
+
+  @override
+  String get rwLongDay => 'Giornata lunga';
+
+  @override
+  String rwLongDaySub(String duration) {
+    return 'Oltre $duration';
+  }
+
+  @override
+  String get rwWalk => 'Tanta strada a piedi';
+
+  @override
+  String get rwBike => 'Tanta strada in bici';
+
+  @override
+  String rwKmSub(String km) {
+    return 'Oltre $km km';
+  }
+
+  @override
+  String get rwLess => 'Meno';
+
+  @override
+  String get rwMore => 'Di più';
+
+  @override
+  String get rwInfo => 'Le soglie valgono solo su questo dispositivo.';
+
+  @override
+  String get flowAddedToDay => 'Aggiunto alla tabella di marcia';
+
+  @override
+  String get flowMovedToDay => 'Spostato nel giorno scelto';
+
+  @override
+  String get flowAlreadyInDay => 'È già in quel giorno';
+
+  @override
+  String get flowView => 'Vedi';
+
+  @override
+  String get flowPickDayFirst => 'Scegli prima un giorno';
+
+  @override
   String get routesTitle => 'Percorsi';
 
   @override
@@ -340,18 +778,6 @@ class AppLocalizationsIt extends AppLocalizations {
   String get routeModeCar => 'Auto';
 
   @override
-  String get routeFixedStart => 'Partenza fissa';
-
-  @override
-  String get routeReturnToStart => 'Ritorno alla partenza';
-
-  @override
-  String get routeOptimize => 'Ottimizza percorso';
-
-  @override
-  String get routeRestoreManual => 'Ripristina ordine manuale';
-
-  @override
   String get routeRecalculate => 'Ricalcola';
 
   @override
@@ -367,10 +793,10 @@ class AppLocalizationsIt extends AppLocalizations {
   String get routeDayUnplanned => 'Non programmato';
 
   @override
-  String get routeSourceOnline => 'Percorso stradale reale';
+  String get routeSourceOnline => 'Tempi calcolati sulle strade';
 
   @override
-  String get routeSourceEstimate => 'Stima (linea d\'aria)';
+  String get routeSourceEstimate => 'Tempi stimati (senza rete)';
 
   @override
   String get routeDistance => 'Distanza';

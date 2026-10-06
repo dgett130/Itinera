@@ -8,8 +8,10 @@ import '../../core/enums.dart';
 import '../../core/format.dart';
 import '../../core/icon_keys.dart';
 import '../../data/database.dart';
+import '../../l10n/app_localizations.dart';
 import '../../ui/itinera_theme.dart';
 import '../../ui/widgets.dart';
+import '../explore/explore_providers.dart';
 import '../trip/trip_providers.dart';
 import 'activity_sheet.dart';
 import 'itinerary_domain.dart';
@@ -299,6 +301,7 @@ class _ActivityTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
     final scheme = context.scheme;
     final done = activity.status == ActivityStatus.done;
@@ -317,10 +320,12 @@ class _ActivityTile extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: ItineraCard(
         accentEdge: edge,
-        // Un'attivita'-percorso apre il percorso (mappa+tappe); le altre il
-        // foglio di modifica dell'attivita'.
+        // Un'attivita'-percorso apre il riepilogo del percorso (mappa e
+        // scaletta); le altre il foglio di modifica dell'attivita'.
         onTap: activity.routeId != null
-            ? () => context.push('/trip/$tripId/route/${activity.routeId}')
+            ? () => context.push(
+                '/trip/$tripId/route/${activity.routeId}/summary',
+              )
             : () => showActivitySheet(
                 context,
                 tripId: tripId,
@@ -372,7 +377,18 @@ class _ActivityTile extends ConsumerWidget {
                         Icon(Icons.route, size: 13, color: tokens.accent),
                         const SizedBox(width: 3),
                         Text(
-                          'Percorso di visita · tocca per aprire',
+                          [
+                            l10n.routeStopsCount(
+                              ref
+                                      .watch(
+                                        routeStopsProvider(activity.routeId!),
+                                      )
+                                      .value
+                                      ?.length ??
+                                  0,
+                            ),
+                            l10n.itineraryRouteOpen,
+                          ].join(' · '),
                           style: context.texts.bodySmall?.copyWith(
                             color: tokens.accent,
                           ),

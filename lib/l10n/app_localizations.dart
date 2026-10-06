@@ -628,6 +628,720 @@ abstract class AppLocalizations {
   /// **'Altro'**
   String get exploreCatOther;
 
+  /// No description provided for @placeOpeningHours.
+  ///
+  /// In it, this message translates to:
+  /// **'Orari di apertura'**
+  String get placeOpeningHours;
+
+  /// No description provided for @placeHoursUnknown.
+  ///
+  /// In it, this message translates to:
+  /// **'Non disponibili: verifica prima di andare'**
+  String get placeHoursUnknown;
+
+  /// No description provided for @placeVisitAbout.
+  ///
+  /// In it, this message translates to:
+  /// **'Visita di circa {duration}'**
+  String placeVisitAbout(String duration);
+
+  /// No description provided for @placeVisitHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Stima indicativa: puoi cambiarla in Pianifica'**
+  String get placeVisitHint;
+
+  /// No description provided for @placeVisitChosen.
+  ///
+  /// In it, this message translates to:
+  /// **'Durata scelta in Pianifica'**
+  String get placeVisitChosen;
+
+  /// No description provided for @placeOpenInMaps.
+  ///
+  /// In it, this message translates to:
+  /// **'Apri in Mappe'**
+  String get placeOpenInMaps;
+
+  /// No description provided for @placeAbout.
+  ///
+  /// In it, this message translates to:
+  /// **'Descrizione'**
+  String get placeAbout;
+
+  /// No description provided for @placeWebsite.
+  ///
+  /// In it, this message translates to:
+  /// **'Sito web'**
+  String get placeWebsite;
+
+  /// No description provided for @placeNotes.
+  ///
+  /// In it, this message translates to:
+  /// **'Le tue note'**
+  String get placeNotes;
+
+  /// No description provided for @placeNotesHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Es. prenotare, biglietto cumulativo, da vedere al tramonto…'**
+  String get placeNotesHint;
+
+  /// No description provided for @placeNotesNeedSave.
+  ///
+  /// In it, this message translates to:
+  /// **'Salva il luogo per scrivere le tue note.'**
+  String get placeNotesNeedSave;
+
+  /// No description provided for @placeSave.
+  ///
+  /// In it, this message translates to:
+  /// **'Salva luogo'**
+  String get placeSave;
+
+  /// No description provided for @placeUnsave.
+  ///
+  /// In it, this message translates to:
+  /// **'Rimuovi dai salvati'**
+  String get placeUnsave;
+
+  /// No description provided for @placeSavedToast.
+  ///
+  /// In it, this message translates to:
+  /// **'Luogo salvato'**
+  String get placeSavedToast;
+
+  /// No description provided for @placeRemovedToast.
+  ///
+  /// In it, this message translates to:
+  /// **'Luogo rimosso'**
+  String get placeRemovedToast;
+
+  /// No description provided for @placeRemoveFromRoute.
+  ///
+  /// In it, this message translates to:
+  /// **'Togli dal percorso'**
+  String get placeRemoveFromRoute;
+
+  /// No description provided for @placeNoCoords.
+  ///
+  /// In it, this message translates to:
+  /// **'Posizione sulla mappa mancante'**
+  String get placeNoCoords;
+
+  /// No description provided for @placeAddToRoute.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiungi al percorso'**
+  String get placeAddToRoute;
+
+  /// No description provided for @placesHomeEmptyTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Crea il tuo primo percorso'**
+  String get placesHomeEmptyTitle;
+
+  /// No description provided for @placesHomeEmptyMessage.
+  ///
+  /// In it, this message translates to:
+  /// **'Scegli cosa vedere, noi lo mettiamo in ordine.'**
+  String get placesHomeEmptyMessage;
+
+  /// No description provided for @placesHomeDrafts.
+  ///
+  /// In it, this message translates to:
+  /// **'Da programmare'**
+  String get placesHomeDrafts;
+
+  /// No description provided for @placesDraftBadge.
+  ///
+  /// In it, this message translates to:
+  /// **'Bozza'**
+  String get placesDraftBadge;
+
+  /// No description provided for @routeStopsCount.
+  ///
+  /// In it, this message translates to:
+  /// **'{count, plural, =0{Nessuna tappa} =1{1 tappa} other{{count} tappe}}'**
+  String routeStopsCount(int count);
+
+  /// No description provided for @routeSavedPlacesName.
+  ///
+  /// In it, this message translates to:
+  /// **'Luoghi salvati'**
+  String get routeSavedPlacesName;
+
+  /// No description provided for @routeNewName.
+  ///
+  /// In it, this message translates to:
+  /// **'Percorso {n}'**
+  String routeNewName(int n);
+
+  /// No description provided for @flowStepChoose.
+  ///
+  /// In it, this message translates to:
+  /// **'Scegli'**
+  String get flowStepChoose;
+
+  /// No description provided for @flowStepOrder.
+  ///
+  /// In it, this message translates to:
+  /// **'Ordina'**
+  String get flowStepOrder;
+
+  /// No description provided for @flowStepPlan.
+  ///
+  /// In it, this message translates to:
+  /// **'Pianifica'**
+  String get flowStepPlan;
+
+  /// No description provided for @flowNextOrder.
+  ///
+  /// In it, this message translates to:
+  /// **'Avanti: ordina'**
+  String get flowNextOrder;
+
+  /// No description provided for @flowNextPlan.
+  ///
+  /// In it, this message translates to:
+  /// **'Avanti: pianifica'**
+  String get flowNextPlan;
+
+  /// No description provided for @flowChooseTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Scegli cosa vedere'**
+  String get flowChooseTitle;
+
+  /// No description provided for @flowInRoute.
+  ///
+  /// In it, this message translates to:
+  /// **'{count, plural, =0{Nessun luogo} =1{1 luogo} other{{count} luoghi}}'**
+  String flowInRoute(int count);
+
+  /// No description provided for @flowSearchHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Cerca un luogo per nome'**
+  String get flowSearchHint;
+
+  /// No description provided for @flowSearchHere.
+  ///
+  /// In it, this message translates to:
+  /// **'Cerca qui'**
+  String get flowSearchHere;
+
+  /// No description provided for @flowNoResults.
+  ///
+  /// In it, this message translates to:
+  /// **'Nessun risultato: prova con un altro nome'**
+  String get flowNoResults;
+
+  /// No description provided for @flowWhereTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Dove vuoi esplorare?'**
+  String get flowWhereTitle;
+
+  /// No description provided for @flowWhereMessage.
+  ///
+  /// In it, this message translates to:
+  /// **'Cerca una città o un luogo qui sopra, oppure sposta la mappa e tocca «Cerca qui».'**
+  String get flowWhereMessage;
+
+  /// No description provided for @flowOfflineHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Puoi comunque tenere premuto sulla mappa per aggiungere un punto.'**
+  String get flowOfflineHint;
+
+  /// No description provided for @flowPinHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Tieni premuto sulla mappa per aggiungere un punto qualsiasi.'**
+  String get flowPinHint;
+
+  /// No description provided for @flowPinTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiungi un punto qui'**
+  String get flowPinTitle;
+
+  /// No description provided for @flowPinNameHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Es. hotel, punto d\'incontro'**
+  String get flowPinNameHint;
+
+  /// No description provided for @flowPinDefaultName.
+  ///
+  /// In it, this message translates to:
+  /// **'Punto sulla mappa'**
+  String get flowPinDefaultName;
+
+  /// No description provided for @flowAdded.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiunto: {name}'**
+  String flowAdded(String name);
+
+  /// No description provided for @flowRemoved.
+  ///
+  /// In it, this message translates to:
+  /// **'Tolto: {name}'**
+  String flowRemoved(String name);
+
+  /// No description provided for @flowUndo.
+  ///
+  /// In it, this message translates to:
+  /// **'Annulla'**
+  String get flowUndo;
+
+  /// No description provided for @flowOrderTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Metti in ordine'**
+  String get flowOrderTitle;
+
+  /// No description provided for @flowOrderNeedTwo.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiungi almeno 2 luoghi per scegliere l\'ordine.'**
+  String get flowOrderNeedTwo;
+
+  /// No description provided for @flowAddPlaces.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiungi luoghi'**
+  String get flowAddPlaces;
+
+  /// No description provided for @flowStartFrom.
+  ///
+  /// In it, this message translates to:
+  /// **'Parti da'**
+  String get flowStartFrom;
+
+  /// No description provided for @flowStartAny.
+  ///
+  /// In it, this message translates to:
+  /// **'Dalla tappa più comoda'**
+  String get flowStartAny;
+
+  /// No description provided for @flowStartAnyHint.
+  ///
+  /// In it, this message translates to:
+  /// **'L\'ordine più veloce può cambiare anche la prima tappa'**
+  String get flowStartAnyHint;
+
+  /// No description provided for @flowStartPickTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Da dove parti?'**
+  String get flowStartPickTitle;
+
+  /// No description provided for @flowStartOnly.
+  ///
+  /// In it, this message translates to:
+  /// **'Solo punto di partenza'**
+  String get flowStartOnly;
+
+  /// No description provided for @flowStartOnlyHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Ad esempio l\'albergo: nessun tempo di visita'**
+  String get flowStartOnlyHint;
+
+  /// No description provided for @flowReturnTo.
+  ///
+  /// In it, this message translates to:
+  /// **'Torno a {name} alla fine'**
+  String flowReturnTo(String name);
+
+  /// No description provided for @flowLegBack.
+  ///
+  /// In it, this message translates to:
+  /// **'Ritorno a {name}'**
+  String flowLegBack(String name);
+
+  /// No description provided for @flowHowTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Come ti sposti?'**
+  String get flowHowTitle;
+
+  /// No description provided for @flowSuggestion.
+  ///
+  /// In it, this message translates to:
+  /// **'Ordine più veloce: circa {duration} in meno'**
+  String flowSuggestion(String duration);
+
+  /// No description provided for @flowApply.
+  ///
+  /// In it, this message translates to:
+  /// **'Applica'**
+  String get flowApply;
+
+  /// No description provided for @flowOrderChanged.
+  ///
+  /// In it, this message translates to:
+  /// **'Ordine cambiato'**
+  String get flowOrderChanged;
+
+  /// No description provided for @flowAbout.
+  ///
+  /// In it, this message translates to:
+  /// **'circa {value}'**
+  String flowAbout(String value);
+
+  /// No description provided for @flowPlanTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Pianifica'**
+  String get flowPlanTitle;
+
+  /// No description provided for @flowRouteName.
+  ///
+  /// In it, this message translates to:
+  /// **'Nome del percorso'**
+  String get flowRouteName;
+
+  /// No description provided for @flowWhichDay.
+  ///
+  /// In it, this message translates to:
+  /// **'In quale giorno?'**
+  String get flowWhichDay;
+
+  /// No description provided for @flowInItinerary.
+  ///
+  /// In it, this message translates to:
+  /// **'Già nella tabella di marcia: {day}'**
+  String flowInItinerary(String day);
+
+  /// No description provided for @flowPlanInfo.
+  ///
+  /// In it, this message translates to:
+  /// **'Il percorso diventa un unico evento nella tabella di marcia, con gli orari se scegli la partenza: toccandolo vedi la scaletta.'**
+  String get flowPlanInfo;
+
+  /// No description provided for @planStart.
+  ///
+  /// In it, this message translates to:
+  /// **'Partenza'**
+  String get planStart;
+
+  /// No description provided for @planStartNone.
+  ///
+  /// In it, this message translates to:
+  /// **'Senza orario'**
+  String get planStartNone;
+
+  /// No description provided for @planStartClear.
+  ///
+  /// In it, this message translates to:
+  /// **'Togli l\'orario'**
+  String get planStartClear;
+
+  /// No description provided for @planScheduleTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Scaletta'**
+  String get planScheduleTitle;
+
+  /// No description provided for @planNoTimeHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Scegli l\'ora di partenza per vedere gli orari della giornata.'**
+  String get planNoTimeHint;
+
+  /// No description provided for @planCalculating.
+  ///
+  /// In it, this message translates to:
+  /// **'Sto calcolando i tempi tra le tappe…'**
+  String get planCalculating;
+
+  /// No description provided for @planEndAt.
+  ///
+  /// In it, this message translates to:
+  /// **'Fine prevista alle {time}'**
+  String planEndAt(String time);
+
+  /// No description provided for @planTotal.
+  ///
+  /// In it, this message translates to:
+  /// **'Durata totale {duration}'**
+  String planTotal(String duration);
+
+  /// No description provided for @planBreakdown.
+  ///
+  /// In it, this message translates to:
+  /// **'{distance} · {travel} in movimento · {visit} di visita'**
+  String planBreakdown(String distance, String travel, String visit);
+
+  /// No description provided for @planVisitTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Quanto ti fermi?'**
+  String get planVisitTitle;
+
+  /// No description provided for @planDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Giorno'**
+  String get planDay;
+
+  /// No description provided for @planDayPick.
+  ///
+  /// In it, this message translates to:
+  /// **'Da scegliere'**
+  String get planDayPick;
+
+  /// No description provided for @planVisitDefault.
+  ///
+  /// In it, this message translates to:
+  /// **'Come suggerito (circa {duration})'**
+  String planVisitDefault(String duration);
+
+  /// No description provided for @planPassOnly.
+  ///
+  /// In it, this message translates to:
+  /// **'Solo passaggio'**
+  String get planPassOnly;
+
+  /// No description provided for @itineraryRouteOpen.
+  ///
+  /// In it, this message translates to:
+  /// **'tocca per vedere'**
+  String get itineraryRouteOpen;
+
+  /// No description provided for @warnTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Da tenere d\'occhio'**
+  String get warnTitle;
+
+  /// No description provided for @warnClosedDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiuso quel giorno'**
+  String get warnClosedDay;
+
+  /// No description provided for @warnOpensLater.
+  ///
+  /// In it, this message translates to:
+  /// **'Apre alle {open}, arrivi alle {arrive}'**
+  String warnOpensLater(String open, String arrive);
+
+  /// No description provided for @warnClosedEarlier.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiude alle {close}, arrivi alle {arrive}'**
+  String warnClosedEarlier(String close, String arrive);
+
+  /// No description provided for @warnClosedAtArrival.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiuso quando arrivi ({arrive})'**
+  String warnClosedAtArrival(String arrive);
+
+  /// No description provided for @warnClosesDuringVisit.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiude alle {close}: avrai meno tempo per la visita'**
+  String warnClosesDuringVisit(String close);
+
+  /// No description provided for @warnLateEnd.
+  ///
+  /// In it, this message translates to:
+  /// **'La giornata finisce tardi, alle {time}'**
+  String warnLateEnd(String time);
+
+  /// No description provided for @warnLongDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Giornata lunga: {duration} in tutto'**
+  String warnLongDay(String duration);
+
+  /// No description provided for @warnFarWalk.
+  ///
+  /// In it, this message translates to:
+  /// **'Tanta strada a piedi: {distance}'**
+  String warnFarWalk(String distance);
+
+  /// No description provided for @warnFarBike.
+  ///
+  /// In it, this message translates to:
+  /// **'Tanta strada in bici: {distance}'**
+  String warnFarBike(String distance);
+
+  /// No description provided for @placeOpenUntil.
+  ///
+  /// In it, this message translates to:
+  /// **'Aperto ora · chiude alle {time}'**
+  String placeOpenUntil(String time);
+
+  /// No description provided for @placeOpenNow.
+  ///
+  /// In it, this message translates to:
+  /// **'Aperto ora'**
+  String get placeOpenNow;
+
+  /// No description provided for @placeClosedUntil.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiuso ora · apre alle {time}'**
+  String placeClosedUntil(String time);
+
+  /// No description provided for @placeClosedNow.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiuso ora'**
+  String get placeClosedNow;
+
+  /// No description provided for @placeHoursCheck.
+  ///
+  /// In it, this message translates to:
+  /// **'Orari da verificare'**
+  String get placeHoursCheck;
+
+  /// No description provided for @placeFee.
+  ///
+  /// In it, this message translates to:
+  /// **'Ingresso'**
+  String get placeFee;
+
+  /// No description provided for @placeFeeFree.
+  ///
+  /// In it, this message translates to:
+  /// **'Gratuito'**
+  String get placeFeeFree;
+
+  /// No description provided for @placeFeePaid.
+  ///
+  /// In it, this message translates to:
+  /// **'A pagamento'**
+  String get placeFeePaid;
+
+  /// No description provided for @placeFeeDonation.
+  ///
+  /// In it, this message translates to:
+  /// **'Offerta libera'**
+  String get placeFeeDonation;
+
+  /// No description provided for @rwTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Percorsi e avvisi'**
+  String get rwTitle;
+
+  /// No description provided for @rwSubtitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Quando avvisarti mentre pianifichi un percorso'**
+  String get rwSubtitle;
+
+  /// No description provided for @rwHours.
+  ///
+  /// In it, this message translates to:
+  /// **'Luoghi chiusi'**
+  String get rwHours;
+
+  /// No description provided for @rwHoursSub.
+  ///
+  /// In it, this message translates to:
+  /// **'Se un luogo è chiuso quando arrivi o chiude durante la visita'**
+  String get rwHoursSub;
+
+  /// No description provided for @rwLateEnd.
+  ///
+  /// In it, this message translates to:
+  /// **'Giornata che finisce tardi'**
+  String get rwLateEnd;
+
+  /// No description provided for @rwLateEndSub.
+  ///
+  /// In it, this message translates to:
+  /// **'Dopo le {time}'**
+  String rwLateEndSub(String time);
+
+  /// No description provided for @rwLongDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Giornata lunga'**
+  String get rwLongDay;
+
+  /// No description provided for @rwLongDaySub.
+  ///
+  /// In it, this message translates to:
+  /// **'Oltre {duration}'**
+  String rwLongDaySub(String duration);
+
+  /// No description provided for @rwWalk.
+  ///
+  /// In it, this message translates to:
+  /// **'Tanta strada a piedi'**
+  String get rwWalk;
+
+  /// No description provided for @rwBike.
+  ///
+  /// In it, this message translates to:
+  /// **'Tanta strada in bici'**
+  String get rwBike;
+
+  /// No description provided for @rwKmSub.
+  ///
+  /// In it, this message translates to:
+  /// **'Oltre {km} km'**
+  String rwKmSub(String km);
+
+  /// No description provided for @rwLess.
+  ///
+  /// In it, this message translates to:
+  /// **'Meno'**
+  String get rwLess;
+
+  /// No description provided for @rwMore.
+  ///
+  /// In it, this message translates to:
+  /// **'Di più'**
+  String get rwMore;
+
+  /// No description provided for @rwInfo.
+  ///
+  /// In it, this message translates to:
+  /// **'Le soglie valgono solo su questo dispositivo.'**
+  String get rwInfo;
+
+  /// No description provided for @flowAddedToDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiunto alla tabella di marcia'**
+  String get flowAddedToDay;
+
+  /// No description provided for @flowMovedToDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Spostato nel giorno scelto'**
+  String get flowMovedToDay;
+
+  /// No description provided for @flowAlreadyInDay.
+  ///
+  /// In it, this message translates to:
+  /// **'È già in quel giorno'**
+  String get flowAlreadyInDay;
+
+  /// No description provided for @flowView.
+  ///
+  /// In it, this message translates to:
+  /// **'Vedi'**
+  String get flowView;
+
+  /// No description provided for @flowPickDayFirst.
+  ///
+  /// In it, this message translates to:
+  /// **'Scegli prima un giorno'**
+  String get flowPickDayFirst;
+
   /// No description provided for @routesTitle.
   ///
   /// In it, this message translates to:
@@ -724,30 +1438,6 @@ abstract class AppLocalizations {
   /// **'Auto'**
   String get routeModeCar;
 
-  /// No description provided for @routeFixedStart.
-  ///
-  /// In it, this message translates to:
-  /// **'Partenza fissa'**
-  String get routeFixedStart;
-
-  /// No description provided for @routeReturnToStart.
-  ///
-  /// In it, this message translates to:
-  /// **'Ritorno alla partenza'**
-  String get routeReturnToStart;
-
-  /// No description provided for @routeOptimize.
-  ///
-  /// In it, this message translates to:
-  /// **'Ottimizza percorso'**
-  String get routeOptimize;
-
-  /// No description provided for @routeRestoreManual.
-  ///
-  /// In it, this message translates to:
-  /// **'Ripristina ordine manuale'**
-  String get routeRestoreManual;
-
   /// No description provided for @routeRecalculate.
   ///
   /// In it, this message translates to:
@@ -781,13 +1471,13 @@ abstract class AppLocalizations {
   /// No description provided for @routeSourceOnline.
   ///
   /// In it, this message translates to:
-  /// **'Percorso stradale reale'**
+  /// **'Tempi calcolati sulle strade'**
   String get routeSourceOnline;
 
   /// No description provided for @routeSourceEstimate.
   ///
   /// In it, this message translates to:
-  /// **'Stima (linea d\'aria)'**
+  /// **'Tempi stimati (senza rete)'**
   String get routeSourceEstimate;
 
   /// No description provided for @routeDistance.

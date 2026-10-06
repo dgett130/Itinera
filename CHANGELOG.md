@@ -10,6 +10,84 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ## [Non rilasciato]
 
+### Aggiunto
+- **Scheda del luogo** in "Luoghi e percorsi": toccando un luogo (pin sulla
+  mappa, elenco dei suggeriti, luoghi salvati, tappe del percorso) si apre un
+  pannello trascinabile con **orari di apertura in italiano leggibile**,
+  **durata di visita stimata**, indirizzo e "Apri in Mappe", descrizione, sito
+  web e **note personali** (salvate in automatico). Il pin sulla mappa non
+  salva più il luogo "alla cieca".
+- **Luoghi e percorsi a passi**: nuova pagina iniziale con i percorsi
+  raggruppati per giorno (le bozze in "Da programmare") e un grande "Nuovo
+  percorso". La costruzione avviene su **mappa a schermo pieno** con un
+  vassoio trascinabile e tre passi saltabili: **① Scegli → ② Ordina →
+  ③ Pianifica**, bottone principale sempre sotto il pollice.
+- **Scegli**: ricerca nell'**area visibile** della mappa ("Cerca qui" quando la
+  sposti, niente più raggio in km), **ricerca per nome**, filtri, e **pin a
+  mano** tenendo premuto sulla mappa. Il [+] aggiunge il luogo direttamente al
+  percorso; togliere una tappa si può **annullare**.
+- **Ordina**: **tempo e distanza tra una tappa e l'altra** (anche per il
+  ritorno), calcolati sulle strade o stimati senza rete ("circa");
+  **"Parti da"** una tappa a scelta, anche come **solo punto di partenza**
+  (es. l'albergo), oppure dalla più comoda; **"Torno a … alla fine"**.
+- **Suggerimento "Ordine più veloce: circa N min in meno"** con **Applica**,
+  che si può annullare; compare solo quando il risparmio è concreto (con i
+  tempi sulle strade viene prima verificato sulle strade).
+- **Pianifica**: giorno, **ora di partenza** e **scaletta** con l'orario di
+  arrivo a ogni tappa, il tempo tra una tappa e l'altra e la **durata di
+  visita modificabile** (come suggerito per categoria, una durata a scelta,
+  "solo passaggio"); in fondo **fine prevista** (o durata totale) con km,
+  tempo in movimento e tempo di visita.
+- Con l'ora di partenza l'evento del percorso nella tabella di marcia ha
+  **inizio e fine** e resta allineato a ogni modifica (orario, durate, ordine,
+  nome); senza orario resta "tutto il giorno".
+- **Riepilogo del percorso** dalla tabella di marcia: toccando l'evento si
+  vedono mappa e scaletta in sola lettura (schede dei luoghi comprese), con
+  **"Modifica"** per rientrare nei passi. L'evento mostra il numero di tappe.
+- La scheda del luogo mostra la **durata di visita scelta** nel percorso (non
+  più sempre quella suggerita).
+- **Avvisi nella scaletta** (Pianifica e riepilogo): luogo **chiuso quel
+  giorno**, che **apre dopo il tuo arrivo**, **già chiuso** o che **chiude
+  durante la visita** (dagli orari OpenStreetMap, quando sono interpretabili
+  e il giorno ha una data); **giornata che finisce tardi**, **giornata
+  lunga**, **tanta strada a piedi o in bici**.
+- **Impostazioni → "Percorsi e avvisi"**: ogni avviso si può spegnere e le
+  soglie si regolano con "Meno"/"Di più" (predefinite: fine dopo le 20:00,
+  oltre 9 h, a piedi oltre 15 km, in bici oltre 40 km). Valgono solo su
+  questo dispositivo.
+- Scheda del luogo: **"Aperto ora · chiude alle …" / "Chiuso ora · apre alle
+  …"** (o "Orari da verificare") e **ingresso** gratuito, a pagamento o a
+  offerta libera, quando OpenStreetMap lo indica.
+
+### Modificato
+- **Niente più "luoghi salvati" separati**: i luoghi vivono dentro i percorsi.
+  Quelli salvati in precedenza vengono raccolti in una bozza **"Luoghi
+  salvati"** (una sola, anche tra più dispositivi e membri).
+- Un nuovo percorso parte **vuoto** (prima conteneva tutti i luoghi salvati);
+  una bozza lasciata senza tappe viene eliminata.
+- Ordinamento più semplice: tempi e distanze si **ricalcolano da soli** (via
+  "Ricalcola"); l'ordine automatico è un suggerimento con Annulla (via
+  "Ripristina ordine manuale").
+- Durate senza "0 min" superflui (es. "1 h" invece di "1 h 0 min").
+- Tappa senza posizione sulla mappa: messaggio chiaro invece di "Altro" in rosso.
+- Pannello **"Novità"** aggiornato con le novità di "Luoghi e percorsi".
+
+### Corretto
+- La scheda del luogo e i pannelli/dialoghi di "Luoghi e percorsi" usano lo
+  **stile del viaggio** (prima comparivano con i colori generali dell'app).
+- Aggiungere all'itinerario un percorso già presente in un altro giorno ora lo
+  **sposta** invece di duplicare l'evento.
+
+### Note tecniche
+- Redesign a passi di "Luoghi e percorsi" descritto in
+  **`docs/03-luoghi-e-percorsi-redesign.md`** (incrementi 1–5 di 5).
+- **Schema locale v8** (colonne nullable): `sightseeing_routes.start_minutes`
+  e `legs` (tratti JSON `[{m,s}]`), `sightseeing_route_stops.visit_minutes`,
+  `locations.fee`. Mapper di sync aggiornati; in pull le colonne nuove si
+  applicano solo se il server le restituisce.
+- **Supabase**: eseguire **`docs/supabase/explore-v2.sql`** nel SQL Editor
+  **prima** di distribuire questa versione (RLS invariate).
+
 ## [1.3.0] - 2026-09-17
 
 ### Aggiunto

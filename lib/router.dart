@@ -4,8 +4,9 @@ import 'features/auth/auth_screen.dart';
 import 'features/auth/password_reset_screen.dart';
 import 'features/auth/profile_screen.dart';
 import 'features/bacheca/bacheca_screen.dart';
-import 'features/explore/explore_screen.dart';
-import 'features/explore/route_builder_screen.dart';
+import 'features/explore/places_home_screen.dart';
+import 'features/explore/route_flow_screen.dart';
+import 'features/explore/route_summary_screen.dart';
 import 'features/friends/friends_screen.dart';
 import 'features/itinerary/itinerary_screen.dart';
 import 'features/members/members_screen.dart';
@@ -14,6 +15,7 @@ import 'features/notifications/notification_prefs_screen.dart';
 import 'features/notifications/notifications_screen.dart';
 import 'features/onboarding/root_gate.dart';
 import 'features/packing/packing_screen.dart';
+import 'features/settings/route_warnings_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/transport/transport_screen.dart';
 import 'features/trip/trip_detail_screen.dart';
@@ -44,6 +46,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/settings/notifications',
       builder: (context, state) => const NotificationPrefsScreen(),
+    ),
+    GoRoute(
+      path: '/settings/route-warnings',
+      builder: (context, state) => const RouteWarningsScreen(),
     ),
     GoRoute(
       path: '/admin/message',
@@ -90,7 +96,7 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/trip/:id/explore',
       builder: (context, state) =>
-          ExploreScreen(tripId: state.pathParameters['id']!),
+          PlacesHomeScreen(tripId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/trip/:id/files',
@@ -99,7 +105,15 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/trip/:id/route/:routeId',
-      builder: (context, state) => RouteBuilderScreen(
+      builder: (context, state) => RouteFlowScreen(
+        tripId: state.pathParameters['id']!,
+        routeId: state.pathParameters['routeId']!,
+        startNew: state.uri.queryParameters['new'] == '1',
+      ),
+    ),
+    GoRoute(
+      path: '/trip/:id/route/:routeId/summary',
+      builder: (context, state) => RouteSummaryScreen(
         tripId: state.pathParameters['id']!,
         routeId: state.pathParameters['routeId']!,
       ),
