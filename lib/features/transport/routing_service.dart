@@ -5,6 +5,13 @@ import 'package:latlong2/latlong.dart';
 
 import '../../core/enums.dart';
 
+/// Un tratto del percorso tra due tappe consecutive.
+class RouteLeg {
+  const RouteLeg(this.distanceMeters, this.durationSeconds);
+  final double distanceMeters;
+  final double durationSeconds;
+}
+
 /// Risultato strutturato di un calcolo di percorso.
 class RouteResult {
   const RouteResult({
@@ -13,6 +20,7 @@ class RouteResult {
     required this.durationSeconds,
     required this.source,
     required this.effectiveMode,
+    this.legs = const [],
   });
 
   /// Geometria della polyline (in ordine). Con il routing stradale segue le
@@ -27,6 +35,10 @@ class RouteResult {
 
   /// Mezzo effettivamente gestito dal provider per questo risultato.
   final RouteTravelMode effectiveMode;
+
+  /// Tratti tra i waypoint consecutivi (uno in meno dei waypoint). Vuoto se
+  /// il provider non li fornisce.
+  final List<RouteLeg> legs;
 }
 
 /// Routing stradale via OSRM. Usa le istanze pubbliche FOSSGIS
@@ -110,12 +122,22 @@ class RoutingService {
         }
       }
       if (distance == null || duration == null || points.isEmpty) return null;
+      final legs = <RouteLeg>[
+        for (final l in (first['legs'] as List?) ?? const [])
+          if (l is Map)
+            RouteLeg(
+              (l['distance'] as num?)?.toDouble() ?? 0,
+              (l['duration'] as num?)?.toDouble() ?? 0,
+            ),
+      ];
       return RouteResult(
         geometry: points,
         distanceMeters: distance,
         durationSeconds: duration,
         source: DistanceSource.onlineRouting,
         effectiveMode: mode,
+        // Tratti incompleti = inutilizzabili per la scaletta: meglio nessuno.
+        legs: legs.length == waypoints.length - 1 ? legs : const [],
       );
     } catch (_) {
       return null;

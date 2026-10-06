@@ -221,3 +221,72 @@ TravelEstimate estimateTravel({
   final duration = speedMs > 0 ? distance / speedMs : 0.0;
   return TravelEstimate(distance, duration);
 }
+
+/// Stima tratto per tratto tra punti consecutivi di [waypoints].
+List<TravelEstimate> estimateLegs({
+  required List<LatLng> waypoints,
+  required RouteTravelMode mode,
+}) => [
+  for (var i = 0; i < waypoints.length - 1; i++)
+    estimateTravel(orderedPoints: [waypoints[i], waypoints[i + 1]], mode: mode),
+];
+
+// --- Suggerimento "ordine più veloce" --------------------------------------
+
+/// Un ordine migliore di quello attuale, con il risparmio stimato.
+class OrderSuggestion {
+  const OrderSuggestion(this.order, this.savedSeconds);
+
+  /// Permutazione degli indici dei punti.
+  final List<int> order;
+
+  /// Tempo di spostamento risparmiato (stima con il profilo del mezzo).
+  final double savedSeconds;
+}
+
+/// Propone un ordine più veloce di quello attuale solo se conviene davvero:
+/// almeno [minSavedSeconds] e almeno [minSavedRatio] del tragitto. Con meno di
+/// 3 tappe non c'e' niente da riordinare. Rispetta partenza fissa e anello.
+OrderSuggestion? suggestFasterOrder({
+  required List<LatLng> points,
+  required RouteTravelMode mode,
+  bool fixedStart = false,
+  bool returnToStart = false,
+  double minSavedSeconds = 120,
+  double minSavedRatio = 0.05,
+}) {
+  if (points.length < 3) return null;
+  final d = distanceMatrixMeters(points);
+  final identity = List<int>.generate(points.length, (i) => i);
+  final current = pathLengthMeters(identity, d, returnToStart: returnToStart);
+  var opt = optimizeRouteOrder(
+    points: points,
+    fixedStart: true,
+    returnToStart: returnToStart,
+  );
+  if (!fixedStart && !returnToStart) {
+    // Senza partenza fissa anche la prima tappa puo' cambiare: provo ogni
+    // punto come inizio e tengo il giro piu' corto.
+    for (var s = 1; s < points.length; s++) {
+      final rotated = [s, ...identity.where((i) => i != s)];
+      final o = optimizeRouteOrder(
+        points: [for (final i in rotated) points[i]],
+        fixedStart: true,
+      );
+      if (o.lengthMeters + 1e-6 < opt.lengthMeters) {
+        opt = OptimizedOrder([
+          for (final i in o.order) rotated[i],
+        ], o.lengthMeters);
+      }
+    }
+  }
+  final savedMeters = current - opt.lengthMeters;
+  if (savedMeters <= 0 || current <= 0) return null;
+  final profile =
+      travelModeProfiles[mode] ?? travelModeProfiles[RouteTravelMode.walk]!;
+  final speedMs = profile.speedKmh * 1000 / 3600;
+  final savedSeconds = savedMeters * profile.detourFactor / speedMs;
+  if (savedSeconds < minSavedSeconds) return null;
+  if (savedMeters / current < minSavedRatio) return null;
+  return OrderSuggestion(opt.order, savedSeconds);
+}

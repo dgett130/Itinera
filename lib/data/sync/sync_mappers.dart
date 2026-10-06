@@ -37,6 +37,11 @@ DateTime? _pd(dynamic v) =>
 int? _pi(dynamic v) => (v as num?)?.toInt();
 double? _pdouble(dynamic v) => (v as num?)?.toDouble();
 
+/// Colonna aggiunta dopo il primo rilascio: se il server non la restituisce
+/// (script SQL non ancora eseguito) il valore locale resta com'e'.
+Value<T> _opt<T>(Map<String, dynamic> m, String key, T Function(dynamic) f) =>
+    m.containsKey(key) ? Value(f(m[key])) : const Value.absent();
+
 T _enumOr<T extends Enum>(List<T> values, dynamic v, T dflt) {
   if (v is String) {
     for (final e in values) {
@@ -492,6 +497,7 @@ List<SyncTable> buildSyncTables(AppDatabase db) => [
         'website': l.website,
         'opening_hours': l.openingHours,
         'wikidata': l.wikidata,
+        'fee': l.fee,
       };
     },
     applyRemote: (db, m) async {
@@ -523,6 +529,7 @@ List<SyncTable> buildSyncTables(AppDatabase db) => [
               website: Value(m['website'] as String?),
               openingHours: Value(m['opening_hours'] as String?),
               wikidata: Value(m['wikidata'] as String?),
+              fee: _opt(m, 'fee', (v) => v as String?),
             ),
           );
     },
@@ -620,6 +627,8 @@ List<SyncTable> buildSyncTables(AppDatabase db) => [
         'geometry': r.geometry,
         'last_manual_order': r.lastManualOrder,
         'calc_source': r.calcSource.name,
+        'start_minutes': r.startMinutes,
+        'legs': r.legs,
         'created_at': _dt(r.createdAt),
       };
     },
@@ -646,6 +655,8 @@ List<SyncTable> buildSyncTables(AppDatabase db) => [
               durationSeconds: Value(_pi(m['duration_seconds'])),
               geometry: Value(m['geometry'] as String?),
               lastManualOrder: Value(m['last_manual_order'] as String?),
+              startMinutes: _opt(m, 'start_minutes', _pi),
+              legs: _opt(m, 'legs', (v) => v as String?),
               calcSource: Value(
                 _enumOr(
                   DistanceSource.values,
@@ -676,6 +687,7 @@ List<SyncTable> buildSyncTables(AppDatabase db) => [
         'trip_id': s.tripId,
         'location_id': s.locationId,
         'sequence_index': s.sequenceIndex,
+        'visit_minutes': s.visitMinutes,
       };
     },
     applyRemote: (db, m) async {
@@ -688,6 +700,7 @@ List<SyncTable> buildSyncTables(AppDatabase db) => [
               tripId: Value(m['trip_id'] as String),
               locationId: Value(m['location_id'] as String),
               sequenceIndex: Value(_pi(m['sequence_index']) ?? 0),
+              visitMinutes: _opt(m, 'visit_minutes', _pi),
             ),
           );
     },

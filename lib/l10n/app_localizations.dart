@@ -772,12 +772,6 @@ abstract class AppLocalizations {
   /// **'Percorso {n}'**
   String routeNewName(int n);
 
-  /// No description provided for @routeFixedStartHint.
-  ///
-  /// In it, this message translates to:
-  /// **'L\'ordine automatico non la sposta'**
-  String get routeFixedStartHint;
-
   /// No description provided for @flowStepChoose.
   ///
   /// In it, this message translates to:
@@ -915,6 +909,84 @@ abstract class AppLocalizations {
   /// In it, this message translates to:
   /// **'Aggiungi luoghi'**
   String get flowAddPlaces;
+
+  /// No description provided for @flowStartFrom.
+  ///
+  /// In it, this message translates to:
+  /// **'Parti da'**
+  String get flowStartFrom;
+
+  /// No description provided for @flowStartAny.
+  ///
+  /// In it, this message translates to:
+  /// **'Dalla tappa più comoda'**
+  String get flowStartAny;
+
+  /// No description provided for @flowStartAnyHint.
+  ///
+  /// In it, this message translates to:
+  /// **'L\'ordine più veloce può cambiare anche la prima tappa'**
+  String get flowStartAnyHint;
+
+  /// No description provided for @flowStartPickTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Da dove parti?'**
+  String get flowStartPickTitle;
+
+  /// No description provided for @flowStartOnly.
+  ///
+  /// In it, this message translates to:
+  /// **'Solo punto di partenza'**
+  String get flowStartOnly;
+
+  /// No description provided for @flowStartOnlyHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Ad esempio l\'albergo: nessun tempo di visita'**
+  String get flowStartOnlyHint;
+
+  /// No description provided for @flowReturnTo.
+  ///
+  /// In it, this message translates to:
+  /// **'Torno a {name} alla fine'**
+  String flowReturnTo(String name);
+
+  /// No description provided for @flowLegBack.
+  ///
+  /// In it, this message translates to:
+  /// **'Ritorno a {name}'**
+  String flowLegBack(String name);
+
+  /// No description provided for @flowHowTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Come ti sposti?'**
+  String get flowHowTitle;
+
+  /// No description provided for @flowSuggestion.
+  ///
+  /// In it, this message translates to:
+  /// **'Ordine più veloce: circa {duration} in meno'**
+  String flowSuggestion(String duration);
+
+  /// No description provided for @flowApply.
+  ///
+  /// In it, this message translates to:
+  /// **'Applica'**
+  String get flowApply;
+
+  /// No description provided for @flowOrderChanged.
+  ///
+  /// In it, this message translates to:
+  /// **'Ordine cambiato'**
+  String get flowOrderChanged;
+
+  /// No description provided for @flowAbout.
+  ///
+  /// In it, this message translates to:
+  /// **'circa {value}'**
+  String flowAbout(String value);
 
   /// No description provided for @flowPlanTitle.
   ///
@@ -1071,30 +1143,6 @@ abstract class AppLocalizations {
   /// In it, this message translates to:
   /// **'Auto'**
   String get routeModeCar;
-
-  /// No description provided for @routeFixedStart.
-  ///
-  /// In it, this message translates to:
-  /// **'Parti sempre dalla prima tappa'**
-  String get routeFixedStart;
-
-  /// No description provided for @routeReturnToStart.
-  ///
-  /// In it, this message translates to:
-  /// **'Torna alla prima tappa alla fine'**
-  String get routeReturnToStart;
-
-  /// No description provided for @routeOptimize.
-  ///
-  /// In it, this message translates to:
-  /// **'Ordine più veloce'**
-  String get routeOptimize;
-
-  /// No description provided for @routeRestoreManual.
-  ///
-  /// In it, this message translates to:
-  /// **'Torna al mio ordine'**
-  String get routeRestoreManual;
 
   /// No description provided for @routeRecalculate.
   ///

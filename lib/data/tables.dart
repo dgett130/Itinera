@@ -348,6 +348,9 @@ class Locations extends Table {
   TextColumn get openingHours => text().nullable()();
   TextColumn get wikidata => text().nullable()();
 
+  /// Tag OSM `fee` (ingresso gratuito/a pagamento), se noto (schema v8).
+  TextColumn get fee => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -440,6 +443,13 @@ class SightseeingRoutes extends Table {
   /// Ultimo ordine manuale (JSON di id-tappa) per ripristinarlo dopo un'ottimizzazione.
   TextColumn get lastManualOrder => text().nullable()();
 
+  /// Ora di partenza in minuti dalla mezzanotte; null = senza orario (v8).
+  IntColumn get startMinutes => integer().nullable()();
+
+  /// Tratti tra le tappe come JSON `[{m,s}]` (metri, secondi), nell'ordine
+  /// del percorso; con il ritorno c'e' un tratto in piu' (v8).
+  TextColumn get legs => text().nullable()();
+
   /// Origine del calcolo di distanza/durata/geometria.
   TextColumn get calcSource => textEnum<DistanceSource>().withDefault(
     Constant(DistanceSource.straightLine.name),
@@ -463,6 +473,10 @@ class SightseeingRouteStops extends Table {
   TextColumn get locationId =>
       text().references(Locations, #id, onDelete: KeyAction.cascade)();
   IntColumn get sequenceIndex => integer().withDefault(const Constant(0))();
+
+  /// Durata della visita in minuti: null = predefinita per categoria,
+  /// 0 = solo punto di partenza (es. l'albergo) (v8).
+  IntColumn get visitMinutes => integer().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

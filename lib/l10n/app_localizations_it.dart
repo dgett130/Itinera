@@ -379,9 +379,6 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
-  String get routeFixedStartHint => 'L\'ordine automatico non la sposta';
-
-  @override
   String get flowStepChoose => 'Scegli';
 
   @override
@@ -468,6 +465,55 @@ class AppLocalizationsIt extends AppLocalizations {
   String get flowAddPlaces => 'Aggiungi luoghi';
 
   @override
+  String get flowStartFrom => 'Parti da';
+
+  @override
+  String get flowStartAny => 'Dalla tappa più comoda';
+
+  @override
+  String get flowStartAnyHint =>
+      'L\'ordine più veloce può cambiare anche la prima tappa';
+
+  @override
+  String get flowStartPickTitle => 'Da dove parti?';
+
+  @override
+  String get flowStartOnly => 'Solo punto di partenza';
+
+  @override
+  String get flowStartOnlyHint =>
+      'Ad esempio l\'albergo: nessun tempo di visita';
+
+  @override
+  String flowReturnTo(String name) {
+    return 'Torno a $name alla fine';
+  }
+
+  @override
+  String flowLegBack(String name) {
+    return 'Ritorno a $name';
+  }
+
+  @override
+  String get flowHowTitle => 'Come ti sposti?';
+
+  @override
+  String flowSuggestion(String duration) {
+    return 'Ordine più veloce: circa $duration in meno';
+  }
+
+  @override
+  String get flowApply => 'Applica';
+
+  @override
+  String get flowOrderChanged => 'Ordine cambiato';
+
+  @override
+  String flowAbout(String value) {
+    return 'circa $value';
+  }
+
+  @override
   String get flowPlanTitle => 'Pianifica';
 
   @override
@@ -548,18 +594,6 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get routeModeCar => 'Auto';
-
-  @override
-  String get routeFixedStart => 'Parti sempre dalla prima tappa';
-
-  @override
-  String get routeReturnToStart => 'Torna alla prima tappa alla fine';
-
-  @override
-  String get routeOptimize => 'Ordine più veloce';
-
-  @override
-  String get routeRestoreManual => 'Torna al mio ordine';
 
   @override
   String get routeRecalculate => 'Ricalcola';

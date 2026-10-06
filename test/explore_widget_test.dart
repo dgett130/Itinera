@@ -47,12 +47,47 @@ class _OfflinePlanner implements RoutePlanner {
       mode: mode,
       returnToStart: returnToStart,
     );
+    final legs = estimateLegs(
+      waypoints: [...orderedPoints, if (returnToStart) orderedPoints.first],
+      mode: mode,
+    );
     return RouteResult(
       geometry: orderedPoints,
       distanceMeters: est.distanceMeters,
       durationSeconds: est.durationSeconds,
       source: DistanceSource.straightLine,
       effectiveMode: mode,
+      legs: [
+        for (final l in legs) RouteLeg(l.distanceMeters, l.durationSeconds),
+      ],
+    );
+  }
+}
+
+/// Planner "sulle strade" finto: durata fissa ([flatSeconds]) qualunque sia
+/// l'ordine, oppure la stima offline marcata come calcolata sulle strade.
+class _OnlinePlanner implements RoutePlanner {
+  _OnlinePlanner({this.flatSeconds});
+  final double? flatSeconds;
+
+  @override
+  Future<RouteResult> plan(
+    List<LatLng> orderedPoints,
+    RouteTravelMode mode, {
+    bool returnToStart = false,
+  }) async {
+    final r = await _OfflinePlanner().plan(
+      orderedPoints,
+      mode,
+      returnToStart: returnToStart,
+    );
+    return RouteResult(
+      geometry: r.geometry,
+      distanceMeters: r.distanceMeters,
+      durationSeconds: flatSeconds ?? r.durationSeconds,
+      source: DistanceSource.onlineRouting,
+      effectiveMode: mode,
+      legs: r.legs,
     );
   }
 }
@@ -67,7 +102,12 @@ PoiSuggestion _poi(String id, String name, double lat, double lng) =>
       category: PoiCategory.monument,
     );
 
-Widget _app(AppDatabase db, List<PoiSuggestion> pois, Widget home) {
+Widget _app(
+  AppDatabase db,
+  List<PoiSuggestion> pois,
+  Widget home, {
+  RoutePlanner? planner,
+}) {
   final router = GoRouter(
     routes: [
       GoRoute(path: '/', builder: (_, _) => home),
@@ -85,7 +125,7 @@ Widget _app(AppDatabase db, List<PoiSuggestion> pois, Widget home) {
     overrides: [
       databaseProvider.overrideWithValue(db),
       poiDiscoveryServiceProvider.overrideWithValue(_FakePoiService(pois)),
-      routePlannerProvider.overrideWithValue(_OfflinePlanner()),
+      routePlannerProvider.overrideWithValue(planner ?? _OfflinePlanner()),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -261,5 +301,101 @@ void main() {
     )..orderBy([(s) => OrderingTerm(expression: s.sequenceIndex)])).get();
     expect(stops.map((s) => s.locationId), [l1, l2]);
     await _teardown(tester, db);
+  });
+
+  testWidgets('Ordina: tempi tra le tappe, "Applica" l\'ordine più veloce '
+      'si annulla, "Parti da" blocca la partenza', (tester) async {
+    _tallView(tester);
+    final db = AppDatabase.forExecutor(NativeDatabase.memory());
+    await AppSeed.ensureSeeded(db);
+    final tripId = await _trip(db);
+    // Zig-zag nord-sud: l'ordine più veloce è evidente.
+    final a = await _location(db, tripId, 'Alfa', 41.89);
+    final b = await _location(db, tripId, 'Beta', 41.95);
+    final c = await _location(db, tripId, 'Gamma', 41.90);
+    final d = await _location(db, tripId, 'Delta', 41.96);
+    final repo = SightseeingRouteRepository(db);
+    final routeId = await repo.createRoute(
+      tripId: tripId,
+      name: 'Centro',
+      locationIds: [a, b, c, d],
+    );
+    Future<List<String>> order() async =>
+        (await repo.stopsFor(routeId)).map((s) => s.locationId).toList();
+
+    await tester.pumpWidget(
+      _app(db, const [], RouteFlowScreen(tripId: tripId, routeId: routeId)),
+    );
+    await _settle(tester, 16);
+
+    expect(find.text('Metti in ordine'), findsOneWidget);
+    expect(find.text('Parti da'), findsOneWidget);
+    expect(find.text('Dalla tappa più comoda'), findsOneWidget);
+    // Ricalcolo automatico all'apertura: 3 tratti, stimati (niente rete).
+    expect(find.textContaining(RegExp(r'^circa .* km$')), findsNWidgets(3));
+    expect(find.textContaining('Ordine più veloce: circa'), findsOneWidget);
+
+    await tester.tap(find.text('Applica'));
+    await _settle(tester, 12);
+    expect(await order(), isNot([a, b, c, d]));
+    expect(find.text('Ordine cambiato'), findsOneWidget);
+    expect(find.textContaining('Ordine più veloce: circa'), findsNothing);
+
+    await tester.tap(find.text('Annulla'));
+    await _settle(tester, 12);
+    expect(await order(), [a, b, c, d]);
+
+    // "Parti da" → Gamma: in testa e bloccata.
+    await tester.tap(find.text('Dalla tappa più comoda'));
+    await _settle(tester, 10);
+    expect(find.text('Da dove parti?'), findsOneWidget);
+    await tester.tap(find.text('Gamma').last);
+    await _settle(tester, 12);
+    expect((await order()).first, c);
+    expect((await repo.getRoute(routeId))!.fixedStart, isTrue);
+    expect(find.text('Torno a Gamma alla fine'), findsOneWidget);
+    await _teardown(tester, db);
+  });
+
+  testWidgets('Ordina con tempi sulle strade: il suggerimento compare solo se '
+      'il risparmio è reale', (tester) async {
+    _tallView(tester);
+    for (final flat in [true, false]) {
+      final db = AppDatabase.forExecutor(NativeDatabase.memory());
+      await AppSeed.ensureSeeded(db);
+      final tripId = await _trip(db);
+      final ids = [
+        for (final (n, lat) in [
+          ('Alfa', 41.89),
+          ('Beta', 41.95),
+          ('Gamma', 41.90),
+          ('Delta', 41.96),
+        ])
+          await _location(db, tripId, n, lat),
+      ];
+      final routeId = await SightseeingRouteRepository(
+        db,
+      ).createRoute(tripId: tripId, name: 'Centro', locationIds: ids);
+
+      await tester.pumpWidget(
+        _app(
+          db,
+          const [],
+          RouteFlowScreen(tripId: tripId, routeId: routeId),
+          planner: _OnlinePlanner(flatSeconds: flat ? 3000 : null),
+        ),
+      );
+      await _settle(tester, 20);
+
+      expect(find.text('Tempi calcolati sulle strade'), findsOneWidget);
+      expect(
+        find.textContaining('Ordine più veloce'),
+        flat ? findsNothing : findsOneWidget,
+        reason: flat
+            ? 'sulle strade ogni ordine dura uguale: niente promesse'
+            : 'risparmio confermato sulle strade',
+      );
+      await _teardown(tester, db);
+    }
   });
 }

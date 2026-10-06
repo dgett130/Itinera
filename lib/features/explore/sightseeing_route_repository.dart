@@ -160,6 +160,57 @@ class SightseeingRouteRepository {
   Future<void> setFixedStart(String routeId, bool v) =>
       _patch(routeId, SightseeingRoutesCompanion(fixedStart: Value(v)));
 
+  /// "Parti da": porta [stopId] in testa e blocca la partenza. Se la vecchia
+  /// partenza era "solo partenza" torna una tappa normale (visita predefinita).
+  Future<void> setStart(String routeId, String stopId) async {
+    final stops = await stopsFor(routeId);
+    if (!stops.any((s) => s.id == stopId)) return;
+    await _db.transaction(() async {
+      final old = stops.first;
+      if (old.id != stopId && old.visitMinutes == 0) {
+        await (_db.update(
+          _db.sightseeingRouteStops,
+        )..where((s) => s.id.equals(old.id))).write(
+          const SightseeingRouteStopsCompanion(visitMinutes: Value(null)),
+        );
+      }
+      final ids = [
+        stopId,
+        ...stops.map((s) => s.id).where((id) => id != stopId),
+      ];
+      await reorder(routeId, ids);
+      await setFixedStart(routeId, true);
+    });
+  }
+
+  /// "Parti dalla tappa più comoda": sblocca la partenza. Una tappa "solo
+  /// partenza" potrebbe finire a metà giro, quindi torna una tappa normale.
+  Future<void> clearStart(String routeId) async {
+    final stops = await stopsFor(routeId);
+    await _db.transaction(() async {
+      if (stops.isNotEmpty && stops.first.visitMinutes == 0) {
+        await (_db.update(
+          _db.sightseeingRouteStops,
+        )..where((s) => s.id.equals(stops.first.id))).write(
+          const SightseeingRouteStopsCompanion(visitMinutes: Value(null)),
+        );
+      }
+      await setFixedStart(routeId, false);
+    });
+  }
+
+  /// Durata della visita di una tappa (null = predefinita, 0 = solo partenza).
+  Future<void> setVisitMinutes(String stopId, int? minutes) async {
+    final stop = await (_db.select(
+      _db.sightseeingRouteStops,
+    )..where((s) => s.id.equals(stopId))).getSingleOrNull();
+    if (stop == null) return;
+    await (_db.update(_db.sightseeingRouteStops)
+          ..where((s) => s.id.equals(stopId)))
+        .write(SightseeingRouteStopsCompanion(visitMinutes: Value(minutes)));
+    await _touch(stop.routeId);
+  }
+
   /// Aggiunge una tappa in coda (evita di duplicare la stessa Location nel
   /// percorso). Ritorna false se il luogo era già una tappa.
   Future<bool> addStop(String routeId, String tripId, String locationId) async {
@@ -360,13 +411,14 @@ class SightseeingRouteRepository {
     );
   }
 
-  /// Salva l'esito di un calcolo (distanza/durata/geometria/fonte).
+  /// Salva l'esito di un calcolo (distanza/durata/geometria/tratti/fonte).
   Future<void> saveComputation(
     String routeId, {
     required int distanceMeters,
     required int durationSeconds,
     required String geometryJson,
     required DistanceSource source,
+    String? legsJson,
   }) async {
     await _patch(
       routeId,
@@ -375,6 +427,7 @@ class SightseeingRouteRepository {
         durationSeconds: Value(durationSeconds),
         geometry: Value(geometryJson),
         calcSource: Value(source),
+        legs: Value(legsJson),
       ),
     );
   }

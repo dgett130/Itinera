@@ -213,4 +213,67 @@ void main() {
     expect(events.single.dayId, d2);
     expect((await repo.getRoute(r))?.dayId, d2);
   });
+
+  group('"Parti da"', () {
+    Future<List<SightseeingRouteStop>> stops(String r) => repo.stopsFor(r);
+
+    test('scegliere la partenza la porta in testa e la blocca', () async {
+      final a = await loc('A');
+      final b = await loc('B');
+      final c = await loc('C');
+      final r = await repo.createRoute(
+        tripId: tripId,
+        name: 'R',
+        locationIds: [a, b, c],
+      );
+      final stopC = (await stops(r)).last;
+
+      await repo.setStart(r, stopC.id);
+      expect(await order(r), [c, a, b]);
+      expect((await repo.getRoute(r))!.fixedStart, isTrue);
+    });
+
+    test('"solo partenza" torna una tappa normale se cambia la partenza o '
+        'la partenza si sblocca', () async {
+      final a = await loc('A');
+      final b = await loc('B');
+      final r = await repo.createRoute(
+        tripId: tripId,
+        name: 'R',
+        locationIds: [a, b],
+      );
+      var s = await stops(r);
+      await repo.setStart(r, s.first.id);
+      await repo.setVisitMinutes(s.first.id, 0);
+      expect((await stops(r)).first.visitMinutes, 0);
+
+      await repo.setStart(r, s.last.id);
+      s = await stops(r);
+      expect(s.map((x) => x.locationId), [b, a]);
+      expect(s.last.visitMinutes, isNull, reason: 'A non è più la partenza');
+
+      await repo.setVisitMinutes(s.first.id, 0);
+      await repo.clearStart(r);
+      expect((await repo.getRoute(r))!.fixedStart, isFalse);
+      expect((await stops(r)).first.visitMinutes, isNull);
+    });
+  });
+
+  test('saveComputation salva anche i tratti', () async {
+    final a = await loc('A');
+    final r = await repo.createRoute(
+      tripId: tripId,
+      name: 'R',
+      locationIds: [a],
+    );
+    await repo.saveComputation(
+      r,
+      distanceMeters: 600,
+      durationSeconds: 480,
+      geometryJson: '[]',
+      source: DistanceSource.onlineRouting,
+      legsJson: '[{"m":600,"s":480}]',
+    );
+    expect((await repo.getRoute(r))!.legs, '[{"m":600,"s":480}]');
+  });
 }

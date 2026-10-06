@@ -16,6 +16,7 @@ import '../../ui/itinera_theme.dart';
 import '../../ui/widgets.dart';
 import '../itinerary/itinerary_providers.dart';
 import '../places/geocoding_service.dart';
+import '../transport/routing_service.dart';
 import '../trip/trip_providers.dart';
 import 'explore_providers.dart';
 import 'explore_repository.dart';
@@ -55,6 +56,11 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
   static const _pageSize = 12;
 
   final _map = MapController();
+
+  /// Contesto dentro lo stile del viaggio: pannelli e dialoghi aperti da qui
+  /// ne ereditano colori e font.
+  final _themeKey = GlobalKey();
+  BuildContext get _themed => _themeKey.currentContext ?? context;
   final _sheet = DraggableScrollableController();
   final _searchCtrl = TextEditingController();
   final _searchFocus = FocusNode();
@@ -84,6 +90,11 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
   // Calcolo del percorso.
   Timer? _recomputeDebounce;
   bool _computing = false;
+  bool _legsChecked = false;
+  String? _suggestKey;
+  String? _verifyKey;
+  double? _verifiedSaved;
+  ({List<String> ids, double saved})? _suggestion;
 
   // Pianifica.
   String? _pickedDayId;
@@ -283,7 +294,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
       setState(() => _showSearchHere = true);
     }
     await showPlaceSheet(
-      context,
+      _themed,
       place: PlaceInfo(
         name: r.label,
         lat: r.latitude,
@@ -354,7 +365,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     final l10n = AppLocalizations.of(context);
     final ctrl = TextEditingController();
     final name = await showDialog<String>(
-      context: context,
+      context: _themed,
       builder: (context) => AlertDialog(
         title: Text(l10n.flowPinTitle),
         content: TextField(
@@ -391,7 +402,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     final l10n = AppLocalizations.of(context);
     if (stop != null && loc != null) return _openStop(stop, loc);
     await showPlaceSheet(
-      context,
+      _themed,
       place: PlaceInfo.fromSuggestion(p),
       distanceLabel: _distanceLabel(p.lat, p.lng),
       action: PlaceSheetAction(
@@ -405,7 +416,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
   Future<void> _openStop(SightseeingRouteStop stop, Location loc) async {
     final l10n = AppLocalizations.of(context);
     await showPlaceSheet(
-      context,
+      _themed,
       place: PlaceInfo.fromLocation(loc),
       distanceLabel: _distanceLabel(loc.latitude, loc.longitude),
       action: PlaceSheetAction(
@@ -419,8 +430,13 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
 
   // --- Calcolo percorso -----------------------------------------------------
 
+  /// Ricalcolo automatico (a ogni modifica, con un breve ritardo). Fino alla
+  /// fine del calcolo i tempi tra le tappe non vengono mostrati: sarebbero
+  /// quelli dell'ordine precedente.
   void _scheduleRecompute() {
+    if (!mounted) return;
     _recomputeDebounce?.cancel();
+    if (!_computing) setState(() => _computing = true);
     _recomputeDebounce = Timer(
       const Duration(milliseconds: 350),
       () => unawaited(_recompute()),
@@ -428,63 +444,243 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
   }
 
   Future<void> _recompute() async {
-    final route = await _routes.getRoute(widget.routeId);
-    if (route == null) return;
-    final stops = await _routes.stopsFor(widget.routeId);
-    final locById = _locById();
-    final pts = <LatLng>[];
-    for (final s in stops) {
-      final l = locById[s.locationId];
-      if (l != null && l.latitude != null && l.longitude != null) {
-        pts.add(LatLng(l.latitude!, l.longitude!));
+    try {
+      final route = await _routes.getRoute(widget.routeId);
+      if (route == null) return;
+      final stops = await _routes.stopsFor(widget.routeId);
+      final locById = _locById();
+      final pts = <LatLng>[];
+      for (final s in stops) {
+        final l = locById[s.locationId];
+        if (l != null && l.latitude != null && l.longitude != null) {
+          pts.add(LatLng(l.latitude!, l.longitude!));
+        }
       }
-    }
-    if (pts.length < 2) {
+      if (pts.length < 2) {
+        await _routes.saveComputation(
+          widget.routeId,
+          distanceMeters: 0,
+          durationSeconds: 0,
+          geometryJson: encodeGeometry(pts),
+          source: DistanceSource.straightLine,
+          legsJson: encodeLegs(const []),
+        );
+        return;
+      }
+      final res = await ref
+          .read(routePlannerProvider)
+          .plan(pts, route.travelMode, returnToStart: route.returnToStart);
       await _routes.saveComputation(
         widget.routeId,
-        distanceMeters: 0,
-        durationSeconds: 0,
-        geometryJson: encodeGeometry(pts),
-        source: DistanceSource.straightLine,
+        distanceMeters: res.distanceMeters.round(),
+        durationSeconds: res.durationSeconds.round(),
+        geometryJson: encodeGeometry(res.geometry),
+        source: res.source,
+        legsJson: encodeLegs(res.legs),
       );
-      return;
-    }
-    if (mounted) setState(() => _computing = true);
-    final res = await ref
-        .read(routePlannerProvider)
-        .plan(pts, route.travelMode, returnToStart: route.returnToStart);
-    await _routes.saveComputation(
-      widget.routeId,
-      distanceMeters: res.distanceMeters.round(),
-      durationSeconds: res.durationSeconds.round(),
-      geometryJson: encodeGeometry(res.geometry),
-      source: res.source,
-    );
-    if (mounted) setState(() => _computing = false);
-  }
-
-  Future<void> _optimize(SightseeingRoute route) async {
-    final stops = await _routes.stopsFor(widget.routeId);
-    final locById = _locById();
-    final coordStops = <SightseeingRouteStop>[];
-    final pts = <LatLng>[];
-    for (final s in stops) {
-      final l = locById[s.locationId];
-      if (l != null && l.latitude != null && l.longitude != null) {
-        coordStops.add(s);
-        pts.add(LatLng(l.latitude!, l.longitude!));
+    } finally {
+      if (mounted && !(_recomputeDebounce?.isActive ?? false)) {
+        setState(() => _computing = false);
       }
     }
-    if (pts.length < 2) return;
-    final opt = optimizeRouteOrder(
-      points: pts,
+  }
+
+  /// Tratti salvati, solo se corrispondono alle tappe attuali (altrimenti il
+  /// ricalcolo è in corso o va rifatto).
+  List<RouteLeg>? _currentLegs(SightseeingRoute route, int coordStops) {
+    if (_computing || coordStops < 2) return null;
+    final legs = decodeLegs(route.legs);
+    final expected = coordStops - 1 + (route.returnToStart ? 1 : 0);
+    return legs.length == expected ? legs : null;
+  }
+
+  /// Ordine più veloce (id delle tappe) e risparmio stimato, ricalcolato solo
+  /// quando cambiano tappe, mezzo o opzioni.
+  ({List<String> ids, double saved})? _fasterOrder(
+    SightseeingRoute route,
+    List<(SightseeingRouteStop, Location)> refs,
+  ) {
+    final coord = [
+      for (final r in refs)
+        if (r.$2.latitude != null && r.$2.longitude != null) r,
+    ];
+    final key = [
+      route.travelMode.name,
+      route.fixedStart,
+      route.returnToStart,
+      for (final r in refs) '${r.$1.id}@${r.$2.latitude},${r.$2.longitude}',
+    ].join('|');
+    if (key == _suggestKey) return _suggestion;
+    _suggestKey = key;
+    final s = suggestFasterOrder(
+      points: [for (final r in coord) LatLng(r.$2.latitude!, r.$2.longitude!)],
+      mode: route.travelMode,
       fixedStart: route.fixedStart,
       returnToStart: route.returnToStart,
     );
-    final ordered = [for (final i in opt.order) coordStops[i].id];
-    final rest = stops.where((s) => !ordered.contains(s.id)).map((s) => s.id);
-    await _routes.applyOptimizedOrder(widget.routeId, [...ordered, ...rest]);
-    await _recompute();
+    final coordIds = {for (final r in coord) r.$1.id};
+    _suggestion = s == null
+        ? null
+        : (
+            ids: [
+              for (final i in s.order) coord[i].$1.id,
+              for (final r in refs)
+                if (!coordIds.contains(r.$1.id)) r.$1.id,
+            ],
+            saved: s.savedSeconds,
+          );
+    return _suggestion;
+  }
+
+  /// Con i tempi calcolati sulle strade, il suggerimento (stimato in linea
+  /// d'aria) si mostra solo dopo averlo verificato sulle strade: niente
+  /// risparmi promessi che poi non ci sono.
+  ({List<String> ids, double saved})? _checkedOnRoads(
+    SightseeingRoute route,
+    List<(SightseeingRouteStop, Location)> refs,
+    ({List<String> ids, double saved}) candidate,
+  ) {
+    if (route.calcSource != DistanceSource.onlineRouting) return candidate;
+    final current = route.durationSeconds;
+    if (_computing || current == null) return null;
+    final key = '$_suggestKey|$current';
+    if (key != _verifyKey) {
+      _verifyKey = key;
+      _verifiedSaved = null;
+      unawaited(_verifyOnRoads(key, route, refs, candidate, current));
+      return null;
+    }
+    final saved = _verifiedSaved;
+    return saved == null ? null : (ids: candidate.ids, saved: saved);
+  }
+
+  Future<void> _verifyOnRoads(
+    String key,
+    SightseeingRoute route,
+    List<(SightseeingRouteStop, Location)> refs,
+    ({List<String> ids, double saved}) candidate,
+    int currentSeconds,
+  ) async {
+    final locByStop = {for (final r in refs) r.$1.id: r.$2};
+    final pts = [
+      for (final id in candidate.ids)
+        if (locByStop[id]?.latitude != null && locByStop[id]?.longitude != null)
+          LatLng(locByStop[id]!.latitude!, locByStop[id]!.longitude!),
+    ];
+    final res = await ref
+        .read(routePlannerProvider)
+        .plan(pts, route.travelMode, returnToStart: route.returnToStart);
+    if (!mounted || key != _verifyKey) return;
+    final saved = res.source == DistanceSource.onlineRouting
+        ? currentSeconds - res.durationSeconds
+        : candidate.saved;
+    setState(() => _verifiedSaved = saved >= 120 ? saved : null);
+  }
+
+  Future<void> _applyFasterOrder(
+    List<String> ids,
+    List<String> previous,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    _scheduleRecompute();
+    await _routes.applyOptimizedOrder(widget.routeId, ids);
+    if (!mounted) return;
+    _snack(
+      l10n.flowOrderChanged,
+      action: SnackBarAction(
+        label: l10n.flowUndo,
+        onPressed: () async {
+          _scheduleRecompute();
+          await _routes.reorder(widget.routeId, previous);
+        },
+      ),
+    );
+  }
+
+  /// "Parti da": una tappa (bloccata in testa) oppure la più comoda.
+  Future<void> _pickStart() async {
+    final theme = Theme.of(_themed);
+    await showModalBottomSheet<void>(
+      context: _themed,
+      showDragHandle: true,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (_) => Theme(
+        data: theme,
+        child: Consumer(
+          builder: (context, ref, _) {
+            final l10n = AppLocalizations.of(context);
+            final route = ref.watch(routeByIdProvider(widget.routeId)).value;
+            final stops =
+                ref.watch(routeStopsProvider(widget.routeId)).value ??
+                const <SightseeingRouteStop>[];
+            final locById = {
+              for (final l
+                  in ref.watch(savedLocationsProvider(widget.tripId)).value ??
+                      const <Location>[])
+                l.id: l,
+            };
+            final refs = _stopRefs(stops, locById);
+            if (route == null || refs.isEmpty) return const SizedBox.shrink();
+            final fixed = route.fixedStart;
+            Widget option({
+              required bool selected,
+              required String title,
+              String? subtitle,
+              required Future<void> Function() onTap,
+            }) => ListTile(
+              leading: Icon(
+                selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                color: selected ? context.tokens.accent : null,
+              ),
+              title: Text(title),
+              subtitle: subtitle == null ? null : Text(subtitle),
+              onTap: () async {
+                final nav = Navigator.of(context);
+                _scheduleRecompute();
+                await onTap();
+                nav.pop();
+              },
+            );
+            return ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 16),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                  child: Text(
+                    l10n.flowStartPickTitle,
+                    style: context.texts.titleLarge,
+                  ),
+                ),
+                option(
+                  selected: !fixed,
+                  title: l10n.flowStartAny,
+                  subtitle: l10n.flowStartAnyHint,
+                  onTap: () => _routes.clearStart(widget.routeId),
+                ),
+                for (final (i, r) in refs.indexed)
+                  option(
+                    selected: fixed && i == 0,
+                    title: r.$2.label,
+                    onTap: () => _routes.setStart(widget.routeId, r.$1.id),
+                  ),
+                if (fixed) ...[
+                  const Divider(),
+                  SwitchListTile(
+                    title: Text(l10n.flowStartOnly),
+                    subtitle: Text(l10n.flowStartOnlyHint),
+                    value: refs.first.$1.visitMinutes == 0,
+                    onChanged: (v) =>
+                        _routes.setVisitMinutes(refs.first.$1.id, v ? 0 : null),
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+      ),
+    );
   }
 
   // --- Navigazione tra passi e azioni ---------------------------------------
@@ -559,7 +755,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     final l10n = AppLocalizations.of(context);
     final ctrl = TextEditingController(text: route.name);
     final name = await showDialog<String>(
-      context: context,
+      context: _themed,
       builder: (context) => AlertDialog(
         title: Text(l10n.routeRename),
         content: TextField(
@@ -587,7 +783,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
   Future<void> _delete() async {
     final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
-      context: context,
+      context: _themed,
       builder: (context) => AlertDialog(
         title: Text(l10n.routeDelete),
         content: Text(l10n.routeDeleteConfirm),
@@ -640,6 +836,21 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
       _stepInited = true;
       _step = widget.startNew || stops.length < 2 ? 0 : 1;
     }
+    // Percorso calcolato prima dei tratti (o cambiato altrove): ricalcolo.
+    if (!_legsChecked && stopsAsync.hasValue && locsAsync.hasValue) {
+      _legsChecked = true;
+      final coords = refs
+          .where((r) => r.$2.latitude != null && r.$2.longitude != null)
+          .length;
+      final expected = coords < 2
+          ? 0
+          : coords - 1 + (route.returnToStart ? 1 : 0);
+      if (route.legs == null || decodeLegs(route.legs).length != expected) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _scheduleRecompute(),
+        );
+      }
+    }
     if (!_centerInited &&
         _mapReady &&
         stopsAsync.hasValue &&
@@ -652,6 +863,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     return TripThemeScope(
       style: ItineraTheme.effectiveStyle(trip),
       child: Builder(
+        key: _themeKey,
         builder: (context) => Scaffold(
           bottomNavigationBar: _primaryBar(context, l10n, route, stops),
           body: Stack(
@@ -1296,6 +1508,25 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     List<SightseeingRouteStop> stops,
     List<(SightseeingRouteStop, Location)> refs,
   ) {
+    final muted = context.texts.bodySmall?.copyWith(
+      color: context.scheme.onSurfaceVariant,
+    );
+    final coordIds = [
+      for (final r in refs)
+        if (r.$2.latitude != null && r.$2.longitude != null) r.$1.id,
+    ];
+    final legs = _currentLegs(route, coordIds.length);
+    // Tratto che arriva a ciascuna tappa (dalla tappa con coordinate prima).
+    final legTo = <String, RouteLeg>{
+      if (legs != null)
+        for (var c = 1; c < coordIds.length; c++) coordIds[c]: legs[c - 1],
+    };
+    final candidate = refs.length >= 3 ? _fasterOrder(route, refs) : null;
+    final suggestion = candidate == null
+        ? null
+        : _checkedOnRoads(route, refs, candidate);
+    final first = refs.isEmpty ? null : refs.first;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1314,9 +1545,60 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
             icon: const Icon(Icons.add_location_alt_outlined),
             label: Text(l10n.flowAddPlaces),
           ),
-          const SizedBox(height: 12),
         ] else
           _stats(context, l10n, route),
+        if (suggestion != null) ...[
+          const SizedBox(height: 10),
+          ItineraCard(
+            padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+            child: Row(
+              children: [
+                Icon(Icons.lightbulb_outline, color: context.tokens.accent),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.flowSuggestion(formatDuration(l10n, suggestion.saved)),
+                    style: context.texts.bodyMedium,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _applyFasterOrder(suggestion.ids, [
+                    for (final r in refs) r.$1.id,
+                  ]),
+                  child: Text(l10n.flowApply),
+                ),
+              ],
+            ),
+          ),
+        ],
+        if (first != null) ...[
+          const SizedBox(height: 10),
+          ItineraCard(
+            onTap: _pickStart,
+            padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
+            child: Row(
+              children: [
+                Icon(Icons.flag_outlined, color: context.tokens.accent),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.flowStartFrom, style: muted),
+                      Text(
+                        route.fixedStart ? first.$2.label : l10n.flowStartAny,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.texts.titleSmall,
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.expand_more),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         ReorderableListView.builder(
           shrinkWrap: true,
@@ -1327,72 +1609,91 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
             if (newIndex > oldIndex) newIndex -= 1;
             final ids = refs.map((r) => r.$1.id).toList();
             ids.insert(newIndex, ids.removeAt(oldIndex));
-            await _routes.reorder(widget.routeId, ids);
             _scheduleRecompute();
+            await _routes.reorder(widget.routeId, ids);
           },
           itemBuilder: (context, i) {
             final (stop, loc) = refs[i];
             final hasCoords = loc.latitude != null && loc.longitude != null;
-            return Padding(
+            final leg = legTo[stop.id];
+            return Column(
               key: ValueKey(stop.id),
-              padding: const EdgeInsets.only(bottom: 8),
-              child: ItineraCard(
-                onTap: () => _openStop(stop, loc),
-                padding: const EdgeInsets.fromLTRB(10, 4, 4, 4),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundColor: context.tokens.accentSoft,
-                      child: Text(
-                        '${i + 1}',
-                        style: TextStyle(
-                          color: context.tokens.accent,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            loc.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: context.texts.titleSmall,
-                          ),
-                          if (!hasCoords)
-                            Text(
-                              l10n.placeNoCoords,
-                              style: context.texts.bodySmall?.copyWith(
-                                color: context.scheme.error,
-                              ),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (leg != null) _legRow(context, l10n, route, leg),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: ItineraCard(
+                    onTap: () => _openStop(stop, loc),
+                    padding: const EdgeInsets.fromLTRB(10, 4, 4, 4),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: context.tokens.accentSoft,
+                          child: Text(
+                            '${i + 1}',
+                            style: TextStyle(
+                              color: context.tokens.accent,
+                              fontWeight: FontWeight.bold,
                             ),
-                        ],
-                      ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                loc.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: context.texts.titleSmall,
+                              ),
+                              if (!hasCoords)
+                                Text(
+                                  l10n.placeNoCoords,
+                                  style: context.texts.bodySmall?.copyWith(
+                                    color: context.scheme.error,
+                                  ),
+                                )
+                              else if (stop.visitMinutes == 0)
+                                Text(l10n.flowStartOnly, style: muted),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: l10n.placeRemoveFromRoute,
+                          icon: const Icon(Icons.remove_circle_outline),
+                          onPressed: () => _removeStop(stop, loc.label),
+                        ),
+                        ReorderableDragStartListener(
+                          index: i,
+                          child: const SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Icon(Icons.drag_handle),
+                          ),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      tooltip: l10n.placeRemoveFromRoute,
-                      icon: const Icon(Icons.remove_circle_outline),
-                      onPressed: () => _removeStop(stop, loc.label),
-                    ),
-                    ReorderableDragStartListener(
-                      index: i,
-                      child: const SizedBox(
-                        width: 48,
-                        height: 48,
-                        child: Icon(Icons.drag_handle),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             );
           },
         ),
-        const SizedBox(height: 12),
+        if (legs != null && route.returnToStart && first != null)
+          _legRow(
+            context,
+            l10n,
+            route,
+            legs.last,
+            label: l10n.flowLegBack(first.$2.label),
+          ),
+        const SizedBox(height: 16),
+        Text(l10n.flowHowTitle, style: context.texts.titleSmall),
+        const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
           child: SegmentedButton<RouteTravelMode>(
@@ -1407,48 +1708,60 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
             selected: {route.travelMode},
             showSelectedIcon: false,
             onSelectionChanged: (s) async {
-              await _routes.setMode(widget.routeId, s.first);
               _scheduleRecompute();
+              await _routes.setMode(widget.routeId, s.first);
             },
           ),
         ),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(l10n.routeFixedStart),
-          subtitle: Text(l10n.routeFixedStartHint),
-          value: route.fixedStart,
-          onChanged: (v) => _routes.setFixedStart(widget.routeId, v),
-        ),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(l10n.routeReturnToStart),
-          value: route.returnToStart,
-          onChanged: (v) async {
-            await _routes.setReturnToStart(widget.routeId, v);
-            _scheduleRecompute();
-          },
-        ),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            OutlinedButton.icon(
-              onPressed: refs.length >= 2 ? () => _optimize(route) : null,
-              icon: const Icon(Icons.auto_fix_high, size: 18),
-              label: Text(l10n.routeOptimize),
-            ),
-            if (route.optimized && route.lastManualOrder != null)
-              TextButton.icon(
-                onPressed: () async {
-                  await _routes.restoreManualOrder(widget.routeId);
-                  await _recompute();
-                },
-                icon: const Icon(Icons.undo, size: 18),
-                label: Text(l10n.routeRestoreManual),
-              ),
-          ],
-        ),
+        if (first != null && refs.length >= 2)
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.flowReturnTo(first.$2.label)),
+            value: route.returnToStart,
+            onChanged: (v) async {
+              _scheduleRecompute();
+              await _routes.setReturnToStart(widget.routeId, v);
+            },
+          ),
       ],
+    );
+  }
+
+  /// Tempo e distanza di un tratto, tra una tappa e la successiva.
+  Widget _legRow(
+    BuildContext context,
+    AppLocalizations l10n,
+    SightseeingRoute route,
+    RouteLeg leg, {
+    String? label,
+  }) {
+    final color = context.scheme.onSurfaceVariant;
+    final seconds = leg.durationSeconds < 60 ? 60 : leg.durationSeconds;
+    final value =
+        '${formatDuration(l10n, seconds)} · '
+        '${formatDistance(l10n, leg.distanceMeters)}';
+    final text = [
+      ?label,
+      route.calcSource == DistanceSource.onlineRouting
+          ? value
+          : l10n.flowAbout(value),
+    ].join(' · ');
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 0, 8),
+      child: Row(
+        children: [
+          Icon(Icons.south, size: 16, color: color),
+          const SizedBox(width: 6),
+          Icon(routeModeIcon(route.travelMode), size: 16, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: context.texts.bodySmall?.copyWith(color: color),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

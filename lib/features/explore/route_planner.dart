@@ -30,18 +30,30 @@ class RoutePlanner {
       if (returnToStart) orderedPoints.first,
     ];
     final online = await _routing.route(waypoints, mode);
-    if (online != null) return online;
-    final est = estimateTravel(
-      orderedPoints: orderedPoints,
-      mode: mode,
-      returnToStart: returnToStart,
-    );
+    if (online != null && online.legs.isNotEmpty) return online;
+    // Senza tratti dal provider, stima tratto per tratto (la somma coincide
+    // con la stima dell'intero percorso).
+    final legs = [
+      for (final e in estimateLegs(waypoints: waypoints, mode: mode))
+        RouteLeg(e.distanceMeters, e.durationSeconds),
+    ];
+    if (online != null) {
+      return RouteResult(
+        geometry: online.geometry,
+        distanceMeters: online.distanceMeters,
+        durationSeconds: online.durationSeconds,
+        source: online.source,
+        effectiveMode: online.effectiveMode,
+        legs: legs,
+      );
+    }
     return RouteResult(
       geometry: waypoints,
-      distanceMeters: est.distanceMeters,
-      durationSeconds: est.durationSeconds,
+      distanceMeters: legs.fold(0.0, (a, l) => a + l.distanceMeters),
+      durationSeconds: legs.fold(0.0, (a, l) => a + l.durationSeconds),
       source: DistanceSource.straightLine,
       effectiveMode: mode,
+      legs: legs,
     );
   }
 }

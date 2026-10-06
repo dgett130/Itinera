@@ -9336,6 +9336,15 @@ class $LocationsTable extends Locations
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _feeMeta = const VerificationMeta('fee');
+  @override
+  late final GeneratedColumn<String> fee = GeneratedColumn<String>(
+    'fee',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -9354,6 +9363,7 @@ class $LocationsTable extends Locations
     website,
     openingHours,
     wikidata,
+    fee,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -9457,6 +9467,12 @@ class $LocationsTable extends Locations
         wikidata.isAcceptableOrUnknown(data['wikidata']!, _wikidataMeta),
       );
     }
+    if (data.containsKey('fee')) {
+      context.handle(
+        _feeMeta,
+        fee.isAcceptableOrUnknown(data['fee']!, _feeMeta),
+      );
+    }
     return context;
   }
 
@@ -9536,6 +9552,10 @@ class $LocationsTable extends Locations
         DriftSqlType.string,
         data['${effectivePrefix}wikidata'],
       ),
+      fee: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}fee'],
+      ),
     );
   }
 
@@ -9573,6 +9593,9 @@ class Location extends DataClass implements Insertable<Location> {
   final String? website;
   final String? openingHours;
   final String? wikidata;
+
+  /// Tag OSM `fee` (ingresso gratuito/a pagamento), se noto (schema v8).
+  final String? fee;
   const Location({
     required this.id,
     required this.tripId,
@@ -9590,6 +9613,7 @@ class Location extends DataClass implements Insertable<Location> {
     this.website,
     this.openingHours,
     this.wikidata,
+    this.fee,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -9642,6 +9666,9 @@ class Location extends DataClass implements Insertable<Location> {
     if (!nullToAbsent || wikidata != null) {
       map['wikidata'] = Variable<String>(wikidata);
     }
+    if (!nullToAbsent || fee != null) {
+      map['fee'] = Variable<String>(fee);
+    }
     return map;
   }
 
@@ -9687,6 +9714,7 @@ class Location extends DataClass implements Insertable<Location> {
       wikidata: wikidata == null && nullToAbsent
           ? const Value.absent()
           : Value(wikidata),
+      fee: fee == null && nullToAbsent ? const Value.absent() : Value(fee),
     );
   }
 
@@ -9718,6 +9746,7 @@ class Location extends DataClass implements Insertable<Location> {
       website: serializer.fromJson<String?>(json['website']),
       openingHours: serializer.fromJson<String?>(json['openingHours']),
       wikidata: serializer.fromJson<String?>(json['wikidata']),
+      fee: serializer.fromJson<String?>(json['fee']),
     );
   }
   @override
@@ -9746,6 +9775,7 @@ class Location extends DataClass implements Insertable<Location> {
       'website': serializer.toJson<String?>(website),
       'openingHours': serializer.toJson<String?>(openingHours),
       'wikidata': serializer.toJson<String?>(wikidata),
+      'fee': serializer.toJson<String?>(fee),
     };
   }
 
@@ -9766,6 +9796,7 @@ class Location extends DataClass implements Insertable<Location> {
     Value<String?> website = const Value.absent(),
     Value<String?> openingHours = const Value.absent(),
     Value<String?> wikidata = const Value.absent(),
+    Value<String?> fee = const Value.absent(),
   }) => Location(
     id: id ?? this.id,
     tripId: tripId ?? this.tripId,
@@ -9785,6 +9816,7 @@ class Location extends DataClass implements Insertable<Location> {
     website: website.present ? website.value : this.website,
     openingHours: openingHours.present ? openingHours.value : this.openingHours,
     wikidata: wikidata.present ? wikidata.value : this.wikidata,
+    fee: fee.present ? fee.value : this.fee,
   );
   Location copyWithCompanion(LocationsCompanion data) {
     return Location(
@@ -9814,6 +9846,7 @@ class Location extends DataClass implements Insertable<Location> {
           ? data.openingHours.value
           : this.openingHours,
       wikidata: data.wikidata.present ? data.wikidata.value : this.wikidata,
+      fee: data.fee.present ? data.fee.value : this.fee,
     );
   }
 
@@ -9835,7 +9868,8 @@ class Location extends DataClass implements Insertable<Location> {
           ..write('description: $description, ')
           ..write('website: $website, ')
           ..write('openingHours: $openingHours, ')
-          ..write('wikidata: $wikidata')
+          ..write('wikidata: $wikidata, ')
+          ..write('fee: $fee')
           ..write(')'))
         .toString();
   }
@@ -9858,6 +9892,7 @@ class Location extends DataClass implements Insertable<Location> {
     website,
     openingHours,
     wikidata,
+    fee,
   );
   @override
   bool operator ==(Object other) =>
@@ -9878,7 +9913,8 @@ class Location extends DataClass implements Insertable<Location> {
           other.description == this.description &&
           other.website == this.website &&
           other.openingHours == this.openingHours &&
-          other.wikidata == this.wikidata);
+          other.wikidata == this.wikidata &&
+          other.fee == this.fee);
 }
 
 class LocationsCompanion extends UpdateCompanion<Location> {
@@ -9898,6 +9934,7 @@ class LocationsCompanion extends UpdateCompanion<Location> {
   final Value<String?> website;
   final Value<String?> openingHours;
   final Value<String?> wikidata;
+  final Value<String?> fee;
   final Value<int> rowid;
   const LocationsCompanion({
     this.id = const Value.absent(),
@@ -9916,6 +9953,7 @@ class LocationsCompanion extends UpdateCompanion<Location> {
     this.website = const Value.absent(),
     this.openingHours = const Value.absent(),
     this.wikidata = const Value.absent(),
+    this.fee = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocationsCompanion.insert({
@@ -9935,6 +9973,7 @@ class LocationsCompanion extends UpdateCompanion<Location> {
     this.website = const Value.absent(),
     this.openingHours = const Value.absent(),
     this.wikidata = const Value.absent(),
+    this.fee = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        tripId = Value(tripId),
@@ -9956,6 +9995,7 @@ class LocationsCompanion extends UpdateCompanion<Location> {
     Expression<String>? website,
     Expression<String>? openingHours,
     Expression<String>? wikidata,
+    Expression<String>? fee,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -9975,6 +10015,7 @@ class LocationsCompanion extends UpdateCompanion<Location> {
       if (website != null) 'website': website,
       if (openingHours != null) 'opening_hours': openingHours,
       if (wikidata != null) 'wikidata': wikidata,
+      if (fee != null) 'fee': fee,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -9996,6 +10037,7 @@ class LocationsCompanion extends UpdateCompanion<Location> {
     Value<String?>? website,
     Value<String?>? openingHours,
     Value<String?>? wikidata,
+    Value<String?>? fee,
     Value<int>? rowid,
   }) {
     return LocationsCompanion(
@@ -10015,6 +10057,7 @@ class LocationsCompanion extends UpdateCompanion<Location> {
       website: website ?? this.website,
       openingHours: openingHours ?? this.openingHours,
       wikidata: wikidata ?? this.wikidata,
+      fee: fee ?? this.fee,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -10076,6 +10119,9 @@ class LocationsCompanion extends UpdateCompanion<Location> {
     if (wikidata.present) {
       map['wikidata'] = Variable<String>(wikidata.value);
     }
+    if (fee.present) {
+      map['fee'] = Variable<String>(fee.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -10101,6 +10147,7 @@ class LocationsCompanion extends UpdateCompanion<Location> {
           ..write('website: $website, ')
           ..write('openingHours: $openingHours, ')
           ..write('wikidata: $wikidata, ')
+          ..write('fee: $fee, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -10257,6 +10304,26 @@ class $SightseeingRoutesTable extends SightseeingRoutes
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _startMinutesMeta = const VerificationMeta(
+    'startMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> startMinutes = GeneratedColumn<int>(
+    'start_minutes',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _legsMeta = const VerificationMeta('legs');
+  @override
+  late final GeneratedColumn<String> legs = GeneratedColumn<String>(
+    'legs',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   late final GeneratedColumnWithTypeConverter<DistanceSource, String>
   calcSource = GeneratedColumn<String>(
@@ -10305,6 +10372,8 @@ class $SightseeingRoutesTable extends SightseeingRoutes
     durationSeconds,
     geometry,
     lastManualOrder,
+    startMinutes,
+    legs,
     calcSource,
     createdAt,
     updatedAt,
@@ -10402,6 +10471,21 @@ class $SightseeingRoutesTable extends SightseeingRoutes
         ),
       );
     }
+    if (data.containsKey('start_minutes')) {
+      context.handle(
+        _startMinutesMeta,
+        startMinutes.isAcceptableOrUnknown(
+          data['start_minutes']!,
+          _startMinutesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('legs')) {
+      context.handle(
+        _legsMeta,
+        legs.isAcceptableOrUnknown(data['legs']!, _legsMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -10473,6 +10557,14 @@ class $SightseeingRoutesTable extends SightseeingRoutes
         DriftSqlType.string,
         data['${effectivePrefix}last_manual_order'],
       ),
+      startMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}start_minutes'],
+      ),
+      legs: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}legs'],
+      ),
       calcSource: $SightseeingRoutesTable.$convertercalcSource.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -10532,6 +10624,13 @@ class SightseeingRoute extends DataClass
   /// Ultimo ordine manuale (JSON di id-tappa) per ripristinarlo dopo un'ottimizzazione.
   final String? lastManualOrder;
 
+  /// Ora di partenza in minuti dalla mezzanotte; null = senza orario (v8).
+  final int? startMinutes;
+
+  /// Tratti tra le tappe come JSON `[{m,s}]` (metri, secondi), nell'ordine
+  /// del percorso; con il ritorno c'e' un tratto in piu' (v8).
+  final String? legs;
+
   /// Origine del calcolo di distanza/durata/geometria.
   final DistanceSource calcSource;
   final DateTime createdAt;
@@ -10549,6 +10648,8 @@ class SightseeingRoute extends DataClass
     this.durationSeconds,
     this.geometry,
     this.lastManualOrder,
+    this.startMinutes,
+    this.legs,
     required this.calcSource,
     required this.createdAt,
     required this.updatedAt,
@@ -10581,6 +10682,12 @@ class SightseeingRoute extends DataClass
     }
     if (!nullToAbsent || lastManualOrder != null) {
       map['last_manual_order'] = Variable<String>(lastManualOrder);
+    }
+    if (!nullToAbsent || startMinutes != null) {
+      map['start_minutes'] = Variable<int>(startMinutes);
+    }
+    if (!nullToAbsent || legs != null) {
+      map['legs'] = Variable<String>(legs);
     }
     {
       map['calc_source'] = Variable<String>(
@@ -10616,6 +10723,10 @@ class SightseeingRoute extends DataClass
       lastManualOrder: lastManualOrder == null && nullToAbsent
           ? const Value.absent()
           : Value(lastManualOrder),
+      startMinutes: startMinutes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startMinutes),
+      legs: legs == null && nullToAbsent ? const Value.absent() : Value(legs),
       calcSource: Value(calcSource),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -10642,6 +10753,8 @@ class SightseeingRoute extends DataClass
       durationSeconds: serializer.fromJson<int?>(json['durationSeconds']),
       geometry: serializer.fromJson<String?>(json['geometry']),
       lastManualOrder: serializer.fromJson<String?>(json['lastManualOrder']),
+      startMinutes: serializer.fromJson<int?>(json['startMinutes']),
+      legs: serializer.fromJson<String?>(json['legs']),
       calcSource: $SightseeingRoutesTable.$convertercalcSource.fromJson(
         serializer.fromJson<String>(json['calcSource']),
       ),
@@ -10667,6 +10780,8 @@ class SightseeingRoute extends DataClass
       'durationSeconds': serializer.toJson<int?>(durationSeconds),
       'geometry': serializer.toJson<String?>(geometry),
       'lastManualOrder': serializer.toJson<String?>(lastManualOrder),
+      'startMinutes': serializer.toJson<int?>(startMinutes),
+      'legs': serializer.toJson<String?>(legs),
       'calcSource': serializer.toJson<String>(
         $SightseeingRoutesTable.$convertercalcSource.toJson(calcSource),
       ),
@@ -10688,6 +10803,8 @@ class SightseeingRoute extends DataClass
     Value<int?> durationSeconds = const Value.absent(),
     Value<String?> geometry = const Value.absent(),
     Value<String?> lastManualOrder = const Value.absent(),
+    Value<int?> startMinutes = const Value.absent(),
+    Value<String?> legs = const Value.absent(),
     DistanceSource? calcSource,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -10710,6 +10827,8 @@ class SightseeingRoute extends DataClass
     lastManualOrder: lastManualOrder.present
         ? lastManualOrder.value
         : this.lastManualOrder,
+    startMinutes: startMinutes.present ? startMinutes.value : this.startMinutes,
+    legs: legs.present ? legs.value : this.legs,
     calcSource: calcSource ?? this.calcSource,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -10740,6 +10859,10 @@ class SightseeingRoute extends DataClass
       lastManualOrder: data.lastManualOrder.present
           ? data.lastManualOrder.value
           : this.lastManualOrder,
+      startMinutes: data.startMinutes.present
+          ? data.startMinutes.value
+          : this.startMinutes,
+      legs: data.legs.present ? data.legs.value : this.legs,
       calcSource: data.calcSource.present
           ? data.calcSource.value
           : this.calcSource,
@@ -10763,6 +10886,8 @@ class SightseeingRoute extends DataClass
           ..write('durationSeconds: $durationSeconds, ')
           ..write('geometry: $geometry, ')
           ..write('lastManualOrder: $lastManualOrder, ')
+          ..write('startMinutes: $startMinutes, ')
+          ..write('legs: $legs, ')
           ..write('calcSource: $calcSource, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -10784,6 +10909,8 @@ class SightseeingRoute extends DataClass
     durationSeconds,
     geometry,
     lastManualOrder,
+    startMinutes,
+    legs,
     calcSource,
     createdAt,
     updatedAt,
@@ -10804,6 +10931,8 @@ class SightseeingRoute extends DataClass
           other.durationSeconds == this.durationSeconds &&
           other.geometry == this.geometry &&
           other.lastManualOrder == this.lastManualOrder &&
+          other.startMinutes == this.startMinutes &&
+          other.legs == this.legs &&
           other.calcSource == this.calcSource &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -10822,6 +10951,8 @@ class SightseeingRoutesCompanion extends UpdateCompanion<SightseeingRoute> {
   final Value<int?> durationSeconds;
   final Value<String?> geometry;
   final Value<String?> lastManualOrder;
+  final Value<int?> startMinutes;
+  final Value<String?> legs;
   final Value<DistanceSource> calcSource;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -10839,6 +10970,8 @@ class SightseeingRoutesCompanion extends UpdateCompanion<SightseeingRoute> {
     this.durationSeconds = const Value.absent(),
     this.geometry = const Value.absent(),
     this.lastManualOrder = const Value.absent(),
+    this.startMinutes = const Value.absent(),
+    this.legs = const Value.absent(),
     this.calcSource = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -10857,6 +10990,8 @@ class SightseeingRoutesCompanion extends UpdateCompanion<SightseeingRoute> {
     this.durationSeconds = const Value.absent(),
     this.geometry = const Value.absent(),
     this.lastManualOrder = const Value.absent(),
+    this.startMinutes = const Value.absent(),
+    this.legs = const Value.absent(),
     this.calcSource = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -10877,6 +11012,8 @@ class SightseeingRoutesCompanion extends UpdateCompanion<SightseeingRoute> {
     Expression<int>? durationSeconds,
     Expression<String>? geometry,
     Expression<String>? lastManualOrder,
+    Expression<int>? startMinutes,
+    Expression<String>? legs,
     Expression<String>? calcSource,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -10895,6 +11032,8 @@ class SightseeingRoutesCompanion extends UpdateCompanion<SightseeingRoute> {
       if (durationSeconds != null) 'duration_seconds': durationSeconds,
       if (geometry != null) 'geometry': geometry,
       if (lastManualOrder != null) 'last_manual_order': lastManualOrder,
+      if (startMinutes != null) 'start_minutes': startMinutes,
+      if (legs != null) 'legs': legs,
       if (calcSource != null) 'calc_source': calcSource,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -10915,6 +11054,8 @@ class SightseeingRoutesCompanion extends UpdateCompanion<SightseeingRoute> {
     Value<int?>? durationSeconds,
     Value<String?>? geometry,
     Value<String?>? lastManualOrder,
+    Value<int?>? startMinutes,
+    Value<String?>? legs,
     Value<DistanceSource>? calcSource,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -10933,6 +11074,8 @@ class SightseeingRoutesCompanion extends UpdateCompanion<SightseeingRoute> {
       durationSeconds: durationSeconds ?? this.durationSeconds,
       geometry: geometry ?? this.geometry,
       lastManualOrder: lastManualOrder ?? this.lastManualOrder,
+      startMinutes: startMinutes ?? this.startMinutes,
+      legs: legs ?? this.legs,
       calcSource: calcSource ?? this.calcSource,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -10981,6 +11124,12 @@ class SightseeingRoutesCompanion extends UpdateCompanion<SightseeingRoute> {
     if (lastManualOrder.present) {
       map['last_manual_order'] = Variable<String>(lastManualOrder.value);
     }
+    if (startMinutes.present) {
+      map['start_minutes'] = Variable<int>(startMinutes.value);
+    }
+    if (legs.present) {
+      map['legs'] = Variable<String>(legs.value);
+    }
     if (calcSource.present) {
       map['calc_source'] = Variable<String>(
         $SightseeingRoutesTable.$convertercalcSource.toSql(calcSource.value),
@@ -11013,6 +11162,8 @@ class SightseeingRoutesCompanion extends UpdateCompanion<SightseeingRoute> {
           ..write('durationSeconds: $durationSeconds, ')
           ..write('geometry: $geometry, ')
           ..write('lastManualOrder: $lastManualOrder, ')
+          ..write('startMinutes: $startMinutes, ')
+          ..write('legs: $legs, ')
           ..write('calcSource: $calcSource, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -12217,6 +12368,17 @@ class $SightseeingRouteStopsTable extends SightseeingRouteStops
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _visitMinutesMeta = const VerificationMeta(
+    'visitMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> visitMinutes = GeneratedColumn<int>(
+    'visit_minutes',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -12224,6 +12386,7 @@ class $SightseeingRouteStopsTable extends SightseeingRouteStops
     tripId,
     locationId,
     sequenceIndex,
+    visitMinutes,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -12275,6 +12438,15 @@ class $SightseeingRouteStopsTable extends SightseeingRouteStops
         ),
       );
     }
+    if (data.containsKey('visit_minutes')) {
+      context.handle(
+        _visitMinutesMeta,
+        visitMinutes.isAcceptableOrUnknown(
+          data['visit_minutes']!,
+          _visitMinutesMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -12304,6 +12476,10 @@ class $SightseeingRouteStopsTable extends SightseeingRouteStops
         DriftSqlType.int,
         data['${effectivePrefix}sequence_index'],
       )!,
+      visitMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}visit_minutes'],
+      ),
     );
   }
 
@@ -12320,12 +12496,17 @@ class SightseeingRouteStop extends DataClass
   final String tripId;
   final String locationId;
   final int sequenceIndex;
+
+  /// Durata della visita in minuti: null = predefinita per categoria,
+  /// 0 = solo punto di partenza (es. l'albergo) (v8).
+  final int? visitMinutes;
   const SightseeingRouteStop({
     required this.id,
     required this.routeId,
     required this.tripId,
     required this.locationId,
     required this.sequenceIndex,
+    this.visitMinutes,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -12335,6 +12516,9 @@ class SightseeingRouteStop extends DataClass
     map['trip_id'] = Variable<String>(tripId);
     map['location_id'] = Variable<String>(locationId);
     map['sequence_index'] = Variable<int>(sequenceIndex);
+    if (!nullToAbsent || visitMinutes != null) {
+      map['visit_minutes'] = Variable<int>(visitMinutes);
+    }
     return map;
   }
 
@@ -12345,6 +12529,9 @@ class SightseeingRouteStop extends DataClass
       tripId: Value(tripId),
       locationId: Value(locationId),
       sequenceIndex: Value(sequenceIndex),
+      visitMinutes: visitMinutes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(visitMinutes),
     );
   }
 
@@ -12359,6 +12546,7 @@ class SightseeingRouteStop extends DataClass
       tripId: serializer.fromJson<String>(json['tripId']),
       locationId: serializer.fromJson<String>(json['locationId']),
       sequenceIndex: serializer.fromJson<int>(json['sequenceIndex']),
+      visitMinutes: serializer.fromJson<int?>(json['visitMinutes']),
     );
   }
   @override
@@ -12370,6 +12558,7 @@ class SightseeingRouteStop extends DataClass
       'tripId': serializer.toJson<String>(tripId),
       'locationId': serializer.toJson<String>(locationId),
       'sequenceIndex': serializer.toJson<int>(sequenceIndex),
+      'visitMinutes': serializer.toJson<int?>(visitMinutes),
     };
   }
 
@@ -12379,12 +12568,14 @@ class SightseeingRouteStop extends DataClass
     String? tripId,
     String? locationId,
     int? sequenceIndex,
+    Value<int?> visitMinutes = const Value.absent(),
   }) => SightseeingRouteStop(
     id: id ?? this.id,
     routeId: routeId ?? this.routeId,
     tripId: tripId ?? this.tripId,
     locationId: locationId ?? this.locationId,
     sequenceIndex: sequenceIndex ?? this.sequenceIndex,
+    visitMinutes: visitMinutes.present ? visitMinutes.value : this.visitMinutes,
   );
   SightseeingRouteStop copyWithCompanion(SightseeingRouteStopsCompanion data) {
     return SightseeingRouteStop(
@@ -12397,6 +12588,9 @@ class SightseeingRouteStop extends DataClass
       sequenceIndex: data.sequenceIndex.present
           ? data.sequenceIndex.value
           : this.sequenceIndex,
+      visitMinutes: data.visitMinutes.present
+          ? data.visitMinutes.value
+          : this.visitMinutes,
     );
   }
 
@@ -12407,14 +12601,15 @@ class SightseeingRouteStop extends DataClass
           ..write('routeId: $routeId, ')
           ..write('tripId: $tripId, ')
           ..write('locationId: $locationId, ')
-          ..write('sequenceIndex: $sequenceIndex')
+          ..write('sequenceIndex: $sequenceIndex, ')
+          ..write('visitMinutes: $visitMinutes')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, routeId, tripId, locationId, sequenceIndex);
+      Object.hash(id, routeId, tripId, locationId, sequenceIndex, visitMinutes);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -12423,7 +12618,8 @@ class SightseeingRouteStop extends DataClass
           other.routeId == this.routeId &&
           other.tripId == this.tripId &&
           other.locationId == this.locationId &&
-          other.sequenceIndex == this.sequenceIndex);
+          other.sequenceIndex == this.sequenceIndex &&
+          other.visitMinutes == this.visitMinutes);
 }
 
 class SightseeingRouteStopsCompanion
@@ -12433,6 +12629,7 @@ class SightseeingRouteStopsCompanion
   final Value<String> tripId;
   final Value<String> locationId;
   final Value<int> sequenceIndex;
+  final Value<int?> visitMinutes;
   final Value<int> rowid;
   const SightseeingRouteStopsCompanion({
     this.id = const Value.absent(),
@@ -12440,6 +12637,7 @@ class SightseeingRouteStopsCompanion
     this.tripId = const Value.absent(),
     this.locationId = const Value.absent(),
     this.sequenceIndex = const Value.absent(),
+    this.visitMinutes = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SightseeingRouteStopsCompanion.insert({
@@ -12448,6 +12646,7 @@ class SightseeingRouteStopsCompanion
     required String tripId,
     required String locationId,
     this.sequenceIndex = const Value.absent(),
+    this.visitMinutes = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        routeId = Value(routeId),
@@ -12459,6 +12658,7 @@ class SightseeingRouteStopsCompanion
     Expression<String>? tripId,
     Expression<String>? locationId,
     Expression<int>? sequenceIndex,
+    Expression<int>? visitMinutes,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -12467,6 +12667,7 @@ class SightseeingRouteStopsCompanion
       if (tripId != null) 'trip_id': tripId,
       if (locationId != null) 'location_id': locationId,
       if (sequenceIndex != null) 'sequence_index': sequenceIndex,
+      if (visitMinutes != null) 'visit_minutes': visitMinutes,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -12477,6 +12678,7 @@ class SightseeingRouteStopsCompanion
     Value<String>? tripId,
     Value<String>? locationId,
     Value<int>? sequenceIndex,
+    Value<int?>? visitMinutes,
     Value<int>? rowid,
   }) {
     return SightseeingRouteStopsCompanion(
@@ -12485,6 +12687,7 @@ class SightseeingRouteStopsCompanion
       tripId: tripId ?? this.tripId,
       locationId: locationId ?? this.locationId,
       sequenceIndex: sequenceIndex ?? this.sequenceIndex,
+      visitMinutes: visitMinutes ?? this.visitMinutes,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -12507,6 +12710,9 @@ class SightseeingRouteStopsCompanion
     if (sequenceIndex.present) {
       map['sequence_index'] = Variable<int>(sequenceIndex.value);
     }
+    if (visitMinutes.present) {
+      map['visit_minutes'] = Variable<int>(visitMinutes.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -12521,6 +12727,7 @@ class SightseeingRouteStopsCompanion
           ..write('tripId: $tripId, ')
           ..write('locationId: $locationId, ')
           ..write('sequenceIndex: $sequenceIndex, ')
+          ..write('visitMinutes: $visitMinutes, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -21698,6 +21905,7 @@ typedef $$LocationsTableCreateCompanionBuilder =
       Value<String?> website,
       Value<String?> openingHours,
       Value<String?> wikidata,
+      Value<String?> fee,
       Value<int> rowid,
     });
 typedef $$LocationsTableUpdateCompanionBuilder =
@@ -21718,6 +21926,7 @@ typedef $$LocationsTableUpdateCompanionBuilder =
       Value<String?> website,
       Value<String?> openingHours,
       Value<String?> wikidata,
+      Value<String?> fee,
       Value<int> rowid,
     });
 
@@ -21874,6 +22083,11 @@ class $$LocationsTableFilterComposer
 
   ColumnFilters<String> get wikidata => $composableBuilder(
     column: $table.wikidata,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fee => $composableBuilder(
+    column: $table.fee,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -22036,6 +22250,11 @@ class $$LocationsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get fee => $composableBuilder(
+    column: $table.fee,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$TripsTableOrderingComposer get tripId {
     final $$TripsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -22124,6 +22343,9 @@ class $$LocationsTableAnnotationComposer
 
   GeneratedColumn<String> get wikidata =>
       $composableBuilder(column: $table.wikidata, builder: (column) => column);
+
+  GeneratedColumn<String> get fee =>
+      $composableBuilder(column: $table.fee, builder: (column) => column);
 
   $$TripsTableAnnotationComposer get tripId {
     final $$TripsTableAnnotationComposer composer = $composerBuilder(
@@ -22248,6 +22470,7 @@ class $$LocationsTableTableManager
                 Value<String?> website = const Value.absent(),
                 Value<String?> openingHours = const Value.absent(),
                 Value<String?> wikidata = const Value.absent(),
+                Value<String?> fee = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocationsCompanion(
                 id: id,
@@ -22266,6 +22489,7 @@ class $$LocationsTableTableManager
                 website: website,
                 openingHours: openingHours,
                 wikidata: wikidata,
+                fee: fee,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -22286,6 +22510,7 @@ class $$LocationsTableTableManager
                 Value<String?> website = const Value.absent(),
                 Value<String?> openingHours = const Value.absent(),
                 Value<String?> wikidata = const Value.absent(),
+                Value<String?> fee = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocationsCompanion.insert(
                 id: id,
@@ -22304,6 +22529,7 @@ class $$LocationsTableTableManager
                 website: website,
                 openingHours: openingHours,
                 wikidata: wikidata,
+                fee: fee,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -22442,6 +22668,8 @@ typedef $$SightseeingRoutesTableCreateCompanionBuilder =
       Value<int?> durationSeconds,
       Value<String?> geometry,
       Value<String?> lastManualOrder,
+      Value<int?> startMinutes,
+      Value<String?> legs,
       Value<DistanceSource> calcSource,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -22461,6 +22689,8 @@ typedef $$SightseeingRoutesTableUpdateCompanionBuilder =
       Value<int?> durationSeconds,
       Value<String?> geometry,
       Value<String?> lastManualOrder,
+      Value<int?> startMinutes,
+      Value<String?> legs,
       Value<DistanceSource> calcSource,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -22624,6 +22854,16 @@ class $$SightseeingRoutesTableFilterComposer
 
   ColumnFilters<String> get lastManualOrder => $composableBuilder(
     column: $table.lastManualOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startMinutes => $composableBuilder(
+    column: $table.startMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get legs => $composableBuilder(
+    column: $table.legs,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -22800,6 +23040,16 @@ class $$SightseeingRoutesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get startMinutes => $composableBuilder(
+    column: $table.startMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get legs => $composableBuilder(
+    column: $table.legs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get calcSource => $composableBuilder(
     column: $table.calcSource,
     builder: (column) => ColumnOrderings(column),
@@ -22913,6 +23163,14 @@ class $$SightseeingRoutesTableAnnotationComposer
     column: $table.lastManualOrder,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get startMinutes => $composableBuilder(
+    column: $table.startMinutes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get legs =>
+      $composableBuilder(column: $table.legs, builder: (column) => column);
 
   GeneratedColumnWithTypeConverter<DistanceSource, String> get calcSource =>
       $composableBuilder(
@@ -23074,6 +23332,8 @@ class $$SightseeingRoutesTableTableManager
                 Value<int?> durationSeconds = const Value.absent(),
                 Value<String?> geometry = const Value.absent(),
                 Value<String?> lastManualOrder = const Value.absent(),
+                Value<int?> startMinutes = const Value.absent(),
+                Value<String?> legs = const Value.absent(),
                 Value<DistanceSource> calcSource = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -23091,6 +23351,8 @@ class $$SightseeingRoutesTableTableManager
                 durationSeconds: durationSeconds,
                 geometry: geometry,
                 lastManualOrder: lastManualOrder,
+                startMinutes: startMinutes,
+                legs: legs,
                 calcSource: calcSource,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -23110,6 +23372,8 @@ class $$SightseeingRoutesTableTableManager
                 Value<int?> durationSeconds = const Value.absent(),
                 Value<String?> geometry = const Value.absent(),
                 Value<String?> lastManualOrder = const Value.absent(),
+                Value<int?> startMinutes = const Value.absent(),
+                Value<String?> legs = const Value.absent(),
                 Value<DistanceSource> calcSource = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -23127,6 +23391,8 @@ class $$SightseeingRoutesTableTableManager
                 durationSeconds: durationSeconds,
                 geometry: geometry,
                 lastManualOrder: lastManualOrder,
+                startMinutes: startMinutes,
+                legs: legs,
                 calcSource: calcSource,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -24275,6 +24541,7 @@ typedef $$SightseeingRouteStopsTableCreateCompanionBuilder =
       required String tripId,
       required String locationId,
       Value<int> sequenceIndex,
+      Value<int?> visitMinutes,
       Value<int> rowid,
     });
 typedef $$SightseeingRouteStopsTableUpdateCompanionBuilder =
@@ -24284,6 +24551,7 @@ typedef $$SightseeingRouteStopsTableUpdateCompanionBuilder =
       Value<String> tripId,
       Value<String> locationId,
       Value<int> sequenceIndex,
+      Value<int?> visitMinutes,
       Value<int> rowid,
     });
 
@@ -24382,6 +24650,11 @@ class $$SightseeingRouteStopsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get visitMinutes => $composableBuilder(
+    column: $table.visitMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$SightseeingRoutesTableFilterComposer get routeId {
     final $$SightseeingRoutesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -24471,6 +24744,11 @@ class $$SightseeingRouteStopsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get visitMinutes => $composableBuilder(
+    column: $table.visitMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$SightseeingRoutesTableOrderingComposer get routeId {
     final $$SightseeingRoutesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -24555,6 +24833,11 @@ class $$SightseeingRouteStopsTableAnnotationComposer
 
   GeneratedColumn<int> get sequenceIndex => $composableBuilder(
     column: $table.sequenceIndex,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get visitMinutes => $composableBuilder(
+    column: $table.visitMinutes,
     builder: (column) => column,
   );
 
@@ -24673,6 +24956,7 @@ class $$SightseeingRouteStopsTableTableManager
                 Value<String> tripId = const Value.absent(),
                 Value<String> locationId = const Value.absent(),
                 Value<int> sequenceIndex = const Value.absent(),
+                Value<int?> visitMinutes = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SightseeingRouteStopsCompanion(
                 id: id,
@@ -24680,6 +24964,7 @@ class $$SightseeingRouteStopsTableTableManager
                 tripId: tripId,
                 locationId: locationId,
                 sequenceIndex: sequenceIndex,
+                visitMinutes: visitMinutes,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -24689,6 +24974,7 @@ class $$SightseeingRouteStopsTableTableManager
                 required String tripId,
                 required String locationId,
                 Value<int> sequenceIndex = const Value.absent(),
+                Value<int?> visitMinutes = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SightseeingRouteStopsCompanion.insert(
                 id: id,
@@ -24696,6 +24982,7 @@ class $$SightseeingRouteStopsTableTableManager
                 tripId: tripId,
                 locationId: locationId,
                 sequenceIndex: sequenceIndex,
+                visitMinutes: visitMinutes,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

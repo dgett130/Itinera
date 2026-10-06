@@ -26,6 +26,13 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   sposti, niente più raggio in km), **ricerca per nome**, filtri, e **pin a
   mano** tenendo premuto sulla mappa. Il [+] aggiunge il luogo direttamente al
   percorso; togliere una tappa si può **annullare**.
+- **Ordina**: **tempo e distanza tra una tappa e l'altra** (anche per il
+  ritorno), calcolati sulle strade o stimati senza rete ("circa");
+  **"Parti da"** una tappa a scelta, anche come **solo punto di partenza**
+  (es. l'albergo), oppure dalla più comoda; **"Torno a … alla fine"**.
+- **Suggerimento "Ordine più veloce: circa N min in meno"** con **Applica**,
+  che si può annullare; compare solo quando il risparmio è concreto (con i
+  tempi sulle strade viene prima verificato sulle strade).
 
 ### Modificato
 - **Niente più "luoghi salvati" separati**: i luoghi vivono dentro i percorsi.
@@ -33,19 +40,27 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   salvati"** (una sola, anche tra più dispositivi e membri).
 - Un nuovo percorso parte **vuoto** (prima conteneva tutti i luoghi salvati);
   una bozza lasciata senza tappe viene eliminata.
-- Testi più chiari nell'ordinamento: "Parti sempre dalla prima tappa", "Torna
-  alla prima tappa alla fine", "Ordine più veloce", "Torna al mio ordine";
-  ricalcolo automatico (via "Ricalcola").
+- Ordinamento più semplice: tempi e distanze si **ricalcolano da soli** (via
+  "Ricalcola"); l'ordine automatico è un suggerimento con Annulla (via
+  "Ripristina ordine manuale").
 - Durate senza "0 min" superflui (es. "1 h" invece di "1 h 0 min").
 - Tappa senza posizione sulla mappa: messaggio chiaro invece di "Altro" in rosso.
 
 ### Corretto
+- La scheda del luogo e i pannelli/dialoghi di "Luoghi e percorsi" usano lo
+  **stile del viaggio** (prima comparivano con i colori generali dell'app).
 - Aggiungere all'itinerario un percorso già presente in un altro giorno ora lo
   **sposta** invece di duplicare l'evento.
 
 ### Note tecniche
 - Redesign a passi di "Luoghi e percorsi" descritto in
-  **`docs/03-luoghi-e-percorsi-redesign.md`** (incrementi 1 e 2 di 5).
+  **`docs/03-luoghi-e-percorsi-redesign.md`** (incrementi 1–3 di 5).
+- **Schema locale v8** (colonne nullable): `sightseeing_routes.start_minutes`
+  e `legs` (tratti JSON `[{m,s}]`), `sightseeing_route_stops.visit_minutes`,
+  `locations.fee`. Mapper di sync aggiornati; in pull le colonne nuove si
+  applicano solo se il server le restituisce.
+- **Supabase**: eseguire **`docs/supabase/explore-v2.sql`** nel SQL Editor
+  **prima** di distribuire questa versione (RLS invariate).
 
 ## [1.3.0] - 2026-09-17
 
