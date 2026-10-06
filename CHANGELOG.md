@@ -70,6 +70,7 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   "Ripristina ordine manuale").
 - Durate senza "0 min" superflui (es. "1 h" invece di "1 h 0 min").
 - Tappa senza posizione sulla mappa: messaggio chiaro invece di "Altro" in rosso.
+- Pannello **"Novità"** aggiornato con le novità di "Luoghi e percorsi".
 
 ### Corretto
 - La scheda del luogo e i pannelli/dialoghi di "Luoghi e percorsi" usano lo
