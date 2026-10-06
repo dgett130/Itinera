@@ -20,6 +20,7 @@ class PoiSuggestion {
     this.website,
     this.openingHours,
     this.wikidata,
+    this.fee,
   });
 
   final String provider;
@@ -34,6 +35,9 @@ class PoiSuggestion {
   final String? openingHours;
   final String? wikidata;
 
+  /// Tag OSM `fee`: `no` = gratuito, `yes` = a pagamento, altro così com'è.
+  final String? fee;
+
   Map<String, dynamic> toJson() => {
     'provider': provider,
     'externalId': externalId,
@@ -46,6 +50,7 @@ class PoiSuggestion {
     if (website != null) 'website': website,
     if (openingHours != null) 'openingHours': openingHours,
     if (wikidata != null) 'wikidata': wikidata,
+    if (fee != null) 'fee': fee,
   };
 
   static PoiSuggestion? fromJson(Map<String, dynamic> j) {
@@ -71,6 +76,7 @@ class PoiSuggestion {
       website: j['website'] as String?,
       openingHours: j['openingHours'] as String?,
       wikidata: j['wikidata'] as String?,
+      fee: j['fee'] as String?,
     );
   }
 }
@@ -212,6 +218,7 @@ List<PoiSuggestion> parseOverpass(Map<String, dynamic> json) {
         website: _first(tags, const ['website', 'contact:website', 'url']),
         openingHours: tags['opening_hours'] as String?,
         wikidata: tags['wikidata'] as String?,
+        fee: tags['fee'] as String?,
       ),
     );
   }

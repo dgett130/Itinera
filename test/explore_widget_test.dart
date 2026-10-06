@@ -21,6 +21,7 @@ import 'package:itinera/features/explore/route_planner.dart';
 import 'package:itinera/features/explore/route_summary_screen.dart';
 import 'package:itinera/features/explore/sightseeing_route_repository.dart';
 import 'package:itinera/features/transport/routing_service.dart';
+import 'package:itinera/features/settings/route_warnings_screen.dart';
 import 'package:itinera/l10n/app_localizations.dart';
 import 'package:itinera/providers.dart';
 
@@ -478,6 +479,68 @@ void main() {
       reason: 'sola lettura',
     );
     expect(find.text('Modifica'), findsOneWidget);
+    await _teardown(tester, db);
+  });
+
+  testWidgets("Pianifica: avviso se un luogo apre dopo l'arrivo", (
+    tester,
+  ) async {
+    _tallView(tester);
+    final db = AppDatabase.forExecutor(NativeDatabase.memory());
+    await AppSeed.ensureSeeded(db);
+    final tripId = await _trip(db);
+    final a = await _location(db, tripId, 'Museo', 41.89);
+    final b = await _location(db, tripId, 'Chiesa', 41.90);
+    await (db.update(db.locations)..where((l) => l.id.equals(a))).write(
+      const LocationsCompanion(openingHours: Value('Mo-Su 10:00-18:00')),
+    );
+    final dayId = newId();
+    await db
+        .into(db.itineraryDays)
+        .insert(
+          ItineraryDaysCompanion.insert(
+            id: dayId,
+            tripId: tripId,
+            date: Value(DateTime(2026, 9, 21)), // lunedì
+          ),
+        );
+    final repo = SightseeingRouteRepository(db);
+    final routeId = await repo.createRoute(
+      tripId: tripId,
+      name: 'Centro',
+      locationIds: [a, b],
+    );
+    await repo.addToItinerary(routeId, dayId, tripId);
+    await repo.setStartMinutes(routeId, 9 * 60);
+
+    await tester.pumpWidget(
+      _app(db, const [], RouteFlowScreen(tripId: tripId, routeId: routeId)),
+    );
+    await _settle(tester, 16);
+    await tester.tap(find.text('Pianifica'));
+    await _settle(tester, 10);
+
+    expect(find.text('Apre alle 10:00, arrivi alle 09:00'), findsOneWidget);
+    await _teardown(tester, db);
+  });
+
+  testWidgets('Impostazioni "Percorsi e avvisi": le scelte restano sul '
+      'dispositivo', (tester) async {
+    _tallView(tester);
+    final db = AppDatabase.forExecutor(NativeDatabase.memory());
+    await AppSeed.ensureSeeded(db);
+
+    await tester.pumpWidget(_app(db, const [], const RouteWarningsScreen()));
+    await _settle(tester, 6);
+    expect(find.text('Oltre 15 km'), findsOneWidget);
+
+    await tester.tap(find.text('Tanta strada a piedi'));
+    await _settle(tester, 6);
+    expect(await db.getPref('route_warnings'), contains('"walk":false'));
+
+    await tester.tap(find.text('Di più').first);
+    await _settle(tester, 6);
+    expect(find.text('Dopo le 20:30'), findsOneWidget);
     await _teardown(tester, db);
   });
 }

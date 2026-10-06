@@ -27,7 +27,9 @@ import 'place_sheet.dart';
 import 'poi_parser.dart';
 import 'route_math.dart';
 import 'route_schedule_view.dart';
+import 'route_warnings.dart';
 import 'sightseeing_route_repository.dart';
+import 'warning_settings_provider.dart';
 
 /// Costruzione di un percorso a passi: ① Scegli → ② Ordina → ③ Pianifica.
 ///
@@ -1892,6 +1894,19 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     );
     final start = route.startMinutes;
     final schedule = _computing ? null : scheduleForRefs(route, refs);
+    final warnings = schedule == null
+        ? const <RouteWarning>[]
+        : warningsForRefs(
+            route,
+            refs,
+            schedule,
+            ref.watch(warningSettingsProvider),
+            selectedDay?.date?.weekday,
+          );
+    final dayWarnings = [
+      for (final w in warnings)
+        if (w.stopIndex == null) w,
+    ];
 
     // Riquadro compatto "etichetta / valore" per giorno e partenza.
     Widget field({
@@ -2015,7 +2030,13 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
             schedule: schedule,
             onTapStop: _openStop,
             onEditVisit: _editVisit,
+            warnings: warnings,
           ),
+          if (dayWarnings.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            RouteWarningsCard(warnings: dayWarnings),
+            const SizedBox(height: 8),
+          ],
           if (schedule != null) ...[
             const SizedBox(height: 4),
             RouteScheduleFooter(route: route, schedule: schedule),

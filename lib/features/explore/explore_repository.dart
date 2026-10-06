@@ -173,6 +173,7 @@ class ExploreRepository {
             website: Value(p.website),
             openingHours: Value(p.openingHours),
             wikidata: Value(p.wikidata),
+            fee: Value(p.fee),
           ),
         );
     return id;

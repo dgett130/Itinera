@@ -10,6 +10,7 @@ import '../transport/routing_service.dart';
 import 'explore_ui.dart';
 import 'geo_codec.dart';
 import 'route_schedule.dart';
+import 'route_warnings.dart';
 
 /// Pezzi di interfaccia della scaletta, condivisi tra il passo "Pianifica"
 /// (modificabile) e il riepilogo in sola lettura aperto dall'itinerario.
@@ -29,6 +30,99 @@ RouteSchedule? scheduleForRefs(
   legs: decodeLegs(route.legs),
   returnToStart: route.returnToStart,
 );
+
+/// Avvisi per le tappe [refs] con la scaletta [schedule]; [weekday] è il
+/// giorno della settimana del giorno scelto (null se senza data).
+List<RouteWarning> warningsForRefs(
+  SightseeingRoute route,
+  List<(SightseeingRouteStop, Location)> refs,
+  RouteSchedule schedule,
+  WarningSettings settings,
+  int? weekday,
+) => routeWarnings(
+  schedule: schedule,
+  openingHours: [for (final r in refs) r.$2.openingHours],
+  visitMinutes: [
+    for (final (s, l) in refs)
+      effectiveVisitMinutes(s.visitMinutes, l.poiCategory),
+  ],
+  mode: route.travelMode,
+  settings: settings,
+  startMinutes: route.startMinutes,
+  weekday: weekday,
+);
+
+/// Testo dell'avviso, senza il nome della tappa (sta sotto la tappa).
+String warningText(AppLocalizations l10n, RouteWarning w) {
+  String t(int? m) => Fmt.timeOfDayMinutes((m ?? 0) % (24 * 60));
+  return switch (w.kind) {
+    WarningKind.closedDay => l10n.warnClosedDay,
+    WarningKind.opensLater => l10n.warnOpensLater(t(w.a), t(w.b)),
+    WarningKind.closedEarlier =>
+      w.a == null
+          ? l10n.warnClosedAtArrival(t(w.b))
+          : l10n.warnClosedEarlier(t(w.a), t(w.b)),
+    WarningKind.closesDuringVisit => l10n.warnClosesDuringVisit(t(w.a)),
+    WarningKind.lateEnd => l10n.warnLateEnd(t(w.a)),
+    WarningKind.longDay => l10n.warnLongDay(
+      formatDuration(l10n, (w.a ?? 0) * 60),
+    ),
+    WarningKind.farWalk => l10n.warnFarWalk(formatDistance(l10n, w.a ?? 0)),
+    WarningKind.farBike => l10n.warnFarBike(formatDistance(l10n, w.a ?? 0)),
+  };
+}
+
+/// Una riga di avviso (icona e testo nel colore "attenzione").
+class RouteWarningRow extends StatelessWidget {
+  const RouteWarningRow({super.key, required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = context.tokens.warning;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 18, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: context.texts.bodySmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Avvisi sulla giornata (non legati a una tappa).
+class RouteWarningsCard extends StatelessWidget {
+  const RouteWarningsCard({super.key, required this.warnings});
+  final List<RouteWarning> warnings;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return ItineraCard(
+      accentEdge: context.tokens.warning,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.warnTitle, style: context.texts.titleSmall),
+          const SizedBox(height: 6),
+          for (final w in warnings) RouteWarningRow(text: warningText(l10n, w)),
+        ],
+      ),
+    );
+  }
+}
 
 /// Durata di visita leggibile; 0 = "Solo partenza" (prima tappa) o "Solo
 /// passaggio".
@@ -126,11 +220,15 @@ class RouteScheduleList extends StatelessWidget {
     required this.schedule,
     required this.onTapStop,
     this.onEditVisit,
+    this.warnings = const [],
   });
 
   final SightseeingRoute route;
   final List<(SightseeingRouteStop, Location)> refs;
   final RouteSchedule? schedule;
+
+  /// Avvisi: quelli di una tappa compaiono sotto la tappa.
+  final List<RouteWarning> warnings;
   final void Function(SightseeingRouteStop stop, Location loc) onTapStop;
   final void Function(SightseeingRouteStop stop, Location loc, bool first)?
   onEditVisit;
@@ -211,6 +309,11 @@ class RouteScheduleList extends StatelessWidget {
               ),
             ),
           ),
+          for (final w in warnings.where((w) => w.stopIndex == i))
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 0, 4),
+              child: RouteWarningRow(text: warningText(l10n, w)),
+            ),
         ],
         if (schedule?.returnLeg case final back? when refs.isNotEmpty)
           RouteLegRow(

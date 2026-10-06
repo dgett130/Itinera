@@ -588,6 +588,132 @@ class AppLocalizationsIt extends AppLocalizations {
   String get itineraryRouteOpen => 'tocca per vedere';
 
   @override
+  String get warnTitle => 'Da tenere d\'occhio';
+
+  @override
+  String get warnClosedDay => 'Chiuso quel giorno';
+
+  @override
+  String warnOpensLater(String open, String arrive) {
+    return 'Apre alle $open, arrivi alle $arrive';
+  }
+
+  @override
+  String warnClosedEarlier(String close, String arrive) {
+    return 'Chiude alle $close, arrivi alle $arrive';
+  }
+
+  @override
+  String warnClosedAtArrival(String arrive) {
+    return 'Chiuso quando arrivi ($arrive)';
+  }
+
+  @override
+  String warnClosesDuringVisit(String close) {
+    return 'Chiude alle $close: avrai meno tempo per la visita';
+  }
+
+  @override
+  String warnLateEnd(String time) {
+    return 'La giornata finisce tardi, alle $time';
+  }
+
+  @override
+  String warnLongDay(String duration) {
+    return 'Giornata lunga: $duration in tutto';
+  }
+
+  @override
+  String warnFarWalk(String distance) {
+    return 'Tanta strada a piedi: $distance';
+  }
+
+  @override
+  String warnFarBike(String distance) {
+    return 'Tanta strada in bici: $distance';
+  }
+
+  @override
+  String placeOpenUntil(String time) {
+    return 'Aperto ora · chiude alle $time';
+  }
+
+  @override
+  String get placeOpenNow => 'Aperto ora';
+
+  @override
+  String placeClosedUntil(String time) {
+    return 'Chiuso ora · apre alle $time';
+  }
+
+  @override
+  String get placeClosedNow => 'Chiuso ora';
+
+  @override
+  String get placeHoursCheck => 'Orari da verificare';
+
+  @override
+  String get placeFee => 'Ingresso';
+
+  @override
+  String get placeFeeFree => 'Gratuito';
+
+  @override
+  String get placeFeePaid => 'A pagamento';
+
+  @override
+  String get placeFeeDonation => 'Offerta libera';
+
+  @override
+  String get rwTitle => 'Percorsi e avvisi';
+
+  @override
+  String get rwSubtitle => 'Quando avvisarti mentre pianifichi un percorso';
+
+  @override
+  String get rwHours => 'Luoghi chiusi';
+
+  @override
+  String get rwHoursSub =>
+      'Se un luogo è chiuso quando arrivi o chiude durante la visita';
+
+  @override
+  String get rwLateEnd => 'Giornata che finisce tardi';
+
+  @override
+  String rwLateEndSub(String time) {
+    return 'Dopo le $time';
+  }
+
+  @override
+  String get rwLongDay => 'Giornata lunga';
+
+  @override
+  String rwLongDaySub(String duration) {
+    return 'Oltre $duration';
+  }
+
+  @override
+  String get rwWalk => 'Tanta strada a piedi';
+
+  @override
+  String get rwBike => 'Tanta strada in bici';
+
+  @override
+  String rwKmSub(String km) {
+    return 'Oltre $km km';
+  }
+
+  @override
+  String get rwLess => 'Meno';
+
+  @override
+  String get rwMore => 'Di più';
+
+  @override
+  String get rwInfo => 'Le soglie valgono solo su questo dispositivo.';
+
+  @override
   String get flowAddedToDay => 'Aggiunto alla tabella di marcia';
 
   @override

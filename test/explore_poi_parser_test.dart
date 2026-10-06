@@ -107,6 +107,26 @@ void main() {
       expect(way.category, PoiCategory.nature);
     });
 
+    test('legge l\'ingresso (fee) e lo conserva nel JSON della cache', () {
+      final p = parseOverpass({
+        'elements': [
+          {
+            'type': 'node',
+            'id': 9,
+            'lat': 45.0,
+            'lon': 7.0,
+            'tags': {
+              'name': 'Duomo',
+              'amenity': 'place_of_worship',
+              'fee': 'no',
+            },
+          },
+        ],
+      }).single;
+      expect(p.fee, 'no');
+      expect(PoiSuggestion.fromJson(p.toJson())!.fee, 'no');
+    });
+
     test('risposta malformata -> lista vuota, nessun crash', () {
       expect(parseOverpass({'elements': 'nonlista'}), isEmpty);
       expect(parseOverpass(const {}), isEmpty);

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/enums.dart';
+import '../../core/format.dart';
 import '../../core/visit_duration.dart';
 import '../../data/database.dart';
 import '../../l10n/app_localizations.dart';
@@ -31,6 +32,7 @@ class PlaceInfo {
     this.notes,
     this.fromOsm = false,
     this.visitMinutes,
+    this.fee,
   });
 
   factory PlaceInfo.fromSuggestion(PoiSuggestion p) => PlaceInfo(
@@ -43,6 +45,7 @@ class PlaceInfo {
     website: p.website,
     openingHours: p.openingHours,
     fromOsm: true,
+    fee: p.fee,
   );
 
   factory PlaceInfo.fromLocation(Location l, {int? visitMinutes}) => PlaceInfo(
@@ -58,6 +61,7 @@ class PlaceInfo {
     notes: l.notes,
     fromOsm: l.source == LocationSource.osm,
     visitMinutes: visitMinutes,
+    fee: l.fee,
   );
 
   final String name;
@@ -77,6 +81,9 @@ class PlaceInfo {
   /// Durata di visita scelta nel percorso (null = predefinita per categoria;
   /// 0 = solo partenza/passaggio, senza riga "visita").
   final int? visitMinutes;
+
+  /// Tag OSM `fee` (ingresso), se noto.
+  final String? fee;
 
   bool get hasCoords => lat != null && lng != null;
 }
@@ -211,6 +218,19 @@ class PlaceSheet extends StatelessWidget {
                         ),
                       ),
                     ],
+                    if (_openStatus(l10n, tokens, scheme) case (
+                      final text,
+                      final color,
+                    )) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        text,
+                        style: context.texts.bodyMedium?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -256,6 +276,12 @@ class PlaceSheet extends StatelessWidget {
                     : l10n.placeVisitChosen,
               ],
               muted: true,
+            ),
+          if (_feeLabel(l10n, place.fee) case final fee?)
+            _InfoRow(
+              icon: Icons.confirmation_number_outlined,
+              title: l10n.placeFee,
+              lines: [fee],
             ),
           if (place.address != null && place.address!.trim().isNotEmpty)
             _InfoRow(icon: Icons.place_outlined, title: place.address!),
@@ -314,6 +340,44 @@ class PlaceSheet extends StatelessWidget {
       ),
     );
   }
+
+  /// "Aperto ora · chiude alle …" / "Chiuso ora · apre alle …" adesso;
+  /// "Orari da verificare" se gli orari ci sono ma non sono interpretabili.
+  (String, Color)? _openStatus(
+    AppLocalizations l10n,
+    ItineraTokens tokens,
+    ColorScheme scheme,
+  ) {
+    final raw = place.openingHours;
+    if (raw == null || raw.trim().isEmpty) return null;
+    final oh = OpeningHours.parse(raw);
+    if (oh == null) return (l10n.placeHoursCheck, scheme.onSurfaceVariant);
+    final now = DateTime.now();
+    final minute = now.hour * 60 + now.minute;
+    String t(int m) => Fmt.timeOfDayMinutes(m % (24 * 60));
+    if (oh.isOpen(now.weekday, minute)) {
+      final closes = oh.closesAt(now.weekday, minute);
+      return (
+        closes == null ? l10n.placeOpenNow : l10n.placeOpenUntil(t(closes)),
+        tokens.positive,
+      );
+    }
+    final opens = oh.opensAfter(now.weekday, minute);
+    return (
+      opens == null ? l10n.placeClosedNow : l10n.placeClosedUntil(t(opens)),
+      tokens.warning,
+    );
+  }
+
+  /// Tag OSM `fee`: `no` gratuito, `yes` a pagamento, `donation` offerta
+  /// libera; altri valori (orari, importi…) non li interpretiamo.
+  static String? _feeLabel(AppLocalizations l10n, String? fee) =>
+      switch (fee?.trim().toLowerCase()) {
+        'no' => l10n.placeFeeFree,
+        'yes' => l10n.placeFeePaid,
+        'donation' => l10n.placeFeeDonation,
+        _ => null,
+      };
 
   Future<void> _run(BuildContext context) async {
     final navigator = Navigator.of(context);

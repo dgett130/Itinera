@@ -17,6 +17,8 @@ import 'explore_ui.dart';
 import 'geo_codec.dart';
 import 'place_sheet.dart';
 import 'route_schedule_view.dart';
+import 'route_warnings.dart';
+import 'warning_settings_provider.dart';
 
 /// Riepilogo in sola lettura di un percorso, aperto dall'evento nella
 /// tabella di marcia: mappa, scaletta e schede dei luoghi. "Modifica" rientra
@@ -60,6 +62,19 @@ class RouteSummaryScreen extends ConsumerWidget {
     final days = ref.watch(itineraryDaysProvider(tripId)).value ?? const [];
     final day = days.where((d) => d.id == route.dayId).firstOrNull;
     final schedule = scheduleForRefs(route, refs);
+    final warnings = schedule == null
+        ? const <RouteWarning>[]
+        : warningsForRefs(
+            route,
+            refs,
+            schedule,
+            ref.watch(warningSettingsProvider),
+            day?.date?.weekday,
+          );
+    final dayWarnings = [
+      for (final w in warnings)
+        if (w.stopIndex == null) w,
+    ];
 
     return TripThemeScope(
       style: ItineraTheme.effectiveStyle(trip),
@@ -128,7 +143,13 @@ class RouteSummaryScreen extends ConsumerWidget {
                   refs: refs,
                   schedule: schedule,
                   onTapStop: openPlace,
+                  warnings: warnings,
                 ),
+                if (dayWarnings.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  RouteWarningsCard(warnings: dayWarnings),
+                  const SizedBox(height: 8),
+                ],
                 if (schedule != null) ...[
                   const SizedBox(height: 4),
                   RouteScheduleFooter(route: route, schedule: schedule),

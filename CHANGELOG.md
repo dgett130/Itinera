@@ -46,6 +46,18 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   **"Modifica"** per rientrare nei passi. L'evento mostra il numero di tappe.
 - La scheda del luogo mostra la **durata di visita scelta** nel percorso (non
   più sempre quella suggerita).
+- **Avvisi nella scaletta** (Pianifica e riepilogo): luogo **chiuso quel
+  giorno**, che **apre dopo il tuo arrivo**, **già chiuso** o che **chiude
+  durante la visita** (dagli orari OpenStreetMap, quando sono interpretabili
+  e il giorno ha una data); **giornata che finisce tardi**, **giornata
+  lunga**, **tanta strada a piedi o in bici**.
+- **Impostazioni → "Percorsi e avvisi"**: ogni avviso si può spegnere e le
+  soglie si regolano con "Meno"/"Di più" (predefinite: fine dopo le 20:00,
+  oltre 9 h, a piedi oltre 15 km, in bici oltre 40 km). Valgono solo su
+  questo dispositivo.
+- Scheda del luogo: **"Aperto ora · chiude alle …" / "Chiuso ora · apre alle
+  …"** (o "Orari da verificare") e **ingresso** gratuito, a pagamento o a
+  offerta libera, quando OpenStreetMap lo indica.
 
 ### Modificato
 - **Niente più "luoghi salvati" separati**: i luoghi vivono dentro i percorsi.
@@ -67,7 +79,7 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ### Note tecniche
 - Redesign a passi di "Luoghi e percorsi" descritto in
-  **`docs/03-luoghi-e-percorsi-redesign.md`** (incrementi 1–4 di 5).
+  **`docs/03-luoghi-e-percorsi-redesign.md`** (incrementi 1–5 di 5).
 - **Schema locale v8** (colonne nullable): `sightseeing_routes.start_minutes`
   e `legs` (tratti JSON `[{m,s}]`), `sightseeing_route_stops.visit_minutes`,
   `locations.fee`. Mapper di sync aggiornati; in pull le colonne nuove si

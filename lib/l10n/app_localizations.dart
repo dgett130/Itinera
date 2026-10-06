@@ -1114,6 +1114,204 @@ abstract class AppLocalizations {
   /// **'tocca per vedere'**
   String get itineraryRouteOpen;
 
+  /// No description provided for @warnTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Da tenere d\'occhio'**
+  String get warnTitle;
+
+  /// No description provided for @warnClosedDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiuso quel giorno'**
+  String get warnClosedDay;
+
+  /// No description provided for @warnOpensLater.
+  ///
+  /// In it, this message translates to:
+  /// **'Apre alle {open}, arrivi alle {arrive}'**
+  String warnOpensLater(String open, String arrive);
+
+  /// No description provided for @warnClosedEarlier.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiude alle {close}, arrivi alle {arrive}'**
+  String warnClosedEarlier(String close, String arrive);
+
+  /// No description provided for @warnClosedAtArrival.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiuso quando arrivi ({arrive})'**
+  String warnClosedAtArrival(String arrive);
+
+  /// No description provided for @warnClosesDuringVisit.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiude alle {close}: avrai meno tempo per la visita'**
+  String warnClosesDuringVisit(String close);
+
+  /// No description provided for @warnLateEnd.
+  ///
+  /// In it, this message translates to:
+  /// **'La giornata finisce tardi, alle {time}'**
+  String warnLateEnd(String time);
+
+  /// No description provided for @warnLongDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Giornata lunga: {duration} in tutto'**
+  String warnLongDay(String duration);
+
+  /// No description provided for @warnFarWalk.
+  ///
+  /// In it, this message translates to:
+  /// **'Tanta strada a piedi: {distance}'**
+  String warnFarWalk(String distance);
+
+  /// No description provided for @warnFarBike.
+  ///
+  /// In it, this message translates to:
+  /// **'Tanta strada in bici: {distance}'**
+  String warnFarBike(String distance);
+
+  /// No description provided for @placeOpenUntil.
+  ///
+  /// In it, this message translates to:
+  /// **'Aperto ora · chiude alle {time}'**
+  String placeOpenUntil(String time);
+
+  /// No description provided for @placeOpenNow.
+  ///
+  /// In it, this message translates to:
+  /// **'Aperto ora'**
+  String get placeOpenNow;
+
+  /// No description provided for @placeClosedUntil.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiuso ora · apre alle {time}'**
+  String placeClosedUntil(String time);
+
+  /// No description provided for @placeClosedNow.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiuso ora'**
+  String get placeClosedNow;
+
+  /// No description provided for @placeHoursCheck.
+  ///
+  /// In it, this message translates to:
+  /// **'Orari da verificare'**
+  String get placeHoursCheck;
+
+  /// No description provided for @placeFee.
+  ///
+  /// In it, this message translates to:
+  /// **'Ingresso'**
+  String get placeFee;
+
+  /// No description provided for @placeFeeFree.
+  ///
+  /// In it, this message translates to:
+  /// **'Gratuito'**
+  String get placeFeeFree;
+
+  /// No description provided for @placeFeePaid.
+  ///
+  /// In it, this message translates to:
+  /// **'A pagamento'**
+  String get placeFeePaid;
+
+  /// No description provided for @placeFeeDonation.
+  ///
+  /// In it, this message translates to:
+  /// **'Offerta libera'**
+  String get placeFeeDonation;
+
+  /// No description provided for @rwTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Percorsi e avvisi'**
+  String get rwTitle;
+
+  /// No description provided for @rwSubtitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Quando avvisarti mentre pianifichi un percorso'**
+  String get rwSubtitle;
+
+  /// No description provided for @rwHours.
+  ///
+  /// In it, this message translates to:
+  /// **'Luoghi chiusi'**
+  String get rwHours;
+
+  /// No description provided for @rwHoursSub.
+  ///
+  /// In it, this message translates to:
+  /// **'Se un luogo è chiuso quando arrivi o chiude durante la visita'**
+  String get rwHoursSub;
+
+  /// No description provided for @rwLateEnd.
+  ///
+  /// In it, this message translates to:
+  /// **'Giornata che finisce tardi'**
+  String get rwLateEnd;
+
+  /// No description provided for @rwLateEndSub.
+  ///
+  /// In it, this message translates to:
+  /// **'Dopo le {time}'**
+  String rwLateEndSub(String time);
+
+  /// No description provided for @rwLongDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Giornata lunga'**
+  String get rwLongDay;
+
+  /// No description provided for @rwLongDaySub.
+  ///
+  /// In it, this message translates to:
+  /// **'Oltre {duration}'**
+  String rwLongDaySub(String duration);
+
+  /// No description provided for @rwWalk.
+  ///
+  /// In it, this message translates to:
+  /// **'Tanta strada a piedi'**
+  String get rwWalk;
+
+  /// No description provided for @rwBike.
+  ///
+  /// In it, this message translates to:
+  /// **'Tanta strada in bici'**
+  String get rwBike;
+
+  /// No description provided for @rwKmSub.
+  ///
+  /// In it, this message translates to:
+  /// **'Oltre {km} km'**
+  String rwKmSub(String km);
+
+  /// No description provided for @rwLess.
+  ///
+  /// In it, this message translates to:
+  /// **'Meno'**
+  String get rwLess;
+
+  /// No description provided for @rwMore.
+  ///
+  /// In it, this message translates to:
+  /// **'Di più'**
+  String get rwMore;
+
+  /// No description provided for @rwInfo.
+  ///
+  /// In it, this message translates to:
+  /// **'Le soglie valgono solo su questo dispositivo.'**
+  String get rwInfo;
+
   /// No description provided for @flowAddedToDay.
   ///
   /// In it, this message translates to:

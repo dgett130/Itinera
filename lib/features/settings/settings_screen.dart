@@ -37,6 +37,22 @@ class SettingsScreen extends ConsumerWidget {
             SectionHeader('Notifiche'),
             const _NotificationsSettingsCard(),
           ],
+          SectionHeader('Percorsi e avvisi'),
+          ItineraCard(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              leading: Icon(
+                Icons.route_outlined,
+                color: context.tokens.accent,
+              ),
+              title: const Text('Avvisi sui percorsi'),
+              subtitle: const Text(
+                'Luoghi chiusi, giornate lunghe, tanta strada',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/settings/route-warnings'),
+            ),
+          ),
           SectionHeader('Backup ed esporta'),
           ItineraCard(
             padding: EdgeInsets.zero,

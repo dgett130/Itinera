@@ -15,6 +15,7 @@ import 'features/notifications/notification_prefs_screen.dart';
 import 'features/notifications/notifications_screen.dart';
 import 'features/onboarding/root_gate.dart';
 import 'features/packing/packing_screen.dart';
+import 'features/settings/route_warnings_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/transport/transport_screen.dart';
 import 'features/trip/trip_detail_screen.dart';
@@ -45,6 +46,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/settings/notifications',
       builder: (context, state) => const NotificationPrefsScreen(),
+    ),
+    GoRoute(
+      path: '/settings/route-warnings',
+      builder: (context, state) => const RouteWarningsScreen(),
     ),
     GoRoute(
       path: '/admin/message',
