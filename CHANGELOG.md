@@ -10,6 +10,8 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ## [Non rilasciato]
 
+## [1.4.0] - 2026-10-06
+
 ### Aggiunto
 - **Scheda del luogo** in "Luoghi e percorsi": toccando un luogo (pin sulla
   mappa, elenco dei suggeriti, luoghi salvati, tappe del percorso) si apre un
@@ -80,13 +82,14 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ### Note tecniche
 - Redesign a passi di "Luoghi e percorsi" descritto in
-  **`docs/03-luoghi-e-percorsi-redesign.md`** (incrementi 1–5 di 5).
+  **`docs/03-luoghi-e-percorsi-redesign.md`**.
 - **Schema locale v8** (colonne nullable): `sightseeing_routes.start_minutes`
   e `legs` (tratti JSON `[{m,s}]`), `sightseeing_route_stops.visit_minutes`,
   `locations.fee`. Mapper di sync aggiornati; in pull le colonne nuove si
   applicano solo se il server le restituisce.
-- **Supabase**: eseguire **`docs/supabase/explore-v2.sql`** nel SQL Editor
-  **prima** di distribuire questa versione (RLS invariate).
+- **Supabase**: **`docs/supabase/explore-v2.sql`** (già eseguito) va
+  eseguito nel SQL Editor **prima** di distribuire questa versione (RLS
+  invariate); i client 1.3.0 continuano a sincronizzare.
 
 ## [1.3.0] - 2026-09-17
 

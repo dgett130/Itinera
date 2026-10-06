@@ -99,7 +99,7 @@ class SettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                Text('v1.3.0',
+                Text('v1.4.0',
                     style: TextStyle(
                       fontFamily: context.tokens.monoFont,
                       fontSize: 12,
