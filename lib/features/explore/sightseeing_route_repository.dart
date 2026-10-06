@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
@@ -6,6 +7,8 @@ import 'package:uuid/uuid.dart';
 import '../../core/enums.dart';
 import '../../core/id.dart';
 import '../../data/database.dart';
+import 'geo_codec.dart';
+import 'route_schedule.dart';
 
 /// Tappa appena tolta, con quanto serve per annullare la rimozione.
 class RemovedStop {
@@ -107,6 +110,7 @@ class SightseeingRouteRepository {
         updatedAt: Value(DateTime.now()),
       ),
     );
+    await _syncEvent(id);
   }
 
   /// Elimina il percorso e i suoi luoghi non usati altrove: nel modello a
@@ -209,6 +213,85 @@ class SightseeingRouteRepository {
           ..where((s) => s.id.equals(stopId)))
         .write(SightseeingRouteStopsCompanion(visitMinutes: Value(minutes)));
     await _touch(stop.routeId);
+    await _syncEvent(stop.routeId);
+  }
+
+  /// Ora di partenza (minuti dalla mezzanotte); null = senza orario.
+  Future<void> setStartMinutes(String routeId, int? minutes) async {
+    await _patch(
+      routeId,
+      SightseeingRoutesCompanion(startMinutes: Value(minutes)),
+    );
+    await _syncEvent(routeId);
+  }
+
+  /// Scaletta dai dati salvati (null se i tratti vanno ricalcolati).
+  Future<RouteSchedule?> scheduleFor(SightseeingRoute route) async {
+    final stops = await stopsFor(route.id);
+    final locs = await (_db.select(
+      _db.locations,
+    )..where((l) => l.id.isIn(stops.map((s) => s.locationId)))).get();
+    final byId = {for (final l in locs) l.id: l};
+    return buildSchedule(
+      stops: [
+        for (final s in stops)
+          if (byId[s.locationId] case final l?)
+            ScheduleStop(
+              hasCoords: l.latitude != null && l.longitude != null,
+              visitMinutes: effectiveVisitMinutes(
+                s.visitMinutes,
+                l.poiCategory,
+              ),
+            ),
+      ],
+      legs: decodeLegs(route.legs),
+      returnToStart: route.returnToStart,
+    );
+  }
+
+  /// Tiene allineato l'evento del percorso nella tabella di marcia: titolo
+  /// e, con l'ora di partenza, inizio e fine dalla scaletta (senza orario
+  /// resta "tutto il giorno"). Scrive solo se qualcosa è cambiato.
+  Future<void> _syncEvent(String routeId) async {
+    final event =
+        await (_db.select(_db.activities)
+              ..where((a) => a.routeId.equals(routeId))
+              ..limit(1))
+            .getSingleOrNull();
+    if (event == null) return;
+    final route = await getRoute(routeId);
+    if (route == null) return;
+    final start = route.startMinutes;
+    int? end;
+    if (start != null) {
+      final schedule = await scheduleFor(route);
+      // Tratti da ricalcolare: tengo la durata attuale finché non arrivano.
+      final oldStart = event.startMinutes;
+      final oldEnd = event.endMinutes;
+      end = schedule != null
+          ? RouteSchedule.clock(start, schedule.endSeconds)
+          : (oldStart != null && oldEnd != null)
+          ? start + (oldEnd - oldStart)
+          : null;
+      if (end != null) end = math.min(end, 23 * 60 + 59);
+    }
+    if (event.title == route.name &&
+        event.startMinutes == start &&
+        event.endMinutes == end &&
+        event.isAllDay == (start == null)) {
+      return;
+    }
+    await (_db.update(
+      _db.activities,
+    )..where((a) => a.id.equals(event.id))).write(
+      ActivitiesCompanion(
+        title: Value(route.name),
+        startMinutes: Value(start),
+        endMinutes: Value(end),
+        isAllDay: Value(start == null),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   /// Aggiunge una tappa in coda (evita di duplicare la stessa Location nel
@@ -430,11 +513,13 @@ class SightseeingRouteRepository {
         legs: Value(legsJson),
       ),
     );
+    await _syncEvent(routeId);
   }
 
   /// Aggancia il percorso a [dayId] come UNICO evento della tabella di marcia:
   /// crea una sola attivita' che rappresenta il percorso (Activities.routeId),
-  /// senza orario (tutto il giorno). Idempotente. Ritorna 1 se creato, 2 se
+  /// con l'orario della scaletta se c'è l'ora di partenza (altrimenti tutto
+  /// il giorno). Idempotente. Ritorna 1 se creato, 2 se
   /// spostato da un altro giorno, 0 se gia' presente nel giorno.
   /// Transazionale.
   Future<int> addToItinerary(
@@ -444,7 +529,7 @@ class SightseeingRouteRepository {
   ) async {
     final route = await getRoute(routeId);
     if (route == null) return 0;
-    return _db.transaction(() async {
+    final result = await _db.transaction(() async {
       // Un percorso = un evento: se è già in un altro giorno lo SPOSTO
       // (prima veniva duplicato).
       final existing =
@@ -495,6 +580,8 @@ class SightseeingRouteRepository {
           );
       return 1;
     });
+    await _syncEvent(routeId);
+    return result;
   }
 
   Future<void> _patch(String routeId, SightseeingRoutesCompanion patch) async {

@@ -302,8 +302,10 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
-  String get placeVisitHint =>
-      'Stima indicativa: potrai cambiarla nel percorso';
+  String get placeVisitHint => 'Stima indicativa: puoi cambiarla in Pianifica';
+
+  @override
+  String get placeVisitChosen => 'Durata scelta in Pianifica';
 
   @override
   String get placeOpenInMaps => 'Apri in Mappe';
@@ -529,7 +531,61 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get flowPlanInfo =>
-      'Il percorso diventa un unico evento nella tabella di marcia: toccandolo lo riapri.';
+      'Il percorso diventa un unico evento nella tabella di marcia, con gli orari se scegli la partenza: toccandolo vedi la scaletta.';
+
+  @override
+  String get planStart => 'Partenza';
+
+  @override
+  String get planStartNone => 'Senza orario';
+
+  @override
+  String get planStartClear => 'Togli l\'orario';
+
+  @override
+  String get planScheduleTitle => 'Scaletta';
+
+  @override
+  String get planNoTimeHint =>
+      'Scegli l\'ora di partenza per vedere gli orari della giornata.';
+
+  @override
+  String get planCalculating => 'Sto calcolando i tempi tra le tappe…';
+
+  @override
+  String planEndAt(String time) {
+    return 'Fine prevista alle $time';
+  }
+
+  @override
+  String planTotal(String duration) {
+    return 'Durata totale $duration';
+  }
+
+  @override
+  String planBreakdown(String distance, String travel, String visit) {
+    return '$distance · $travel in movimento · $visit di visita';
+  }
+
+  @override
+  String get planVisitTitle => 'Quanto ti fermi?';
+
+  @override
+  String get planDay => 'Giorno';
+
+  @override
+  String get planDayPick => 'Da scegliere';
+
+  @override
+  String planVisitDefault(String duration) {
+    return 'Come suggerito (circa $duration)';
+  }
+
+  @override
+  String get planPassOnly => 'Solo passaggio';
+
+  @override
+  String get itineraryRouteOpen => 'tocca per vedere';
 
   @override
   String get flowAddedToDay => 'Aggiunto alla tabella di marcia';

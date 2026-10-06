@@ -30,6 +30,7 @@ class PlaceInfo {
     this.locationId,
     this.notes,
     this.fromOsm = false,
+    this.visitMinutes,
   });
 
   factory PlaceInfo.fromSuggestion(PoiSuggestion p) => PlaceInfo(
@@ -44,7 +45,7 @@ class PlaceInfo {
     fromOsm: true,
   );
 
-  factory PlaceInfo.fromLocation(Location l) => PlaceInfo(
+  factory PlaceInfo.fromLocation(Location l, {int? visitMinutes}) => PlaceInfo(
     name: l.label,
     category: l.poiCategory,
     lat: l.latitude,
@@ -56,6 +57,7 @@ class PlaceInfo {
     locationId: l.id,
     notes: l.notes,
     fromOsm: l.source == LocationSource.osm,
+    visitMinutes: visitMinutes,
   );
 
   final String name;
@@ -71,6 +73,10 @@ class PlaceInfo {
   final String? locationId;
   final String? notes;
   final bool fromOsm;
+
+  /// Durata di visita scelta nel percorso (null = predefinita per categoria;
+  /// 0 = solo partenza/passaggio, senza riga "visita").
+  final int? visitMinutes;
 
   bool get hasCoords => lat != null && lng != null;
 }
@@ -235,14 +241,22 @@ class PlaceSheet extends StatelessWidget {
             lines: hours.isNotEmpty ? hours : [l10n.placeHoursUnknown],
             muted: hours.isEmpty,
           ),
-          _InfoRow(
-            icon: Icons.hourglass_bottom,
-            title: l10n.placeVisitAbout(
-              formatDuration(l10n, defaultVisitMinutes(category) * 60),
+          if (place.visitMinutes != 0)
+            _InfoRow(
+              icon: Icons.hourglass_bottom,
+              title: l10n.placeVisitAbout(
+                formatDuration(
+                  l10n,
+                  (place.visitMinutes ?? defaultVisitMinutes(category)) * 60,
+                ),
+              ),
+              lines: [
+                place.visitMinutes == null
+                    ? l10n.placeVisitHint
+                    : l10n.placeVisitChosen,
+              ],
+              muted: true,
             ),
-            lines: [l10n.placeVisitHint],
-            muted: true,
-          ),
           if (place.address != null && place.address!.trim().isNotEmpty)
             _InfoRow(icon: Icons.place_outlined, title: place.address!),
           if (place.hasCoords || place.address != null)

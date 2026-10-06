@@ -259,6 +259,79 @@ void main() {
     });
   });
 
+  group('evento nella tabella di marcia allineato al percorso', () {
+    late String r;
+    late String day;
+
+    Future<Activity> event() => (db.select(
+      db.activities,
+    )..where((a) => a.routeId.equals(r))).getSingle();
+
+    setUp(() async {
+      final a = await loc('A');
+      final b = await loc('B');
+      r = await repo.createRoute(
+        tripId: tripId,
+        name: 'R',
+        locationIds: [a, b],
+      );
+      // Due tappe "altro" (30' ciascuna) e 10' di cammino tra loro.
+      await repo.saveComputation(
+        r,
+        distanceMeters: 600,
+        durationSeconds: 600,
+        geometryJson: '[]',
+        source: DistanceSource.onlineRouting,
+        legsJson: '[{"m":600,"s":600}]',
+      );
+      day = newId();
+      await db
+          .into(db.itineraryDays)
+          .insert(ItineraryDaysCompanion.insert(id: day, tripId: tripId));
+    });
+
+    test('senza orario resta "tutto il giorno"', () async {
+      await repo.addToItinerary(r, day, tripId);
+      final e = await event();
+      expect(e.isAllDay, isTrue);
+      expect(e.startMinutes, isNull);
+    });
+
+    test('con la partenza: inizio e fine dalla scaletta; seguono le '
+        'modifiche', () async {
+      await repo.setStartMinutes(r, 9 * 60);
+      await repo.addToItinerary(r, day, tripId);
+      var e = await event();
+      expect(e.isAllDay, isFalse);
+      expect(e.startMinutes, 540);
+      expect(e.endMinutes, 540 + 30 + 10 + 30);
+
+      final first = (await repo.stopsFor(r)).first;
+      await repo.setVisitMinutes(first.id, 0);
+      e = await event();
+      expect(e.endMinutes, 540 + 10 + 30, reason: 'solo partenza');
+
+      await repo.renameRoute(r, 'Centro storico');
+      expect((await event()).title, 'Centro storico');
+
+      await repo.setStartMinutes(r, null);
+      e = await event();
+      expect(e.isAllDay, isTrue);
+      expect(e.startMinutes, isNull);
+      expect(e.endMinutes, isNull);
+    });
+
+    test('tratti da ricalcolare: la durata resta quella di prima', () async {
+      await repo.setStartMinutes(r, 9 * 60);
+      await repo.addToItinerary(r, day, tripId);
+      await repo.addStop(r, tripId, await loc('C'));
+      await repo.setStartMinutes(r, 10 * 60);
+      final e = await event();
+      expect(e.startMinutes, 600);
+      expect(e.endMinutes, 600 + 70);
+    });
+  });
+
   test('saveComputation salva anche i tratti', () async {
     final a = await loc('A');
     final r = await repo.createRoute(

@@ -33,6 +33,19 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 - **Suggerimento "Ordine più veloce: circa N min in meno"** con **Applica**,
   che si può annullare; compare solo quando il risparmio è concreto (con i
   tempi sulle strade viene prima verificato sulle strade).
+- **Pianifica**: giorno, **ora di partenza** e **scaletta** con l'orario di
+  arrivo a ogni tappa, il tempo tra una tappa e l'altra e la **durata di
+  visita modificabile** (come suggerito per categoria, una durata a scelta,
+  "solo passaggio"); in fondo **fine prevista** (o durata totale) con km,
+  tempo in movimento e tempo di visita.
+- Con l'ora di partenza l'evento del percorso nella tabella di marcia ha
+  **inizio e fine** e resta allineato a ogni modifica (orario, durate, ordine,
+  nome); senza orario resta "tutto il giorno".
+- **Riepilogo del percorso** dalla tabella di marcia: toccando l'evento si
+  vedono mappa e scaletta in sola lettura (schede dei luoghi comprese), con
+  **"Modifica"** per rientrare nei passi. L'evento mostra il numero di tappe.
+- La scheda del luogo mostra la **durata di visita scelta** nel percorso (non
+  più sempre quella suggerita).
 
 ### Modificato
 - **Niente più "luoghi salvati" separati**: i luoghi vivono dentro i percorsi.
@@ -54,7 +67,7 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ### Note tecniche
 - Redesign a passi di "Luoghi e percorsi" descritto in
-  **`docs/03-luoghi-e-percorsi-redesign.md`** (incrementi 1–3 di 5).
+  **`docs/03-luoghi-e-percorsi-redesign.md`** (incrementi 1–4 di 5).
 - **Schema locale v8** (colonne nullable): `sightseeing_routes.start_minutes`
   e `legs` (tratti JSON `[{m,s}]`), `sightseeing_route_stops.visit_minutes`,
   `locations.fee`. Mapper di sync aggiornati; in pull le colonne nuove si

@@ -10,6 +10,7 @@ import 'package:latlong2/latlong.dart';
 import '../../app.dart';
 import '../../core/enums.dart';
 import '../../core/format.dart';
+import '../../core/visit_duration.dart';
 import '../../data/database.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/itinera_theme.dart';
@@ -25,6 +26,7 @@ import 'geo_codec.dart';
 import 'place_sheet.dart';
 import 'poi_parser.dart';
 import 'route_math.dart';
+import 'route_schedule_view.dart';
 import 'sightseeing_route_repository.dart';
 
 /// Costruzione di un percorso a passi: ① Scegli → ② Ordina → ③ Pianifica.
@@ -417,7 +419,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     final l10n = AppLocalizations.of(context);
     await showPlaceSheet(
       _themed,
-      place: PlaceInfo.fromLocation(loc),
+      place: PlaceInfo.fromLocation(loc, visitMinutes: stop.visitMinutes),
       distanceLabel: _distanceLabel(loc.latitude, loc.longitude),
       action: PlaceSheetAction(
         label: l10n.placeRemoveFromRoute,
@@ -965,27 +967,9 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
                 point: stopPts[i].$2,
                 width: 40,
                 height: 40,
-                child: GestureDetector(
+                child: RouteStopMarker(
+                  number: refs.indexOf(stopPts[i].$1) + 1,
                   onTap: () => _openStop(stopPts[i].$1.$1, stopPts[i].$1.$2),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: tokens.accent,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2.5),
-                      boxShadow: const [
-                        BoxShadow(color: Color(0x40000000), blurRadius: 4),
-                      ],
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '${refs.indexOf(stopPts[i].$1) + 1}',
-                      style: TextStyle(
-                        color: tokens.onAccent,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
                 ),
               ),
           ],
@@ -1620,7 +1604,12 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
               key: ValueKey(stop.id),
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (leg != null) _legRow(context, l10n, route, leg),
+                if (leg != null)
+                  RouteLegRow(
+                    leg: leg,
+                    mode: route.travelMode,
+                    estimate: route.calcSource != DistanceSource.onlineRouting,
+                  ),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: ItineraCard(
@@ -1658,7 +1647,12 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
                                   ),
                                 )
                               else if (stop.visitMinutes == 0)
-                                Text(l10n.flowStartOnly, style: muted),
+                                Text(
+                                  i == 0
+                                      ? l10n.flowStartOnly
+                                      : l10n.planPassOnly,
+                                  style: muted,
+                                ),
                             ],
                           ),
                         ),
@@ -1684,11 +1678,10 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
           },
         ),
         if (legs != null && route.returnToStart && first != null)
-          _legRow(
-            context,
-            l10n,
-            route,
-            legs.last,
+          RouteLegRow(
+            leg: legs.last,
+            mode: route.travelMode,
+            estimate: route.calcSource != DistanceSource.onlineRouting,
             label: l10n.flowLegBack(first.$2.label),
           ),
         const SizedBox(height: 16),
@@ -1724,44 +1717,6 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
             },
           ),
       ],
-    );
-  }
-
-  /// Tempo e distanza di un tratto, tra una tappa e la successiva.
-  Widget _legRow(
-    BuildContext context,
-    AppLocalizations l10n,
-    SightseeingRoute route,
-    RouteLeg leg, {
-    String? label,
-  }) {
-    final color = context.scheme.onSurfaceVariant;
-    final seconds = leg.durationSeconds < 60 ? 60 : leg.durationSeconds;
-    final value =
-        '${formatDuration(l10n, seconds)} · '
-        '${formatDistance(l10n, leg.distanceMeters)}';
-    final text = [
-      ?label,
-      route.calcSource == DistanceSource.onlineRouting
-          ? value
-          : l10n.flowAbout(value),
-    ].join(' · ');
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 0, 8),
-      child: Row(
-        children: [
-          Icon(Icons.south, size: 16, color: color),
-          const SizedBox(width: 6),
-          Icon(routeModeIcon(route.travelMode), size: 16, color: color),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              text,
-              style: context.texts.bodySmall?.copyWith(color: color),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1805,6 +1760,120 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
 
   // --- ③ Pianifica ----------------------------------------------------------
 
+  Future<void> _pickStartTime(SightseeingRoute route) async {
+    final current = route.startMinutes ?? 9 * 60;
+    final picked = await showTimePicker(
+      context: _themed,
+      initialTime: TimeOfDay(hour: current ~/ 60, minute: current % 60),
+    );
+    if (picked == null) return;
+    await _routes.setStartMinutes(
+      widget.routeId,
+      picked.hour * 60 + picked.minute,
+    );
+  }
+
+  /// Quanto ti fermi: predefinita per categoria, solo partenza/passaggio o
+  /// una durata a scelta.
+  Future<void> _editVisit(
+    SightseeingRouteStop stop,
+    Location loc,
+    bool first,
+  ) async {
+    final theme = Theme.of(_themed);
+    final l10n = AppLocalizations.of(context);
+    const options = <int?>[null, 0, 15, 30, 45, 60, 90, 120, 180];
+    final picked = await showModalBottomSheet<({int? minutes})>(
+      context: _themed,
+      showDragHandle: true,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (context) => Theme(
+        data: theme,
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.only(bottom: 16),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.planVisitTitle, style: context.texts.titleLarge),
+                  Text(
+                    loc.label,
+                    style: context.texts.bodyMedium?.copyWith(
+                      color: context.scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            for (final m in options)
+              ListTile(
+                leading: Icon(
+                  m == stop.visitMinutes
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: m == stop.visitMinutes ? context.tokens.accent : null,
+                ),
+                title: Text(
+                  m == null
+                      ? l10n.planVisitDefault(
+                          formatDuration(
+                            l10n,
+                            defaultVisitMinutes(loc.poiCategory) * 60,
+                          ),
+                        )
+                      : visitLabel(l10n, m, first: first),
+                ),
+                onTap: () => Navigator.pop(context, (minutes: m)),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null) return;
+    await _routes.setVisitMinutes(stop.id, picked.minutes);
+  }
+
+  /// "In quale giorno?": elenco dei giorni (con data prima, poi gli altri).
+  Future<void> _pickDay(List<ItineraryDay> days, String? selected) async {
+    final theme = Theme.of(_themed);
+    final l10n = AppLocalizations.of(context);
+    final picked = await showModalBottomSheet<String>(
+      context: _themed,
+      showDragHandle: true,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (context) => Theme(
+        data: theme,
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.only(bottom: 16),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(l10n.flowWhichDay, style: context.texts.titleLarge),
+            ),
+            for (final d in days)
+              ListTile(
+                leading: Icon(
+                  d.id == selected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: d.id == selected ? context.tokens.accent : null,
+                ),
+                title: Text(_dayLabel(l10n, d)),
+                onTap: () => Navigator.pop(context, d.id),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked != null && mounted) setState(() => _pickedDayId = picked);
+  }
+
   Widget _planStep(
     BuildContext context,
     AppLocalizations l10n,
@@ -1816,56 +1885,94 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
           const <ItineraryDay>[],
     );
     final selected = _pickedDayId ?? route.dayId;
+    final selectedDay = days.firstWhereOrNull((d) => d.id == selected);
     final currentDay = days.firstWhereOrNull((d) => d.id == route.dayId);
+    final muted = context.texts.bodySmall?.copyWith(
+      color: context.scheme.onSurfaceVariant,
+    );
+    final start = route.startMinutes;
+    final schedule = _computing ? null : scheduleForRefs(route, refs);
+
+    // Riquadro compatto "etichetta / valore" per giorno e partenza.
+    Widget field({
+      required IconData icon,
+      required String label,
+      required String value,
+      required VoidCallback onTap,
+      Widget? trailing,
+    }) => ItineraCard(
+      onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+      child: Row(
+        children: [
+          Icon(icon, color: context.tokens.accent, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: muted),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.texts.titleSmall,
+                ),
+              ],
+            ),
+          ),
+          // Alto come un IconButton: i due riquadri restano allineati.
+          trailing ??
+              const SizedBox(
+                width: 40,
+                height: 48,
+                child: Icon(Icons.expand_more, size: 20),
+              ),
+        ],
+      ),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(l10n.flowPlanTitle, style: context.texts.titleLarge),
         const SizedBox(height: 12),
-        ItineraCard(
-          onTap: () => _rename(route),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.flowRouteName,
-                      style: context.texts.labelMedium?.copyWith(
-                        color: context.scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    Text(route.name, style: context.texts.titleMedium),
-                  ],
-                ),
-              ),
-              const Icon(Icons.edit_outlined),
-            ],
-          ),
-        ),
-        if (refs.length >= 2) ...[
-          const SizedBox(height: 10),
-          _stats(context, l10n, route),
-        ],
-        const SizedBox(height: 16),
-        Text(l10n.flowWhichDay, style: context.texts.titleSmall),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final d in days)
-              ChoiceChip(
-                label: Text(_dayLabel(l10n, d)),
-                selected: selected == d.id,
-                onSelected: (_) => setState(() => _pickedDayId = d.id),
+            Expanded(
+              child: field(
+                icon: Icons.event_outlined,
+                label: l10n.planDay,
+                value: selectedDay == null
+                    ? l10n.planDayPick
+                    : _dayLabel(l10n, selectedDay),
+                onTap: () => _pickDay(days, selected),
               ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: field(
+                icon: Icons.schedule,
+                label: l10n.planStart,
+                value: start == null
+                    ? l10n.planStartNone
+                    : Fmt.timeOfDayMinutes(start),
+                onTap: () => _pickStartTime(route),
+                trailing: start == null
+                    ? null
+                    : IconButton(
+                        tooltip: l10n.planStartClear,
+                        icon: const Icon(Icons.close, size: 20),
+                        onPressed: () =>
+                            _routes.setStartMinutes(widget.routeId, null),
+                      ),
+              ),
+            ),
           ],
         ),
         if (currentDay != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(
             children: [
               Icon(
@@ -1883,13 +1990,61 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
             ],
           ),
         ],
-        const SizedBox(height: 12),
-        Text(
-          l10n.flowPlanInfo,
-          style: context.texts.bodySmall?.copyWith(
-            color: context.scheme.onSurfaceVariant,
+        if (refs.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(l10n.planScheduleTitle, style: context.texts.titleSmall),
+          const SizedBox(height: 8),
+          if (schedule == null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(l10n.planCalculating, style: muted)),
+                ],
+              ),
+            ),
+          RouteScheduleList(
+            route: route,
+            refs: refs,
+            schedule: schedule,
+            onTapStop: _openStop,
+            onEditVisit: _editVisit,
+          ),
+          if (schedule != null) ...[
+            const SizedBox(height: 4),
+            RouteScheduleFooter(route: route, schedule: schedule),
+            if (start == null) ...[
+              const SizedBox(height: 8),
+              Text(l10n.planNoTimeHint, style: muted),
+            ],
+          ],
+        ],
+        const SizedBox(height: 16),
+        ItineraCard(
+          onTap: () => _rename(route),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l10n.flowRouteName, style: muted),
+                    Text(route.name, style: context.texts.titleMedium),
+                  ],
+                ),
+              ),
+              const Icon(Icons.edit_outlined),
+            ],
           ),
         ),
+        const SizedBox(height: 12),
+        Text(l10n.flowPlanInfo, style: muted),
       ],
     );
   }

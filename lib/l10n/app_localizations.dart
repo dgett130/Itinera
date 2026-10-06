@@ -649,8 +649,14 @@ abstract class AppLocalizations {
   /// No description provided for @placeVisitHint.
   ///
   /// In it, this message translates to:
-  /// **'Stima indicativa: potrai cambiarla nel percorso'**
+  /// **'Stima indicativa: puoi cambiarla in Pianifica'**
   String get placeVisitHint;
+
+  /// No description provided for @placeVisitChosen.
+  ///
+  /// In it, this message translates to:
+  /// **'Durata scelta in Pianifica'**
+  String get placeVisitChosen;
 
   /// No description provided for @placeOpenInMaps.
   ///
@@ -1015,8 +1021,98 @@ abstract class AppLocalizations {
   /// No description provided for @flowPlanInfo.
   ///
   /// In it, this message translates to:
-  /// **'Il percorso diventa un unico evento nella tabella di marcia: toccandolo lo riapri.'**
+  /// **'Il percorso diventa un unico evento nella tabella di marcia, con gli orari se scegli la partenza: toccandolo vedi la scaletta.'**
   String get flowPlanInfo;
+
+  /// No description provided for @planStart.
+  ///
+  /// In it, this message translates to:
+  /// **'Partenza'**
+  String get planStart;
+
+  /// No description provided for @planStartNone.
+  ///
+  /// In it, this message translates to:
+  /// **'Senza orario'**
+  String get planStartNone;
+
+  /// No description provided for @planStartClear.
+  ///
+  /// In it, this message translates to:
+  /// **'Togli l\'orario'**
+  String get planStartClear;
+
+  /// No description provided for @planScheduleTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Scaletta'**
+  String get planScheduleTitle;
+
+  /// No description provided for @planNoTimeHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Scegli l\'ora di partenza per vedere gli orari della giornata.'**
+  String get planNoTimeHint;
+
+  /// No description provided for @planCalculating.
+  ///
+  /// In it, this message translates to:
+  /// **'Sto calcolando i tempi tra le tappe…'**
+  String get planCalculating;
+
+  /// No description provided for @planEndAt.
+  ///
+  /// In it, this message translates to:
+  /// **'Fine prevista alle {time}'**
+  String planEndAt(String time);
+
+  /// No description provided for @planTotal.
+  ///
+  /// In it, this message translates to:
+  /// **'Durata totale {duration}'**
+  String planTotal(String duration);
+
+  /// No description provided for @planBreakdown.
+  ///
+  /// In it, this message translates to:
+  /// **'{distance} · {travel} in movimento · {visit} di visita'**
+  String planBreakdown(String distance, String travel, String visit);
+
+  /// No description provided for @planVisitTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Quanto ti fermi?'**
+  String get planVisitTitle;
+
+  /// No description provided for @planDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Giorno'**
+  String get planDay;
+
+  /// No description provided for @planDayPick.
+  ///
+  /// In it, this message translates to:
+  /// **'Da scegliere'**
+  String get planDayPick;
+
+  /// No description provided for @planVisitDefault.
+  ///
+  /// In it, this message translates to:
+  /// **'Come suggerito (circa {duration})'**
+  String planVisitDefault(String duration);
+
+  /// No description provided for @planPassOnly.
+  ///
+  /// In it, this message translates to:
+  /// **'Solo passaggio'**
+  String get planPassOnly;
+
+  /// No description provided for @itineraryRouteOpen.
+  ///
+  /// In it, this message translates to:
+  /// **'tocca per vedere'**
+  String get itineraryRouteOpen;
 
   /// No description provided for @flowAddedToDay.
   ///

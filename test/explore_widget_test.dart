@@ -18,6 +18,7 @@ import 'package:itinera/features/explore/poi_parser.dart';
 import 'package:itinera/features/explore/route_flow_screen.dart';
 import 'package:itinera/features/explore/route_math.dart';
 import 'package:itinera/features/explore/route_planner.dart';
+import 'package:itinera/features/explore/route_summary_screen.dart';
 import 'package:itinera/features/explore/sightseeing_route_repository.dart';
 import 'package:itinera/features/transport/routing_service.dart';
 import 'package:itinera/l10n/app_localizations.dart';
@@ -397,5 +398,86 @@ void main() {
       );
       await _teardown(tester, db);
     }
+  });
+
+  testWidgets('Pianifica: partenza, scaletta con orari, durata di visita '
+      'modificabile', (tester) async {
+    _tallView(tester);
+    final db = AppDatabase.forExecutor(NativeDatabase.memory());
+    await AppSeed.ensureSeeded(db);
+    final tripId = await _trip(db);
+    final a = await _location(db, tripId, 'Alfa', 41.89);
+    final b = await _location(db, tripId, 'Beta', 41.90);
+    final repo = SightseeingRouteRepository(db);
+    final routeId = await repo.createRoute(
+      tripId: tripId,
+      name: 'Centro',
+      locationIds: [a, b],
+    );
+    await repo.setStartMinutes(routeId, 9 * 60);
+
+    await tester.pumpWidget(
+      _app(db, const [], RouteFlowScreen(tripId: tripId, routeId: routeId)),
+    );
+    await _settle(tester, 16);
+    await tester.tap(find.text('Pianifica'));
+    await _settle(tester, 10);
+
+    expect(find.text('Scaletta'), findsOneWidget);
+    expect(find.text('09:00'), findsWidgets);
+    expect(find.textContaining('Fine prevista alle'), findsOneWidget);
+
+    await tester.tap(find.text('30 min').first);
+    await _settle(tester, 8);
+    expect(find.text('Quanto ti fermi?'), findsOneWidget);
+    await tester.tap(find.text('1 h'));
+    await _settle(tester, 8);
+    expect((await repo.stopsFor(routeId)).first.visitMinutes, 60);
+    expect(find.text('1 h'), findsOneWidget);
+    await _teardown(tester, db);
+  });
+
+  testWidgets("Riepilogo dall'itinerario: scaletta in sola lettura e "
+      '"Modifica"', (tester) async {
+    _tallView(tester);
+    final db = AppDatabase.forExecutor(NativeDatabase.memory());
+    await AppSeed.ensureSeeded(db);
+    final tripId = await _trip(db);
+    final a = await _location(db, tripId, 'Alfa', 41.89);
+    final b = await _location(db, tripId, 'Beta', 41.90);
+    final repo = SightseeingRouteRepository(db);
+    final routeId = await repo.createRoute(
+      tripId: tripId,
+      name: 'Centro',
+      locationIds: [a, b],
+    );
+    await repo.setStartMinutes(routeId, 10 * 60);
+    await repo.saveComputation(
+      routeId,
+      distanceMeters: 1200,
+      durationSeconds: 900,
+      geometryJson: '[]',
+      source: DistanceSource.onlineRouting,
+      legsJson: '[{"m":1200,"s":900}]',
+    );
+
+    await tester.pumpWidget(
+      _app(db, const [], RouteSummaryScreen(tripId: tripId, routeId: routeId)),
+    );
+    await _settle(tester, 12);
+
+    expect(find.text('Centro'), findsOneWidget);
+    expect(find.text('Scaletta'), findsOneWidget);
+    expect(find.text('10:00'), findsOneWidget);
+    // 30' ad Alfa + 15' di cammino.
+    expect(find.text('10:45'), findsOneWidget);
+    expect(find.textContaining('Fine prevista alle 11:15'), findsOneWidget);
+    expect(
+      find.byIcon(Icons.expand_more),
+      findsNothing,
+      reason: 'sola lettura',
+    );
+    expect(find.text('Modifica'), findsOneWidget);
+    await _teardown(tester, db);
   });
 }

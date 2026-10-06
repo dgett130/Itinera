@@ -6,6 +6,7 @@ import 'features/auth/profile_screen.dart';
 import 'features/bacheca/bacheca_screen.dart';
 import 'features/explore/places_home_screen.dart';
 import 'features/explore/route_flow_screen.dart';
+import 'features/explore/route_summary_screen.dart';
 import 'features/friends/friends_screen.dart';
 import 'features/itinerary/itinerary_screen.dart';
 import 'features/members/members_screen.dart';
@@ -103,6 +104,13 @@ final appRouter = GoRouter(
         tripId: state.pathParameters['id']!,
         routeId: state.pathParameters['routeId']!,
         startNew: state.uri.queryParameters['new'] == '1',
+      ),
+    ),
+    GoRoute(
+      path: '/trip/:id/route/:routeId/summary',
+      builder: (context, state) => RouteSummaryScreen(
+        tripId: state.pathParameters['id']!,
+        routeId: state.pathParameters['routeId']!,
       ),
     ),
   ],
