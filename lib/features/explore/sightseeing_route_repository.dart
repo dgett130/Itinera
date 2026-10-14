@@ -40,6 +40,17 @@ class MovedStop {
   final bool merged;
 }
 
+/// Percorso appena diviso, con quanto serve per annullare la divisione.
+class SplitRoute {
+  const SplitRoute({required this.newRouteId, required this.movedStopIds});
+
+  /// Il percorso nuovo con la seconda parte (una bozza).
+  final String newRouteId;
+
+  /// Le tappe spostate, nell'ordine in cui erano.
+  final List<String> movedStopIds;
+}
+
 /// Accesso ai dati dei percorsi di visita (percorsi + tappe). Solo DB: il
 /// calcolo online e l'ottimizzazione (che richiedono coordinate/rete) sono
 /// orchestrati dal controller della UI.
@@ -418,6 +429,70 @@ class SightseeingRouteRepository {
     });
     await _syncEvent(m.stop.routeId);
     await _syncEvent(targetRouteId);
+  }
+
+  /// "Dividi da qui": dalla tappa [fromStopId] in poi le tappe passano, nello
+  /// stesso ordine, a un percorso nuovo [name] (bozza, stesso mezzo). La prima
+  /// tappa non si può usare: sarebbe spostare tutto. Ritorna null se non c'è
+  /// niente da dividere.
+  Future<SplitRoute?> splitRoute(
+    String routeId,
+    String fromStopId,
+    String name,
+  ) async {
+    final route = await getRoute(routeId);
+    if (route == null) return null;
+    final stops = await stopsFor(routeId);
+    final from = stops.indexWhere((s) => s.id == fromStopId);
+    if (from < 1) return null;
+    final moving = stops.sublist(from);
+    final newId = await createRoute(tripId: route.tripId, name: name);
+    await _db.transaction(() async {
+      await setMode(newId, route.travelMode);
+      for (var i = 0; i < moving.length; i++) {
+        await (_db.update(
+          _db.sightseeingRouteStops,
+        )..where((s) => s.id.equals(moving[i].id))).write(
+          SightseeingRouteStopsCompanion(
+            routeId: Value(newId),
+            sequenceIndex: Value(i),
+          ),
+        );
+      }
+      await _touch(routeId);
+      await _touch(newId);
+    });
+    await _syncEvent(routeId);
+    return SplitRoute(
+      newRouteId: newId,
+      movedStopIds: [for (final s in moving) s.id],
+    );
+  }
+
+  /// Annulla [splitRoute]: le tappe tornano in coda al percorso di partenza e
+  /// il percorso nuovo viene eliminato (se nel frattempo ha altre tappe,
+  /// resta).
+  Future<void> undoSplit(String routeId, SplitRoute split) async {
+    await _db.transaction(() async {
+      final base = (await stopsFor(routeId)).length;
+      for (var i = 0; i < split.movedStopIds.length; i++) {
+        await (_db.update(
+          _db.sightseeingRouteStops,
+        )..where((s) => s.id.equals(split.movedStopIds[i]))).write(
+          SightseeingRouteStopsCompanion(
+            routeId: Value(routeId),
+            sequenceIndex: Value(base + i),
+          ),
+        );
+      }
+      await _touch(routeId);
+    });
+    if ((await stopsFor(split.newRouteId)).isEmpty) {
+      await (_db.delete(
+        _db.sightseeingRoutes,
+      )..where((r) => r.id.equals(split.newRouteId))).go();
+    }
+    await _syncEvent(routeId);
   }
 
   /// Rinumera le tappe 0..n-1 mantenendo l'ordine (dopo una rimozione).

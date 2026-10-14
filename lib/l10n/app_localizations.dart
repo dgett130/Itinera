@@ -718,6 +718,30 @@ abstract class AppLocalizations {
   /// **'Luogo rimosso'**
   String get placeRemovedToast;
 
+  /// No description provided for @placeSplitHere.
+  ///
+  /// In it, this message translates to:
+  /// **'Dividi da qui'**
+  String get placeSplitHere;
+
+  /// No description provided for @splitName.
+  ///
+  /// In it, this message translates to:
+  /// **'{name} (2)'**
+  String splitName(String name);
+
+  /// No description provided for @splitDone.
+  ///
+  /// In it, this message translates to:
+  /// **'Diviso: «{name}» è tra le bozze'**
+  String splitDone(String name);
+
+  /// No description provided for @splitInTwo.
+  ///
+  /// In it, this message translates to:
+  /// **'Dividi in 2 giorni'**
+  String get splitInTwo;
+
   /// No description provided for @placeMoveShort.
   ///
   /// In it, this message translates to:

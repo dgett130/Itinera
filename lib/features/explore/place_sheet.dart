@@ -112,6 +112,7 @@ Future<void> showPlaceSheet(
   String? distanceLabel,
   PlaceSheetAction? action,
   PlaceSheetAction? secondaryAction,
+  PlaceSheetAction? extraAction,
 }) {
   // Il pannello vive in una route separata: riporto il tema dello schermo
   // chiamante, così resta nello stile del viaggio.
@@ -135,6 +136,7 @@ Future<void> showPlaceSheet(
           distanceLabel: distanceLabel,
           action: action,
           secondaryAction: secondaryAction,
+          extraAction: extraAction,
           scrollController: scroll,
         ),
       ),
@@ -150,6 +152,7 @@ class PlaceSheet extends StatelessWidget {
     this.distanceLabel,
     this.action,
     this.secondaryAction,
+    this.extraAction,
     this.scrollController,
   });
 
@@ -160,6 +163,10 @@ class PlaceSheet extends StatelessWidget {
   /// Seconda azione, affiancata alla principale (es. "Sposta" accanto a
   /// "Togli").
   final PlaceSheetAction? secondaryAction;
+
+  /// Azione meno frequente, come bottone di testo sotto le altre (es.
+  /// "Dividi da qui").
+  final PlaceSheetAction? extraAction;
   final ScrollController? scrollController;
 
   @override
@@ -254,6 +261,15 @@ class PlaceSheet extends StatelessWidget {
                 Expanded(child: _button(context, action!)),
               ],
             ),
+            if (extraAction != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => _run(context, extraAction!),
+                  icon: Icon(extraAction!.icon),
+                  label: Text(extraAction!.label),
+                ),
+              ),
           ],
           const SizedBox(height: 12),
           // --- Orari e visita -------------------------------------------------

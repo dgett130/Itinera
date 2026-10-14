@@ -456,6 +456,54 @@ void main() {
     );
   });
 
+  group('dividi da qui', () {
+    test('le tappe da quella in poi vanno, in ordine, in una bozza nuova con '
+        'lo stesso mezzo; Annulla rimette tutto', () async {
+      final a = await loc('A');
+      final b = await loc('B');
+      final c = await loc('C');
+      final d = await loc('D');
+      final r = await repo.createRoute(
+        tripId: tripId,
+        name: 'Centro',
+        locationIds: [a, b, c, d],
+      );
+      await repo.setMode(r, RouteTravelMode.bike);
+      final stops = await repo.stopsFor(r);
+
+      final split = await repo.splitRoute(r, stops[2].id, 'Centro (2)');
+      expect(split, isNotNull);
+      expect(await order(r), [a, b]);
+      expect(await order(split!.newRouteId), [c, d]);
+      final created = (await repo.getRoute(split.newRouteId))!;
+      expect(created.name, 'Centro (2)');
+      expect(created.travelMode, RouteTravelMode.bike);
+      expect(created.dayId, isNull, reason: 'bozza da programmare');
+      expect(
+        (await repo.stopsFor(split.newRouteId)).map((s) => s.sequenceIndex),
+        [0, 1],
+      );
+
+      await repo.undoSplit(r, split);
+      expect(await order(r), [a, b, c, d]);
+      expect(await repo.getRoute(split.newRouteId), isNull);
+    });
+
+    test('dalla prima tappa o da una tappa che non c\'è: niente', () async {
+      final a = await loc('A');
+      final b = await loc('B');
+      final r = await repo.createRoute(
+        tripId: tripId,
+        name: 'R',
+        locationIds: [a, b],
+      );
+      final first = (await repo.stopsFor(r)).first;
+      expect(await repo.splitRoute(r, first.id, 'R (2)'), isNull);
+      expect(await repo.splitRoute(r, 'nessuna', 'R (2)'), isNull);
+      expect(await db.select(db.sightseeingRoutes).get(), hasLength(1));
+    });
+  });
+
   test('saveComputation salva anche i tratti', () async {
     final a = await loc('A');
     final r = await repo.createRoute(

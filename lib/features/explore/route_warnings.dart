@@ -203,7 +203,8 @@ List<RouteWarning> routeWarnings({
       out.add(RouteWarning(WarningKind.lateEnd, a: end));
     }
   }
-  final totalMinutes = (schedule.endSeconds / 60).round();
+  // Minuti interi come nel totale mostrato (che tronca i secondi).
+  final totalMinutes = schedule.endSeconds ~/ 60;
   if (settings.longDay && totalMinutes > settings.longDayMinutes) {
     out.add(RouteWarning(WarningKind.longDay, a: totalMinutes));
   }

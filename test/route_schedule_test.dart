@@ -73,4 +73,29 @@ void main() {
     expect(one.endSeconds, 45 * 60);
     expect(one.returnLeg, isNull);
   });
+
+  group('balancedSplitIndex', () {
+    test('taglia dove le due parti durano più o meno uguali', () {
+      // 3 h, 1 h, 1 h, 1 h (tratti da 10'): la prima tappa da sola pesa come
+      // le altre tre insieme.
+      final s = buildSchedule(
+        stops: [_s(180), _s(60), _s(60), _s(60)],
+        legs: const [RouteLeg(1, 600), RouteLeg(1, 600), RouteLeg(1, 600)],
+      )!;
+      expect(balancedSplitIndex(s), 1);
+
+      final even = buildSchedule(
+        stops: [_s(60), _s(60), _s(60), _s(60)],
+        legs: const [RouteLeg(1, 600), RouteLeg(1, 600), RouteLeg(1, 600)],
+      )!;
+      expect(balancedSplitIndex(even), 2);
+    });
+
+    test('meno di 2 tappe: niente da dividere', () {
+      expect(
+        balancedSplitIndex(buildSchedule(stops: [_s(60)], legs: const [])!),
+        isNull,
+      );
+    });
+  });
 }

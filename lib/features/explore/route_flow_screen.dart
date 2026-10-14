@@ -26,6 +26,7 @@ import 'geo_codec.dart';
 import 'place_sheet.dart';
 import 'poi_parser.dart';
 import 'route_math.dart';
+import 'route_schedule.dart';
 import 'route_schedule_view.dart';
 import 'route_warnings.dart';
 import 'sightseeing_route_repository.dart';
@@ -419,6 +420,8 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
 
   Future<void> _openStop(SightseeingRouteStop stop, Location loc) async {
     final l10n = AppLocalizations.of(context);
+    final stops = ref.read(routeStopsProvider(widget.routeId)).value ?? [];
+    final isFirst = stops.isEmpty || stops.first.id == stop.id;
     await showPlaceSheet(
       _themed,
       place: PlaceInfo.fromLocation(loc, visitMinutes: stop.visitMinutes),
@@ -435,7 +438,47 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
         destructive: true,
         onPressed: () => _removeStop(stop, loc.label),
       ),
+      // Dalla prima tappa "dividere" vorrebbe dire spostare tutto.
+      extraAction: isFirst
+          ? null
+          : PlaceSheetAction(
+              label: l10n.placeSplitHere,
+              icon: Icons.call_split,
+              onPressed: () => _splitFrom(stop.id),
+            ),
     );
+  }
+
+  /// Divide il percorso: da [fromStopId] in poi le tappe vanno in un
+  /// percorso nuovo tra le bozze, con Annulla.
+  Future<void> _splitFrom(String fromStopId) async {
+    final l10n = AppLocalizations.of(context);
+    final route = ref.read(routeByIdProvider(widget.routeId)).value;
+    if (route == null) return;
+    final name = l10n.splitName(route.name);
+    _scheduleRecompute();
+    final split = await _routes.splitRoute(widget.routeId, fromStopId, name);
+    if (split == null || !mounted) return;
+    _snack(
+      l10n.splitDone(name),
+      action: SnackBarAction(
+        label: l10n.flowUndo,
+        onPressed: () async {
+          _scheduleRecompute();
+          await _routes.undoSplit(widget.routeId, split);
+        },
+      ),
+    );
+  }
+
+  /// "Dividi in 2 giorni": taglia dove le due parti durano più o meno uguali.
+  Future<void> _splitBalanced(
+    RouteSchedule schedule,
+    List<(SightseeingRouteStop, Location)> refs,
+  ) async {
+    final k = balancedSplitIndex(schedule);
+    if (k == null || k >= refs.length) return;
+    await _splitFrom(refs[k].$1.id);
   }
 
   /// "Sposta": sceglie un altro percorso del viaggio (o ne crea uno nuovo) e
@@ -2147,7 +2190,12 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
           ),
           if (dayWarnings.isNotEmpty) ...[
             const SizedBox(height: 4),
-            RouteWarningsCard(warnings: dayWarnings),
+            RouteWarningsCard(
+              warnings: dayWarnings,
+              onSplit: schedule == null
+                  ? null
+                  : () => _splitBalanced(schedule, refs),
+            ),
             const SizedBox(height: 8),
           ],
           if (schedule != null) ...[

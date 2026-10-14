@@ -596,4 +596,103 @@ void main() {
     );
     await _teardown(tester, db);
   });
+
+  testWidgets('Dividi da qui: dalla terza tappa in poi va in una bozza; la '
+      'prima tappa non lo propone', (tester) async {
+    _tallView(tester);
+    final db = AppDatabase.forExecutor(NativeDatabase.memory());
+    await AppSeed.ensureSeeded(db);
+    final tripId = await _trip(db);
+    final ids = [
+      for (final (n, lat) in [
+        ('Alfa', 41.89),
+        ('Beta', 41.90),
+        ('Gamma', 41.91),
+        ('Delta', 41.92),
+      ])
+        await _location(db, tripId, n, lat),
+    ];
+    final repo = SightseeingRouteRepository(db);
+    final routeId = await repo.createRoute(
+      tripId: tripId,
+      name: 'Centro',
+      locationIds: ids,
+    );
+
+    await tester.pumpWidget(
+      _app(db, const [], RouteFlowScreen(tripId: tripId, routeId: routeId)),
+    );
+    await _settle(tester, 16);
+
+    await tester.tap(find.text('Alfa'));
+    await _settle(tester, 8);
+    expect(find.text('Dividi da qui'), findsNothing);
+    await tester.tapAt(const Offset(600, 40)); // chiude la scheda
+    await _settle(tester, 8);
+
+    await tester.tap(find.text('Gamma'));
+    await _settle(tester, 8);
+    await tester.tap(find.text('Dividi da qui'));
+    await _settle(tester, 12);
+
+    expect(find.text('Diviso: «Centro (2)» è tra le bozze'), findsOneWidget);
+    expect((await repo.stopsFor(routeId)).map((s) => s.locationId), [
+      ids[0],
+      ids[1],
+    ]);
+    final created = (await db.select(db.sightseeingRoutes).get()).singleWhere(
+      (r) => r.name == 'Centro (2)',
+    );
+    expect((await repo.stopsFor(created.id)).map((s) => s.locationId), [
+      ids[2],
+      ids[3],
+    ]);
+    await _teardown(tester, db);
+  });
+
+  testWidgets('Giornata lunga: "Dividi in 2 giorni" taglia a metà', (
+    tester,
+  ) async {
+    _tallView(tester);
+    final db = AppDatabase.forExecutor(NativeDatabase.memory());
+    await AppSeed.ensureSeeded(db);
+    final tripId = await _trip(db);
+    final ids = [
+      for (final (n, lat) in [
+        ('Alfa', 41.89),
+        ('Beta', 41.892),
+        ('Gamma', 41.894),
+        ('Delta', 41.896),
+      ])
+        await _location(db, tripId, n, lat),
+    ];
+    final repo = SightseeingRouteRepository(db);
+    final routeId = await repo.createRoute(
+      tripId: tripId,
+      name: 'Centro',
+      locationIds: ids,
+    );
+    // 4 visite da 3 h: 12 h, oltre le 9 h predefinite.
+    for (final s in await repo.stopsFor(routeId)) {
+      await repo.setVisitMinutes(s.id, 180);
+    }
+
+    await tester.pumpWidget(
+      _app(db, const [], RouteFlowScreen(tripId: tripId, routeId: routeId)),
+    );
+    await _settle(tester, 16);
+    await tester.tap(find.text('Pianifica'));
+    await _settle(tester, 10);
+
+    expect(find.textContaining('Giornata lunga'), findsOneWidget);
+    await tester.tap(find.text('Dividi in 2 giorni'));
+    await _settle(tester, 12);
+
+    expect((await repo.stopsFor(routeId)).map((s) => s.locationId), [
+      ids[0],
+      ids[1],
+    ]);
+    expect(find.text('Diviso: «Centro (2)» è tra le bozze'), findsOneWidget);
+    await _teardown(tester, db);
+  });
 }

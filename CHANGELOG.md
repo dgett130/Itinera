@@ -16,9 +16,18 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   numero di tappe) o ne crea uno nuovo. La tappa va in coda; se il luogo c'è
   già, viene solo tolta da qui (niente doppioni). Si può **annullare**, e gli
   orari degli eventi nella tabella di marcia si aggiornano.
+- **Dividi un percorso**: "Dividi da qui" nella scheda di una tappa porta
+  quella tappa e le successive in un percorso nuovo tra le bozze ("… (2)",
+  stesso mezzo). Quando la giornata è lunga, l'avviso propone **"Dividi in 2
+  giorni"**, che taglia dove le due parti durano più o meno uguali. Si può
+  **annullare**.
 
 ### Modificato
 - Scheda della tappa: i bottoni sono **"Sposta"** e **"Togli"**, affiancati.
+
+### Corretto
+- L'avviso "Giornata lunga" poteva dire un minuto in più della durata totale
+  mostrata sotto (arrotondamenti diversi).
 
 ## [1.4.0] - 2026-10-06
 

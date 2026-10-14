@@ -339,6 +339,22 @@ class AppLocalizationsIt extends AppLocalizations {
   String get placeRemovedToast => 'Luogo rimosso';
 
   @override
+  String get placeSplitHere => 'Dividi da qui';
+
+  @override
+  String splitName(String name) {
+    return '$name (2)';
+  }
+
+  @override
+  String splitDone(String name) {
+    return 'Diviso: «$name» è tra le bozze';
+  }
+
+  @override
+  String get splitInTwo => 'Dividi in 2 giorni';
+
+  @override
   String get placeMoveShort => 'Sposta';
 
   @override

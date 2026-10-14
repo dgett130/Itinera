@@ -104,8 +104,11 @@ class RouteWarningRow extends StatelessWidget {
 
 /// Avvisi sulla giornata (non legati a una tappa).
 class RouteWarningsCard extends StatelessWidget {
-  const RouteWarningsCard({super.key, required this.warnings});
+  const RouteWarningsCard({super.key, required this.warnings, this.onSplit});
   final List<RouteWarning> warnings;
+
+  /// Se valorizzato e la giornata è lunga, propone "Dividi in 2 giorni".
+  final VoidCallback? onSplit;
 
   @override
   Widget build(BuildContext context) {
@@ -118,6 +121,15 @@ class RouteWarningsCard extends StatelessWidget {
           Text(l10n.warnTitle, style: context.texts.titleSmall),
           const SizedBox(height: 6),
           for (final w in warnings) RouteWarningRow(text: warningText(l10n, w)),
+          if (onSplit != null &&
+              warnings.any((w) => w.kind == WarningKind.longDay)) ...[
+            const SizedBox(height: 6),
+            FilledButton.tonalIcon(
+              onPressed: onSplit,
+              icon: const Icon(Icons.call_split),
+              label: Text(l10n.splitInTwo),
+            ),
+          ],
         ],
       ),
     );
