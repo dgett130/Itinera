@@ -10,6 +10,8 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ## [Non rilasciato]
 
+## [1.5.0] - 2026-10-15
+
 ### Aggiunto
 - **Sposta una tappa in un altro percorso**: dalla scheda della tappa,
   "Sposta" apre l'elenco degli altri percorsi del viaggio (con giorno e
@@ -28,6 +30,7 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ### Modificato
 - Scheda della tappa: i bottoni sono **"Sposta"** e **"Togli"**, affiancati.
+- Pannello **"Novità"** aggiornato per la 1.5.0.
 
 ### Corretto
 - L'avviso "Giornata lunga" poteva dire un minuto in più della durata totale
@@ -39,6 +42,11 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 - I luoghi trovati con la **ricerca per nome** hanno ora gli stessi dati di
   quelli sulla mappa: categoria, **orari**, **ingresso** e **foto** (prima
   solo nome e indirizzo, quindi niente avvisi sugli orari).
+
+### Note tecniche
+- Nessuna modifica allo schema né a Supabase: i client 1.4.0 sincronizzano
+  senza problemi. Foto da Wikidata (P18) + Commons; dati di un singolo luogo
+  dall'API di OpenStreetMap (`api.openstreetmap.org/api/0.6`).
 
 ## [1.4.0] - 2026-10-06
 
