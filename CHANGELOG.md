@@ -21,6 +21,10 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   stesso mezzo). Quando la giornata è lunga, l'avviso propone **"Dividi in 2
   giorni"**, che taglia dove le due parti durano più o meno uguali. Si può
   **annullare**.
+- **Foto dei luoghi** nella scheda: la foto principale da **Wikimedia
+  Commons** (tramite il codice Wikidata del luogo in OpenStreetMap), con
+  **autore e licenza**; toccando i crediti si apre la pagina della foto. Solo
+  con la rete; senza foto o senza rete la scheda resta com'era.
 
 ### Modificato
 - Scheda della tappa: i bottoni sono **"Sposta"** e **"Togli"**, affiancati.

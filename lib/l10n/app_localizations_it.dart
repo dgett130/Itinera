@@ -339,6 +339,11 @@ class AppLocalizationsIt extends AppLocalizations {
   String get placeRemovedToast => 'Luogo rimosso';
 
   @override
+  String placePhotoCredit(String credit) {
+    return 'Foto: $credit';
+  }
+
+  @override
   String get placeSplitHere => 'Dividi da qui';
 
   @override

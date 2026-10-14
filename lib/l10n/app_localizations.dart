@@ -718,6 +718,12 @@ abstract class AppLocalizations {
   /// **'Luogo rimosso'**
   String get placeRemovedToast;
 
+  /// No description provided for @placePhotoCredit.
+  ///
+  /// In it, this message translates to:
+  /// **'Foto: {credit}'**
+  String placePhotoCredit(String credit);
+
   /// No description provided for @placeSplitHere.
   ///
   /// In it, this message translates to:

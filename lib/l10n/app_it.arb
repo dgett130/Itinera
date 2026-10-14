@@ -116,6 +116,8 @@
   "placeUnsave": "Rimuovi dai salvati",
   "placeSavedToast": "Luogo salvato",
   "placeRemovedToast": "Luogo rimosso",
+  "placePhotoCredit": "Foto: {credit}",
+  "@placePhotoCredit": {"placeholders": {"credit": {"type": "String"}}},
   "placeSplitHere": "Dividi da qui",
   "splitName": "{name} (2)",
   "@splitName": {"placeholders": {"name": {"type": "String"}}},

@@ -33,6 +33,7 @@ class PlaceInfo {
     this.fromOsm = false,
     this.visitMinutes,
     this.fee,
+    this.wikidata,
   });
 
   factory PlaceInfo.fromSuggestion(PoiSuggestion p) => PlaceInfo(
@@ -46,6 +47,7 @@ class PlaceInfo {
     openingHours: p.openingHours,
     fromOsm: true,
     fee: p.fee,
+    wikidata: p.wikidata,
   );
 
   factory PlaceInfo.fromLocation(Location l, {int? visitMinutes}) => PlaceInfo(
@@ -62,6 +64,7 @@ class PlaceInfo {
     fromOsm: l.source == LocationSource.osm,
     visitMinutes: visitMinutes,
     fee: l.fee,
+    wikidata: l.wikidata,
   );
 
   final String name;
@@ -84,6 +87,9 @@ class PlaceInfo {
 
   /// Tag OSM `fee` (ingresso), se noto.
   final String? fee;
+
+  /// Codice Wikidata (tag OSM): da qui arriva la foto, se c'è.
+  final String? wikidata;
 
   bool get hasCoords => lat != null && lng != null;
 }
@@ -205,6 +211,7 @@ class PlaceSheet extends StatelessWidget {
               ),
             ),
           ),
+          if (place.wikidata != null) _PlacePhotoHeader(place.wikidata!),
           // --- Essenziale (sempre visibile) ---------------------------------
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -542,6 +549,94 @@ class _NotesFieldState extends ConsumerState<_NotesField> {
       maxLines: 5,
       textCapitalization: TextCapitalization.sentences,
       decoration: InputDecoration(hintText: l10n.placeNotesHint),
+    );
+  }
+}
+
+/// Foto del luogo da Wikimedia Commons con autore e licenza. Compare solo
+/// quando c'è (con la rete); altrimenti non occupa spazio.
+class _PlacePhotoHeader extends ConsumerStatefulWidget {
+  const _PlacePhotoHeader(this.wikidata);
+  final String wikidata;
+
+  @override
+  ConsumerState<_PlacePhotoHeader> createState() => _PlacePhotoHeaderState();
+}
+
+class _PlacePhotoHeaderState extends ConsumerState<_PlacePhotoHeader> {
+  /// L'immagine non si è caricata (es. rete persa): niente foto né crediti.
+  bool _failed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final photo = ref.watch(placePhotoProvider(widget.wikidata)).value;
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final show = photo != null && !_failed;
+    return AnimatedSize(
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 250),
+      alignment: Alignment.topCenter,
+      child: !show
+          ? const SizedBox(width: double.infinity)
+          : Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    // Fascia bassa: all'apertura nome e azioni restano
+                    // visibili sotto la foto.
+                    child: AspectRatio(
+                      aspectRatio: 2.4,
+                      child: ColoredBox(
+                        color: context.tokens.accentSoft,
+                        child: Image(
+                          image: ref.watch(placePhotoImageProvider)(
+                            photo.imageUrl,
+                          ),
+                          fit: BoxFit.cover,
+                          semanticLabel: photo.author,
+                          errorBuilder: (_, _, _) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted && !_failed) {
+                                setState(() => _failed = true);
+                              }
+                            });
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => launchUrl(
+                      Uri.parse(photo.pageUrl),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Text(
+                        l10n.placePhotoCredit(
+                          [
+                            ?photo.author,
+                            ?photo.license,
+                            'Wikimedia Commons',
+                          ].join(' · '),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.texts.bodySmall?.copyWith(
+                          color: context.scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 }
