@@ -121,6 +121,28 @@ void main() {
     expect(await repo.getRoute(full), isNotNull);
   });
 
+  test('deleteIfEmpty non elimina un percorso già nella tabella di marcia: '
+      'niente eventi orfani', () async {
+    final a = await loc('A');
+    final r = await repo.createRoute(
+      tripId: tripId,
+      name: 'Centro',
+      locationIds: [a],
+    );
+    final day = newId();
+    await db
+        .into(db.itineraryDays)
+        .insert(ItineraryDaysCompanion.insert(id: day, tripId: tripId));
+    await repo.addToItinerary(r, day, tripId);
+
+    await repo.removeStop((await repo.stopsFor(r)).single.id);
+    await repo.deleteIfEmpty(r);
+
+    expect(await repo.getRoute(r), isNotNull);
+    final event = await db.select(db.activities).getSingle();
+    expect(event.routeId, r, reason: "l'evento apre ancora il percorso");
+  });
+
   group('migrazione "Luoghi salvati"', () {
     test('raccoglie solo i luoghi di Luoghi e percorsi non ancora usati; '
         'è idempotente e deterministica', () async {
@@ -329,6 +351,178 @@ void main() {
       final e = await event();
       expect(e.startMinutes, 600);
       expect(e.endMinutes, 600 + 70);
+    });
+  });
+
+  group('sposta tappa in un altro percorso', () {
+    test("va in coda al percorso di arrivo; da qui sparisce e l'ordine "
+        'resta compatto; Annulla la rimette al suo posto', () async {
+      final a = await loc('A');
+      final b = await loc('B');
+      final c = await loc('C');
+      final d = await loc('D');
+      final from = await repo.createRoute(
+        tripId: tripId,
+        name: 'Da',
+        locationIds: [a, b, c],
+      );
+      final to = await repo.createRoute(
+        tripId: tripId,
+        name: 'A',
+        locationIds: [d],
+      );
+      final stopB = (await repo.stopsFor(from))[1];
+
+      final moved = await repo.moveStop(stopB.id, to);
+      expect(moved, isNotNull);
+      expect(moved!.merged, isFalse);
+      expect(await order(from), [a, c]);
+      expect(await order(to), [d, b]);
+      expect((await repo.stopsFor(from)).map((s) => s.sequenceIndex), [0, 1]);
+
+      await repo.undoMove(moved, to);
+      expect(await order(from), [a, b, c]);
+      expect(await order(to), [d]);
+    });
+
+    test('luogo già nel percorso di arrivo: niente doppioni; Annulla lo '
+        'rimette', () async {
+      final a = await loc('A');
+      final b = await loc('B');
+      final from = await repo.createRoute(
+        tripId: tripId,
+        name: 'Da',
+        locationIds: [a, b],
+      );
+      final to = await repo.createRoute(
+        tripId: tripId,
+        name: 'A',
+        locationIds: [b],
+      );
+      final stopB = (await repo.stopsFor(from))[1];
+
+      final moved = await repo.moveStop(stopB.id, to);
+      expect(moved!.merged, isTrue);
+      expect(await order(from), [a]);
+      expect(await order(to), [b]);
+
+      await repo.undoMove(moved, to);
+      expect(await order(from), [a, b]);
+      expect(await order(to), [b]);
+    });
+
+    test('"solo partenza" diventa una tappa normale; stesso percorso o tappa '
+        'inesistente: niente da fare', () async {
+      final a = await loc('A');
+      final b = await loc('B');
+      final from = await repo.createRoute(
+        tripId: tripId,
+        name: 'Da',
+        locationIds: [a, b],
+      );
+      final to = await repo.createRoute(tripId: tripId, name: 'A');
+      final first = (await repo.stopsFor(from)).first;
+      await repo.setVisitMinutes(first.id, 0);
+
+      final moved = await repo.moveStop(first.id, to);
+      expect((await repo.stopsFor(to)).single.visitMinutes, isNull);
+      await repo.undoMove(moved!, to);
+      expect((await repo.stopsFor(from)).first.visitMinutes, 0);
+
+      expect(await repo.moveStop(first.id, from), isNull);
+      expect(await repo.moveStop('nessuna', to), isNull);
+    });
+
+    test(
+      'gli eventi nella tabella di marcia seguono le nuove durate',
+      () async {
+        final a = await loc('A');
+        final b = await loc('B');
+        final from = await repo.createRoute(
+          tripId: tripId,
+          name: 'Da',
+          locationIds: [a, b],
+        );
+        final to = await repo.createRoute(tripId: tripId, name: 'A');
+        final day = newId();
+        await db
+            .into(db.itineraryDays)
+            .insert(ItineraryDaysCompanion.insert(id: day, tripId: tripId));
+        await repo.setStartMinutes(from, 9 * 60);
+        await repo.addToItinerary(from, day, tripId);
+        Future<Activity> event() => (db.select(
+          db.activities,
+        )..where((x) => x.routeId.equals(from))).getSingle();
+        // Due tappe da 30' e 1' di cammino: 9:00–10:01.
+        await repo.saveComputation(
+          from,
+          distanceMeters: 0,
+          durationSeconds: 0,
+          geometryJson: '[]',
+          source: DistanceSource.straightLine,
+          legsJson: '[{"m":100,"s":60}]',
+        );
+        expect((await event()).endMinutes, 540 + 30 + 1 + 30);
+
+        await repo.moveStop((await repo.stopsFor(from)).last.id, to);
+        await repo.saveComputation(
+          from,
+          distanceMeters: 0,
+          durationSeconds: 0,
+          geometryJson: '[]',
+          source: DistanceSource.straightLine,
+          legsJson: '[]',
+        );
+        expect((await event()).endMinutes, 540 + 30);
+      },
+    );
+  });
+
+  group('dividi da qui', () {
+    test('le tappe da quella in poi vanno, in ordine, in una bozza nuova con '
+        'lo stesso mezzo; Annulla rimette tutto', () async {
+      final a = await loc('A');
+      final b = await loc('B');
+      final c = await loc('C');
+      final d = await loc('D');
+      final r = await repo.createRoute(
+        tripId: tripId,
+        name: 'Centro',
+        locationIds: [a, b, c, d],
+      );
+      await repo.setMode(r, RouteTravelMode.bike);
+      final stops = await repo.stopsFor(r);
+
+      final split = await repo.splitRoute(r, stops[2].id, 'Centro (2)');
+      expect(split, isNotNull);
+      expect(await order(r), [a, b]);
+      expect(await order(split!.newRouteId), [c, d]);
+      final created = (await repo.getRoute(split.newRouteId))!;
+      expect(created.name, 'Centro (2)');
+      expect(created.travelMode, RouteTravelMode.bike);
+      expect(created.dayId, isNull, reason: 'bozza da programmare');
+      expect(
+        (await repo.stopsFor(split.newRouteId)).map((s) => s.sequenceIndex),
+        [0, 1],
+      );
+
+      await repo.undoSplit(r, split);
+      expect(await order(r), [a, b, c, d]);
+      expect(await repo.getRoute(split.newRouteId), isNull);
+    });
+
+    test('dalla prima tappa o da una tappa che non c\'è: niente', () async {
+      final a = await loc('A');
+      final b = await loc('B');
+      final r = await repo.createRoute(
+        tripId: tripId,
+        name: 'R',
+        locationIds: [a, b],
+      );
+      final first = (await repo.stopsFor(r)).first;
+      expect(await repo.splitRoute(r, first.id, 'R (2)'), isNull);
+      expect(await repo.splitRoute(r, 'nessuna', 'R (2)'), isNull);
+      expect(await db.select(db.sightseeingRoutes).get(), hasLength(1));
     });
   });
 

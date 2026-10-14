@@ -49,6 +49,20 @@ void main() {
       expect(oh.isOpen(6, _m(3)), isFalse);
     });
 
+    test('prossima apertura: oggi, domani o tra qualche giorno', () {
+      final oh = OpeningHours.parse('Tu-Sa 09:00-13:00,15:00-19:00')!;
+      expect(oh.nextOpening(2, _m(14)), (0, _m(15)), reason: 'stesso giorno');
+      expect(oh.nextOpening(2, _m(20)), (1, _m(9)), reason: 'domani');
+      expect(oh.nextOpening(6, _m(20)), (3, _m(9)), reason: 'sab → mar');
+      expect(oh.nextOpening(1, _m(10)), (1, _m(9)), reason: 'lun chiuso');
+      // La fascia notturna che prosegue non è una "apertura".
+      final night = OpeningHours.parse('Fr 20:00-02:00')!;
+      expect(night.nextOpening(5, _m(3)), (0, _m(20)));
+      expect(night.nextOpening(6, _m(1)), (6, _m(20)));
+      expect(OpeningHours.parse('24/7')!.nextOpening(1, 0), isNull);
+      expect(OpeningHours.parse('Mo off')!.nextOpening(1, 0), isNull);
+    });
+
     test('regole solo per festivi ignorate', () {
       final oh = OpeningHours.parse('Mo-Su 09:00-19:00; PH off')!;
       expect(oh.isOpen(7, _m(10)), isTrue);

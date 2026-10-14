@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// IMPORTANTE: al rilascio, allineala alla versione di `pubspec.yaml` e
 /// aggiorna [kWhatsNewItems]. Il pannello "Novità" appare una sola volta quando
 /// questa stringa cambia rispetto a quella già vista sul dispositivo.
-const String kWhatsNewVersion = '1.4.0';
+const String kWhatsNewVersion = '1.5.0';
 
 /// Una voce dell'elenco novità (icona + titolo + descrizione breve).
 class WhatsNewItem {
@@ -18,35 +18,27 @@ class WhatsNewItem {
 /// Novità curate per la versione corrente (in italiano, testo per l'utente).
 const List<WhatsNewItem> kWhatsNewItems = [
   WhatsNewItem(
-    Icons.route_outlined,
-    'Percorsi in tre passi',
-    'Scegli, Ordina, Pianifica: tutto su una mappa a schermo pieno. Cerca '
-        'nella zona che stai guardando o per nome, oppure tieni premuto per '
-        'un punto qualsiasi. I luoghi che avevi salvato sono nella bozza '
-        '«Luoghi salvati».',
+    Icons.photo_outlined,
+    'Foto dei luoghi',
+    'Nella scheda di un luogo c’è la sua foto, con autore e licenza. Arriva da '
+        'Wikimedia Commons, quindi serve la rete.',
   ),
   WhatsNewItem(
-    Icons.place_outlined,
-    'Scheda del luogo',
-    'Orari in italiano, se è aperto adesso, ingresso, durata della visita, '
-        'sito web e le tue note.',
+    Icons.drive_file_move_outline,
+    'Sposta una tappa',
+    'Dalla scheda di una tappa, «Sposta» la porta in un altro percorso del '
+        'viaggio o in uno nuovo. Si può annullare.',
   ),
   WhatsNewItem(
-    Icons.directions_walk,
-    'Tempi tra le tappe',
-    'Quanto ci metti da una tappa all’altra, da dove parti, se torni al '
-        'punto di partenza e un suggerimento per l’ordine più veloce.',
+    Icons.call_split,
+    'Dividi un percorso',
+    '«Dividi da qui» manda una tappa e le successive in un nuovo percorso. '
+        'Se la giornata è troppo lunga, «Dividi in 2 giorni» la taglia a metà.',
   ),
   WhatsNewItem(
-    Icons.schedule,
-    'Scaletta della giornata',
-    'Scegli giorno e ora di partenza: vedi a che ora arrivi a ogni tappa e '
-        'quando finisci. Nella tabella di marcia il percorso ha i suoi orari.',
-  ),
-  WhatsNewItem(
-    Icons.warning_amber_outlined,
-    'Avvisi utili',
-    'Ti avvisa se un luogo è chiuso quando arrivi, se la giornata è lunga o '
-        'la strada è tanta. Le soglie si cambiano in Impostazioni.',
+    Icons.search,
+    'Ricerca per nome più completa',
+    'I luoghi trovati per nome hanno orari, ingresso e foto, come quelli '
+        'sulla mappa. E «Chiuso ora» ti dice quando riapre.',
   ),
 ];

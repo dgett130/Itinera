@@ -10,6 +10,44 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ## [Non rilasciato]
 
+## [1.5.0] - 2026-10-15
+
+### Aggiunto
+- **Sposta una tappa in un altro percorso**: dalla scheda della tappa,
+  "Sposta" apre l'elenco degli altri percorsi del viaggio (con giorno e
+  numero di tappe) o ne crea uno nuovo. La tappa va in coda; se il luogo c'è
+  già, viene solo tolta da qui (niente doppioni). Si può **annullare**, e gli
+  orari degli eventi nella tabella di marcia si aggiornano.
+- **Dividi un percorso**: "Dividi da qui" nella scheda di una tappa porta
+  quella tappa e le successive in un percorso nuovo tra le bozze ("… (2)",
+  stesso mezzo). Quando la giornata è lunga, l'avviso propone **"Dividi in 2
+  giorni"**, che taglia dove le due parti durano più o meno uguali. Si può
+  **annullare**.
+- **Foto dei luoghi** nella scheda: la foto principale da **Wikimedia
+  Commons** (tramite il codice Wikidata del luogo in OpenStreetMap), con
+  **autore e licenza**; toccando i crediti si apre la pagina della foto. Solo
+  con la rete; senza foto o senza rete la scheda resta com'era.
+
+### Modificato
+- Scheda della tappa: i bottoni sono **"Sposta"** e **"Togli"**, affiancati.
+- Pannello **"Novità"** aggiornato per la 1.5.0.
+
+### Corretto
+- L'avviso "Giornata lunga" poteva dire un minuto in più della durata totale
+  mostrata sotto (arrotondamenti diversi).
+- Un percorso già nella tabella di marcia rimasto senza tappe non viene più
+  eliminato uscendo: prima l'evento restava "orfano" e non apriva più niente.
+- **"Chiuso ora"** dice anche quando riapre se riapre un altro giorno ("apre
+  domani alle 9:00", "apre martedì alle 9:00").
+- I luoghi trovati con la **ricerca per nome** hanno ora gli stessi dati di
+  quelli sulla mappa: categoria, **orari**, **ingresso** e **foto** (prima
+  solo nome e indirizzo, quindi niente avvisi sugli orari).
+
+### Note tecniche
+- Nessuna modifica allo schema né a Supabase: i client 1.4.0 sincronizzano
+  senza problemi. Foto da Wikidata (P18) + Commons; dati di un singolo luogo
+  dall'API di OpenStreetMap (`api.openstreetmap.org/api/0.6`).
+
 ## [1.4.0] - 2026-10-06
 
 ### Aggiunto

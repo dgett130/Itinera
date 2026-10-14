@@ -20,20 +20,55 @@ import 'package:itinera/features/explore/route_math.dart';
 import 'package:itinera/features/explore/route_planner.dart';
 import 'package:itinera/features/explore/route_summary_screen.dart';
 import 'package:itinera/features/explore/sightseeing_route_repository.dart';
+import 'package:itinera/features/places/geocoding_service.dart';
 import 'package:itinera/features/transport/routing_service.dart';
 import 'package:itinera/features/settings/route_warnings_screen.dart';
 import 'package:itinera/l10n/app_localizations.dart';
 import 'package:itinera/providers.dart';
 
 class _FakePoiService implements PoiDiscoveryService {
-  _FakePoiService(this._pois);
+  _FakePoiService(this._pois, [this._known = const []]);
   final List<PoiSuggestion> _pois;
+
+  /// Luoghi trovabili solo per id (es. dalla ricerca per nome).
+  final List<PoiSuggestion> _known;
   @override
   Future<List<PoiSuggestion>> search({
     required double lat,
     required double lng,
     required double radiusMeters,
   }) async => _pois;
+
+  @override
+  Future<PoiSuggestion?> lookup(
+    String osmType,
+    int osmId, {
+    required double lat,
+    required double lng,
+  }) async => [
+    ..._pois,
+    ..._known,
+  ].where((p) => p.externalId == '$osmType/$osmId').firstOrNull;
+}
+
+/// Ricerca per nome finta: un solo risultato, con il suo id OpenStreetMap.
+class _FakeGeocoding extends GeocodingService {
+  @override
+  Future<List<PlaceResult>> search(
+    String query, {
+    int limit = 6,
+    double? lat,
+    double? lon,
+  }) async => const [
+    PlaceResult(
+      label: 'Galleria Borghese, Roma, Italia',
+      latitude: 41.914,
+      longitude: 12.492,
+      country: 'Italia',
+      osmType: 'way',
+      osmId: 77,
+    ),
+  ];
 }
 
 /// Planner senza rete: sempre la stima offline (niente chiamate HTTP nei test).
@@ -109,6 +144,8 @@ Widget _app(
   List<PoiSuggestion> pois,
   Widget home, {
   RoutePlanner? planner,
+  GeocodingService? geocoding,
+  List<PoiSuggestion> known = const [],
 }) {
   final router = GoRouter(
     routes: [
@@ -126,8 +163,14 @@ Widget _app(
   return ProviderScope(
     overrides: [
       databaseProvider.overrideWithValue(db),
-      poiDiscoveryServiceProvider.overrideWithValue(_FakePoiService(pois)),
+      poiDiscoveryServiceProvider.overrideWithValue(
+        _FakePoiService(pois, known),
+      ),
       routePlannerProvider.overrideWithValue(planner ?? _OfflinePlanner()),
+      // Niente rete nei test: nessuna foto.
+      placePhotoProvider.overrideWith((ref, qid) async => null),
+      if (geocoding != null)
+        geocodingServiceProvider.overrideWithValue(geocoding),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -541,6 +584,210 @@ void main() {
     await tester.tap(find.text('Di più').first);
     await _settle(tester, 6);
     expect(find.text('Dopo le 20:30'), findsOneWidget);
+    await _teardown(tester, db);
+  });
+
+  testWidgets('Sposta: una tappa va in un nuovo percorso e si può annullare', (
+    tester,
+  ) async {
+    _tallView(tester);
+    final db = AppDatabase.forExecutor(NativeDatabase.memory());
+    await AppSeed.ensureSeeded(db);
+    final tripId = await _trip(db);
+    final a = await _location(db, tripId, 'Colosseo', 41.89);
+    final b = await _location(db, tripId, 'Pantheon', 41.898);
+    final repo = SightseeingRouteRepository(db);
+    final routeId = await repo.createRoute(
+      tripId: tripId,
+      name: 'Percorso 1',
+      locationIds: [a, b],
+    );
+    final other = await repo.createRoute(
+      tripId: tripId,
+      name: 'Trastevere',
+      locationIds: [a],
+    );
+
+    await tester.pumpWidget(
+      _app(db, const [], RouteFlowScreen(tripId: tripId, routeId: routeId)),
+    );
+    await _settle(tester, 16);
+
+    // Tocco sulla tappa → scheda con "Sposta" e "Togli".
+    await tester.tap(find.text('Pantheon'));
+    await _settle(tester, 8);
+    await tester.tap(find.text('Sposta'));
+    await _settle(tester, 8);
+    expect(find.text('Sposta in un altro percorso'), findsOneWidget);
+    expect(find.text('Trastevere'), findsOneWidget);
+
+    await tester.tap(find.text('Nuovo percorso'));
+    await _settle(tester, 10);
+    expect(find.text('Spostato in «Percorso 3»'), findsOneWidget);
+    final routes = await db.select(db.sightseeingRoutes).get();
+    final created = routes.singleWhere((r) => r.name == 'Percorso 3');
+    expect((await repo.stopsFor(created.id)).single.locationId, b);
+    expect((await repo.stopsFor(routeId)).single.locationId, a);
+
+    await tester.tap(find.text('Annulla'));
+    await _settle(tester, 10);
+    expect((await repo.stopsFor(routeId)).map((s) => s.locationId), [a, b]);
+    expect(
+      (await db.select(db.sightseeingRoutes).get()).map((r) => r.id),
+      unorderedEquals([routeId, other]),
+      reason: 'il percorso creato solo per lo spostamento viene tolto',
+    );
+    await _teardown(tester, db);
+  });
+
+  testWidgets('Dividi da qui: dalla terza tappa in poi va in una bozza; la '
+      'prima tappa non lo propone', (tester) async {
+    _tallView(tester);
+    final db = AppDatabase.forExecutor(NativeDatabase.memory());
+    await AppSeed.ensureSeeded(db);
+    final tripId = await _trip(db);
+    final ids = [
+      for (final (n, lat) in [
+        ('Alfa', 41.89),
+        ('Beta', 41.90),
+        ('Gamma', 41.91),
+        ('Delta', 41.92),
+      ])
+        await _location(db, tripId, n, lat),
+    ];
+    final repo = SightseeingRouteRepository(db);
+    final routeId = await repo.createRoute(
+      tripId: tripId,
+      name: 'Centro',
+      locationIds: ids,
+    );
+
+    await tester.pumpWidget(
+      _app(db, const [], RouteFlowScreen(tripId: tripId, routeId: routeId)),
+    );
+    await _settle(tester, 16);
+
+    await tester.tap(find.text('Alfa'));
+    await _settle(tester, 8);
+    expect(find.text('Dividi da qui'), findsNothing);
+    await tester.tapAt(const Offset(600, 40)); // chiude la scheda
+    await _settle(tester, 8);
+
+    await tester.tap(find.text('Gamma'));
+    await _settle(tester, 8);
+    await tester.tap(find.text('Dividi da qui'));
+    await _settle(tester, 12);
+
+    expect(find.text('Diviso: «Centro (2)» è tra le bozze'), findsOneWidget);
+    expect((await repo.stopsFor(routeId)).map((s) => s.locationId), [
+      ids[0],
+      ids[1],
+    ]);
+    final created = (await db.select(db.sightseeingRoutes).get()).singleWhere(
+      (r) => r.name == 'Centro (2)',
+    );
+    expect((await repo.stopsFor(created.id)).map((s) => s.locationId), [
+      ids[2],
+      ids[3],
+    ]);
+    await _teardown(tester, db);
+  });
+
+  testWidgets('Giornata lunga: "Dividi in 2 giorni" taglia a metà', (
+    tester,
+  ) async {
+    _tallView(tester);
+    final db = AppDatabase.forExecutor(NativeDatabase.memory());
+    await AppSeed.ensureSeeded(db);
+    final tripId = await _trip(db);
+    final ids = [
+      for (final (n, lat) in [
+        ('Alfa', 41.89),
+        ('Beta', 41.892),
+        ('Gamma', 41.894),
+        ('Delta', 41.896),
+      ])
+        await _location(db, tripId, n, lat),
+    ];
+    final repo = SightseeingRouteRepository(db);
+    final routeId = await repo.createRoute(
+      tripId: tripId,
+      name: 'Centro',
+      locationIds: ids,
+    );
+    // 4 visite da 3 h: 12 h, oltre le 9 h predefinite.
+    for (final s in await repo.stopsFor(routeId)) {
+      await repo.setVisitMinutes(s.id, 180);
+    }
+
+    await tester.pumpWidget(
+      _app(db, const [], RouteFlowScreen(tripId: tripId, routeId: routeId)),
+    );
+    await _settle(tester, 16);
+    await tester.tap(find.text('Pianifica'));
+    await _settle(tester, 10);
+
+    expect(find.textContaining('Giornata lunga'), findsOneWidget);
+    await tester.tap(find.text('Dividi in 2 giorni'));
+    await _settle(tester, 12);
+
+    expect((await repo.stopsFor(routeId)).map((s) => s.locationId), [
+      ids[0],
+      ids[1],
+    ]);
+    expect(find.text('Diviso: «Centro (2)» è tra le bozze'), findsOneWidget);
+    await _teardown(tester, db);
+  });
+
+  testWidgets('Ricerca per nome: il risultato apre la scheda completa (orari, '
+      'categoria) e si aggiunge con i suoi dati', (tester) async {
+    _tallView(tester);
+    final db = AppDatabase.forExecutor(NativeDatabase.memory());
+    await AppSeed.ensureSeeded(db);
+    final tripId = await _trip(db);
+    final routeId = await SightseeingRouteRepository(
+      db,
+    ).createRoute(tripId: tripId, name: 'Centro');
+    const borghese = PoiSuggestion(
+      provider: 'osm',
+      externalId: 'way/77',
+      name: 'Galleria Borghese',
+      lat: 41.914,
+      lng: 12.492,
+      category: PoiCategory.museum,
+      openingHours: 'Tu-Su 09:00-19:00',
+      fee: 'yes',
+      wikidata: 'Q1284',
+    );
+
+    await tester.pumpWidget(
+      _app(
+        db,
+        // La scoperta nell'area non lo trova: arriva solo dalla ricerca.
+        const [],
+        RouteFlowScreen(tripId: tripId, routeId: routeId, startNew: true),
+        geocoding: _FakeGeocoding(),
+        known: const [borghese],
+      ),
+    );
+    await _settle(tester, 14);
+    await tester.enterText(find.byType(TextField), 'Borghese');
+    await _settle(tester, 12);
+    await tester.tap(find.text('Galleria Borghese, Roma, Italia'));
+    await _settle(tester, 10);
+
+    // Scheda "vera": nome OSM, categoria, orari leggibili, ingresso.
+    expect(find.text('Galleria Borghese'), findsWidgets);
+    expect(find.textContaining('Musei e cultura'), findsOneWidget);
+    expect(find.text('Mar–Dom 09:00–19:00'), findsOneWidget);
+    expect(find.text('A pagamento'), findsOneWidget);
+
+    await tester.tap(find.text('Aggiungi al percorso').last);
+    await _settle(tester, 10);
+    final loc = await db.select(db.locations).getSingle();
+    expect(loc.externalId, 'way/77');
+    expect(loc.openingHours, 'Tu-Su 09:00-19:00');
+    expect(loc.wikidata, 'Q1284');
     await _teardown(tester, db);
   });
 }

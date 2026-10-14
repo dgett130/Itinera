@@ -106,3 +106,23 @@ RouteSchedule? buildSchedule({
     distanceMeters: distance,
   );
 }
+
+/// Indice della tappa da cui far partire la seconda metà, scelto perché le due
+/// parti durino il più possibile uguali (visite comprese; il tratto tra le
+/// due parti non conta più). Null con meno di 2 tappe.
+int? balancedSplitIndex(RouteSchedule schedule) {
+  final stops = schedule.stops;
+  if (stops.length < 2) return null;
+  int? best;
+  var bestGap = double.infinity;
+  for (var k = 1; k < stops.length; k++) {
+    final first = stops[k - 1].leaveSeconds;
+    final second = schedule.endSeconds - stops[k].arriveSeconds;
+    final gap = (first - second).abs().toDouble();
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = k;
+    }
+  }
+  return best;
+}

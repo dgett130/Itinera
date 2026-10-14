@@ -718,6 +718,84 @@ abstract class AppLocalizations {
   /// **'Luogo rimosso'**
   String get placeRemovedToast;
 
+  /// No description provided for @placePhotoCredit.
+  ///
+  /// In it, this message translates to:
+  /// **'Foto: {credit}'**
+  String placePhotoCredit(String credit);
+
+  /// No description provided for @placeSplitHere.
+  ///
+  /// In it, this message translates to:
+  /// **'Dividi da qui'**
+  String get placeSplitHere;
+
+  /// No description provided for @splitName.
+  ///
+  /// In it, this message translates to:
+  /// **'{name} (2)'**
+  String splitName(String name);
+
+  /// No description provided for @splitDone.
+  ///
+  /// In it, this message translates to:
+  /// **'Diviso: «{name}» è tra le bozze'**
+  String splitDone(String name);
+
+  /// No description provided for @splitInTwo.
+  ///
+  /// In it, this message translates to:
+  /// **'Dividi in 2 giorni'**
+  String get splitInTwo;
+
+  /// No description provided for @placeMoveShort.
+  ///
+  /// In it, this message translates to:
+  /// **'Sposta'**
+  String get placeMoveShort;
+
+  /// No description provided for @placeRemoveShort.
+  ///
+  /// In it, this message translates to:
+  /// **'Togli'**
+  String get placeRemoveShort;
+
+  /// No description provided for @moveTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Sposta in un altro percorso'**
+  String get moveTitle;
+
+  /// No description provided for @moveNewRoute.
+  ///
+  /// In it, this message translates to:
+  /// **'Nuovo percorso'**
+  String get moveNewRoute;
+
+  /// No description provided for @moveNewRouteHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Crea un percorso con questo luogo'**
+  String get moveNewRouteHint;
+
+  /// No description provided for @moveDraft.
+  ///
+  /// In it, this message translates to:
+  /// **'Bozza'**
+  String get moveDraft;
+
+  /// No description provided for @movedTo.
+  ///
+  /// In it, this message translates to:
+  /// **'Spostato in «{route}»'**
+  String movedTo(String route);
+
+  /// No description provided for @movedMerged.
+  ///
+  /// In it, this message translates to:
+  /// **'Era già in «{route}»: tolto da qui'**
+  String movedMerged(String route);
+
   /// No description provided for @placeRemoveFromRoute.
   ///
   /// In it, this message translates to:
@@ -1197,6 +1275,18 @@ abstract class AppLocalizations {
   /// In it, this message translates to:
   /// **'Chiuso ora'**
   String get placeClosedNow;
+
+  /// No description provided for @placeClosedUntilTomorrow.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiuso ora · apre domani alle {time}'**
+  String placeClosedUntilTomorrow(String time);
+
+  /// No description provided for @placeClosedUntilDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiuso ora · apre {day} alle {time}'**
+  String placeClosedUntilDay(String day, String time);
 
   /// No description provided for @placeHoursCheck.
   ///

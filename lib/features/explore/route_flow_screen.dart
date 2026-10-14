@@ -26,6 +26,7 @@ import 'geo_codec.dart';
 import 'place_sheet.dart';
 import 'poi_parser.dart';
 import 'route_math.dart';
+import 'route_schedule.dart';
 import 'route_schedule_view.dart';
 import 'route_warnings.dart';
 import 'sightseeing_route_repository.dart';
@@ -297,6 +298,30 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
       _map.move(point, 16);
       setState(() => _showSearchHere = true);
     }
+    // Photon dà solo nome e indirizzo: con l'id OSM chiedo i dati completi
+    // (categoria, orari, ingresso, foto), come per i luoghi sulla mappa.
+    final type = r.osmType;
+    final id = r.osmId;
+    if (type != null && id != null) {
+      setState(() => _searchingName = true);
+      final poi = await ref
+          .read(poiDiscoveryServiceProvider)
+          .lookup(type, id, lat: r.latitude, lng: r.longitude);
+      if (!mounted) return;
+      setState(() => _searchingName = false);
+      if (poi != null) {
+        final stops = ref.read(routeStopsProvider(widget.routeId)).value ?? [];
+        final inRoute = _stopRefs(stops, _locById())
+            .where(
+              (x) =>
+                  x.$2.externalProvider == poi.provider &&
+                  x.$2.externalId == poi.externalId,
+            )
+            .firstOrNull;
+        return _openPoi(poi, inRoute?.$1, inRoute?.$2);
+      }
+    }
+    if (!mounted) return;
     await showPlaceSheet(
       _themed,
       place: PlaceInfo(
@@ -419,15 +444,165 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
 
   Future<void> _openStop(SightseeingRouteStop stop, Location loc) async {
     final l10n = AppLocalizations.of(context);
+    final stops = ref.read(routeStopsProvider(widget.routeId)).value ?? [];
+    final isFirst = stops.isEmpty || stops.first.id == stop.id;
     await showPlaceSheet(
       _themed,
       place: PlaceInfo.fromLocation(loc, visitMinutes: stop.visitMinutes),
       distanceLabel: _distanceLabel(loc.latitude, loc.longitude),
+      secondaryAction: PlaceSheetAction(
+        label: l10n.placeMoveShort,
+        icon: Icons.drive_file_move_outline,
+        destructive: true,
+        onPressed: () => _moveStop(stop, loc),
+      ),
       action: PlaceSheetAction(
-        label: l10n.placeRemoveFromRoute,
+        label: l10n.placeRemoveShort,
         icon: Icons.remove_circle_outline,
         destructive: true,
         onPressed: () => _removeStop(stop, loc.label),
+      ),
+      // Dalla prima tappa "dividere" vorrebbe dire spostare tutto.
+      extraAction: isFirst
+          ? null
+          : PlaceSheetAction(
+              label: l10n.placeSplitHere,
+              icon: Icons.call_split,
+              onPressed: () => _splitFrom(stop.id),
+            ),
+    );
+  }
+
+  /// Divide il percorso: da [fromStopId] in poi le tappe vanno in un
+  /// percorso nuovo tra le bozze, con Annulla.
+  Future<void> _splitFrom(String fromStopId) async {
+    final l10n = AppLocalizations.of(context);
+    final route = ref.read(routeByIdProvider(widget.routeId)).value;
+    if (route == null) return;
+    final name = l10n.splitName(route.name);
+    _scheduleRecompute();
+    final split = await _routes.splitRoute(widget.routeId, fromStopId, name);
+    if (split == null || !mounted) return;
+    _snack(
+      l10n.splitDone(name),
+      action: SnackBarAction(
+        label: l10n.flowUndo,
+        onPressed: () async {
+          _scheduleRecompute();
+          await _routes.undoSplit(widget.routeId, split);
+        },
+      ),
+    );
+  }
+
+  /// "Dividi in 2 giorni": taglia dove le due parti durano più o meno uguali.
+  Future<void> _splitBalanced(
+    RouteSchedule schedule,
+    List<(SightseeingRouteStop, Location)> refs,
+  ) async {
+    final k = balancedSplitIndex(schedule);
+    if (k == null || k >= refs.length) return;
+    await _splitFrom(refs[k].$1.id);
+  }
+
+  /// "Sposta": sceglie un altro percorso del viaggio (o ne crea uno nuovo) e
+  /// ci porta la tappa, con Annulla.
+  Future<void> _moveStop(SightseeingRouteStop stop, Location loc) async {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(_themed);
+    // Elenchi tenuti vivi dal build (vedi "Sposta"): disponibili subito.
+    final all = ref.read(routesProvider(widget.tripId)).value ?? const [];
+    final tripStops =
+        ref.read(tripStopsProvider(widget.tripId)).value ?? const [];
+    final dayList =
+        ref.read(itineraryDaysProvider(widget.tripId)).value ?? const [];
+    final others = [
+      for (final r in all)
+        if (r.id != widget.routeId) r,
+    ];
+    final stopCount = <String, int>{};
+    for (final s in tripStops) {
+      stopCount[s.routeId] = (stopCount[s.routeId] ?? 0) + 1;
+    }
+    final days = {for (final d in dayList) d.id: d};
+    // Valore restituito: id del percorso, oppure '' per "Nuovo percorso".
+    final picked = await showModalBottomSheet<String>(
+      context: _themed,
+      showDragHandle: true,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (context) => Theme(
+        data: theme,
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.only(bottom: 16),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.moveTitle, style: context.texts.titleLarge),
+                  Text(
+                    loc.label,
+                    style: context.texts.bodyMedium?.copyWith(
+                      color: context.scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.add_road, color: context.tokens.accent),
+              title: Text(l10n.moveNewRoute),
+              subtitle: Text(l10n.moveNewRouteHint),
+              onTap: () => Navigator.pop(context, ''),
+            ),
+            for (final r in others)
+              ListTile(
+                leading: Icon(routeModeIcon(r.travelMode)),
+                title: Text(r.name),
+                subtitle: Text(
+                  [
+                    if (days[r.dayId] case final d?)
+                      _dayLabel(l10n, d)
+                    else
+                      l10n.moveDraft,
+                    l10n.routeStopsCount(stopCount[r.id] ?? 0),
+                  ].join(' · '),
+                ),
+                onTap: () => Navigator.pop(context, r.id),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+
+    var targetId = picked;
+    var targetName = others.firstWhereOrNull((r) => r.id == picked)?.name;
+    if (picked.isEmpty) {
+      targetName = l10n.routeNewName(all.length + 1);
+      targetId = await _routes.createRoute(
+        tripId: widget.tripId,
+        name: targetName,
+      );
+    }
+    _scheduleRecompute();
+    final moved = await _routes.moveStop(stop.id, targetId);
+    if (moved == null || !mounted) return;
+    _snack(
+      moved.merged
+          ? l10n.movedMerged(targetName ?? '')
+          : l10n.movedTo(targetName ?? ''),
+      action: SnackBarAction(
+        label: l10n.flowUndo,
+        onPressed: () async {
+          _scheduleRecompute();
+          await _routes.undoMove(moved, targetId);
+          // Il percorso nuovo creato solo per lo spostamento torna via.
+          if (picked.isEmpty) await _routes.deleteIfEmpty(targetId);
+        },
       ),
     );
   }
@@ -819,6 +994,11 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     final stopsAsync = ref.watch(routeStopsProvider(widget.routeId));
     final locsAsync = ref.watch(savedLocationsProvider(widget.tripId));
     final route = routeAsync.value;
+    // Tenuti vivi per "Sposta" (elenco degli altri percorsi con tappe e
+    // giorno): senza ascoltatori in Riverpod 3 resterebbero in pausa.
+    ref.watch(routesProvider(widget.tripId));
+    ref.watch(tripStopsProvider(widget.tripId));
+    ref.watch(itineraryDaysProvider(widget.tripId));
 
     if (trip == null || (route == null && routeAsync.isLoading)) {
       return const Scaffold(body: LoadingView());
@@ -2034,7 +2214,12 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
           ),
           if (dayWarnings.isNotEmpty) ...[
             const SizedBox(height: 4),
-            RouteWarningsCard(warnings: dayWarnings),
+            RouteWarningsCard(
+              warnings: dayWarnings,
+              onSplit: schedule == null
+                  ? null
+                  : () => _splitBalanced(schedule, refs),
+            ),
             const SizedBox(height: 8),
           ],
           if (schedule != null) ...[
