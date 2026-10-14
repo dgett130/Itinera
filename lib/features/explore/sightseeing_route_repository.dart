@@ -20,6 +20,26 @@ class RemovedStop {
   final Location? location;
 }
 
+/// Tappa appena spostata in un altro percorso, con quanto serve per
+/// annullare lo spostamento.
+class MovedStop {
+  const MovedStop({
+    required this.stop,
+    required this.fromIndex,
+    required this.merged,
+  });
+
+  /// La tappa com'era prima dello spostamento (percorso, ordine, visita).
+  final SightseeingRouteStop stop;
+
+  /// Posizione nel percorso di partenza.
+  final int fromIndex;
+
+  /// Il luogo era già una tappa del percorso di arrivo: la tappa è stata solo
+  /// tolta da qui (niente doppioni).
+  final bool merged;
+}
+
 /// Accesso ai dati dei percorsi di visita (percorsi + tappe). Solo DB: il
 /// calcolo online e l'ottimizzazione (che richiedono coordinate/rete) sono
 /// orchestrati dal controller della UI.
@@ -332,6 +352,83 @@ class SightseeingRouteRepository {
       await _touch(stop.routeId);
       return RemovedStop(stop: stop, location: loc);
     });
+  }
+
+  /// Sposta la tappa in coda a [targetRouteId]. Se quel percorso ha già lo
+  /// stesso luogo, la tappa viene solo tolta da qui. Una tappa "solo
+  /// partenza" diventa una tappa normale (in coda non è più la partenza).
+  /// Ritorna null se non c'è niente da spostare.
+  Future<MovedStop?> moveStop(String stopId, String targetRouteId) async {
+    final moved = await _db.transaction(() async {
+      final stop = await (_db.select(
+        _db.sightseeingRouteStops,
+      )..where((s) => s.id.equals(stopId))).getSingleOrNull();
+      if (stop == null || stop.routeId == targetRouteId) return null;
+      final source = await stopsFor(stop.routeId);
+      final fromIndex = source.indexWhere((s) => s.id == stopId);
+      final target = await stopsFor(targetRouteId);
+      final merged = target.any((s) => s.locationId == stop.locationId);
+      if (merged) {
+        await (_db.delete(
+          _db.sightseeingRouteStops,
+        )..where((s) => s.id.equals(stopId))).go();
+      } else {
+        await (_db.update(
+          _db.sightseeingRouteStops,
+        )..where((s) => s.id.equals(stopId))).write(
+          SightseeingRouteStopsCompanion(
+            routeId: Value(targetRouteId),
+            sequenceIndex: Value(target.length),
+            visitMinutes: stop.visitMinutes == 0
+                ? const Value(null)
+                : const Value.absent(),
+          ),
+        );
+      }
+      await _reindex(stop.routeId);
+      await _touch(stop.routeId);
+      await _touch(targetRouteId);
+      return MovedStop(stop: stop, fromIndex: fromIndex, merged: merged);
+    });
+    if (moved != null) {
+      await _syncEvent(moved.stop.routeId);
+      await _syncEvent(targetRouteId);
+    }
+    return moved;
+  }
+
+  /// Annulla [moveStop]: la tappa torna nel suo percorso, nella stessa
+  /// posizione e com'era (anche se era stata tolta perché già presente).
+  Future<void> undoMove(MovedStop m, String targetRouteId) async {
+    await _db.transaction(() async {
+      final ids = [
+        for (final s in await stopsFor(m.stop.routeId))
+          if (s.id != m.stop.id) s.id,
+      ];
+      await _db.into(_db.sightseeingRouteStops).insertOnConflictUpdate(m.stop);
+      ids.insert(m.fromIndex.clamp(0, ids.length), m.stop.id);
+      for (var i = 0; i < ids.length; i++) {
+        await (_db.update(_db.sightseeingRouteStops)
+              ..where((s) => s.id.equals(ids[i])))
+            .write(SightseeingRouteStopsCompanion(sequenceIndex: Value(i)));
+      }
+      await _reindex(targetRouteId);
+      await _touch(m.stop.routeId);
+      await _touch(targetRouteId);
+    });
+    await _syncEvent(m.stop.routeId);
+    await _syncEvent(targetRouteId);
+  }
+
+  /// Rinumera le tappe 0..n-1 mantenendo l'ordine (dopo una rimozione).
+  Future<void> _reindex(String routeId) async {
+    final stops = await stopsFor(routeId);
+    for (var i = 0; i < stops.length; i++) {
+      if (stops[i].sequenceIndex == i) continue;
+      await (_db.update(_db.sightseeingRouteStops)
+            ..where((s) => s.id.equals(stops[i].id)))
+          .write(SightseeingRouteStopsCompanion(sequenceIndex: Value(i)));
+    }
   }
 
   /// Annulla [removeStop]: rimette luogo (se eliminato) e tappa nella stessa

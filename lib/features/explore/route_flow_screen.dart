@@ -423,11 +423,119 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
       _themed,
       place: PlaceInfo.fromLocation(loc, visitMinutes: stop.visitMinutes),
       distanceLabel: _distanceLabel(loc.latitude, loc.longitude),
+      secondaryAction: PlaceSheetAction(
+        label: l10n.placeMoveShort,
+        icon: Icons.drive_file_move_outline,
+        destructive: true,
+        onPressed: () => _moveStop(stop, loc),
+      ),
       action: PlaceSheetAction(
-        label: l10n.placeRemoveFromRoute,
+        label: l10n.placeRemoveShort,
         icon: Icons.remove_circle_outline,
         destructive: true,
         onPressed: () => _removeStop(stop, loc.label),
+      ),
+    );
+  }
+
+  /// "Sposta": sceglie un altro percorso del viaggio (o ne crea uno nuovo) e
+  /// ci porta la tappa, con Annulla.
+  Future<void> _moveStop(SightseeingRouteStop stop, Location loc) async {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(_themed);
+    // Elenchi tenuti vivi dal build (vedi "Sposta"): disponibili subito.
+    final all = ref.read(routesProvider(widget.tripId)).value ?? const [];
+    final tripStops =
+        ref.read(tripStopsProvider(widget.tripId)).value ?? const [];
+    final dayList =
+        ref.read(itineraryDaysProvider(widget.tripId)).value ?? const [];
+    final others = [
+      for (final r in all)
+        if (r.id != widget.routeId) r,
+    ];
+    final stopCount = <String, int>{};
+    for (final s in tripStops) {
+      stopCount[s.routeId] = (stopCount[s.routeId] ?? 0) + 1;
+    }
+    final days = {for (final d in dayList) d.id: d};
+    // Valore restituito: id del percorso, oppure '' per "Nuovo percorso".
+    final picked = await showModalBottomSheet<String>(
+      context: _themed,
+      showDragHandle: true,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (context) => Theme(
+        data: theme,
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.only(bottom: 16),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.moveTitle, style: context.texts.titleLarge),
+                  Text(
+                    loc.label,
+                    style: context.texts.bodyMedium?.copyWith(
+                      color: context.scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.add_road, color: context.tokens.accent),
+              title: Text(l10n.moveNewRoute),
+              subtitle: Text(l10n.moveNewRouteHint),
+              onTap: () => Navigator.pop(context, ''),
+            ),
+            for (final r in others)
+              ListTile(
+                leading: Icon(routeModeIcon(r.travelMode)),
+                title: Text(r.name),
+                subtitle: Text(
+                  [
+                    if (days[r.dayId] case final d?)
+                      _dayLabel(l10n, d)
+                    else
+                      l10n.moveDraft,
+                    l10n.routeStopsCount(stopCount[r.id] ?? 0),
+                  ].join(' · '),
+                ),
+                onTap: () => Navigator.pop(context, r.id),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+
+    var targetId = picked;
+    var targetName = others.firstWhereOrNull((r) => r.id == picked)?.name;
+    if (picked.isEmpty) {
+      targetName = l10n.routeNewName(all.length + 1);
+      targetId = await _routes.createRoute(
+        tripId: widget.tripId,
+        name: targetName,
+      );
+    }
+    _scheduleRecompute();
+    final moved = await _routes.moveStop(stop.id, targetId);
+    if (moved == null || !mounted) return;
+    _snack(
+      moved.merged
+          ? l10n.movedMerged(targetName ?? '')
+          : l10n.movedTo(targetName ?? ''),
+      action: SnackBarAction(
+        label: l10n.flowUndo,
+        onPressed: () async {
+          _scheduleRecompute();
+          await _routes.undoMove(moved, targetId);
+          // Il percorso nuovo creato solo per lo spostamento torna via.
+          if (picked.isEmpty) await _routes.deleteIfEmpty(targetId);
+        },
       ),
     );
   }
@@ -819,6 +927,11 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     final stopsAsync = ref.watch(routeStopsProvider(widget.routeId));
     final locsAsync = ref.watch(savedLocationsProvider(widget.tripId));
     final route = routeAsync.value;
+    // Tenuti vivi per "Sposta" (elenco degli altri percorsi con tappe e
+    // giorno): senza ascoltatori in Riverpod 3 resterebbero in pausa.
+    ref.watch(routesProvider(widget.tripId));
+    ref.watch(tripStopsProvider(widget.tripId));
+    ref.watch(itineraryDaysProvider(widget.tripId));
 
     if (trip == null || (route == null && routeAsync.isLoading)) {
       return const Scaffold(body: LoadingView());

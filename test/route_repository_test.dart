@@ -332,6 +332,130 @@ void main() {
     });
   });
 
+  group('sposta tappa in un altro percorso', () {
+    test("va in coda al percorso di arrivo; da qui sparisce e l'ordine "
+        'resta compatto; Annulla la rimette al suo posto', () async {
+      final a = await loc('A');
+      final b = await loc('B');
+      final c = await loc('C');
+      final d = await loc('D');
+      final from = await repo.createRoute(
+        tripId: tripId,
+        name: 'Da',
+        locationIds: [a, b, c],
+      );
+      final to = await repo.createRoute(
+        tripId: tripId,
+        name: 'A',
+        locationIds: [d],
+      );
+      final stopB = (await repo.stopsFor(from))[1];
+
+      final moved = await repo.moveStop(stopB.id, to);
+      expect(moved, isNotNull);
+      expect(moved!.merged, isFalse);
+      expect(await order(from), [a, c]);
+      expect(await order(to), [d, b]);
+      expect((await repo.stopsFor(from)).map((s) => s.sequenceIndex), [0, 1]);
+
+      await repo.undoMove(moved, to);
+      expect(await order(from), [a, b, c]);
+      expect(await order(to), [d]);
+    });
+
+    test('luogo già nel percorso di arrivo: niente doppioni; Annulla lo '
+        'rimette', () async {
+      final a = await loc('A');
+      final b = await loc('B');
+      final from = await repo.createRoute(
+        tripId: tripId,
+        name: 'Da',
+        locationIds: [a, b],
+      );
+      final to = await repo.createRoute(
+        tripId: tripId,
+        name: 'A',
+        locationIds: [b],
+      );
+      final stopB = (await repo.stopsFor(from))[1];
+
+      final moved = await repo.moveStop(stopB.id, to);
+      expect(moved!.merged, isTrue);
+      expect(await order(from), [a]);
+      expect(await order(to), [b]);
+
+      await repo.undoMove(moved, to);
+      expect(await order(from), [a, b]);
+      expect(await order(to), [b]);
+    });
+
+    test('"solo partenza" diventa una tappa normale; stesso percorso o tappa '
+        'inesistente: niente da fare', () async {
+      final a = await loc('A');
+      final b = await loc('B');
+      final from = await repo.createRoute(
+        tripId: tripId,
+        name: 'Da',
+        locationIds: [a, b],
+      );
+      final to = await repo.createRoute(tripId: tripId, name: 'A');
+      final first = (await repo.stopsFor(from)).first;
+      await repo.setVisitMinutes(first.id, 0);
+
+      final moved = await repo.moveStop(first.id, to);
+      expect((await repo.stopsFor(to)).single.visitMinutes, isNull);
+      await repo.undoMove(moved!, to);
+      expect((await repo.stopsFor(from)).first.visitMinutes, 0);
+
+      expect(await repo.moveStop(first.id, from), isNull);
+      expect(await repo.moveStop('nessuna', to), isNull);
+    });
+
+    test(
+      'gli eventi nella tabella di marcia seguono le nuove durate',
+      () async {
+        final a = await loc('A');
+        final b = await loc('B');
+        final from = await repo.createRoute(
+          tripId: tripId,
+          name: 'Da',
+          locationIds: [a, b],
+        );
+        final to = await repo.createRoute(tripId: tripId, name: 'A');
+        final day = newId();
+        await db
+            .into(db.itineraryDays)
+            .insert(ItineraryDaysCompanion.insert(id: day, tripId: tripId));
+        await repo.setStartMinutes(from, 9 * 60);
+        await repo.addToItinerary(from, day, tripId);
+        Future<Activity> event() => (db.select(
+          db.activities,
+        )..where((x) => x.routeId.equals(from))).getSingle();
+        // Due tappe da 30' e 1' di cammino: 9:00–10:01.
+        await repo.saveComputation(
+          from,
+          distanceMeters: 0,
+          durationSeconds: 0,
+          geometryJson: '[]',
+          source: DistanceSource.straightLine,
+          legsJson: '[{"m":100,"s":60}]',
+        );
+        expect((await event()).endMinutes, 540 + 30 + 1 + 30);
+
+        await repo.moveStop((await repo.stopsFor(from)).last.id, to);
+        await repo.saveComputation(
+          from,
+          distanceMeters: 0,
+          durationSeconds: 0,
+          geometryJson: '[]',
+          source: DistanceSource.straightLine,
+          legsJson: '[]',
+        );
+        expect((await event()).endMinutes, 540 + 30);
+      },
+    );
+  });
+
   test('saveComputation salva anche i tratti', () async {
     final a = await loc('A');
     final r = await repo.createRoute(

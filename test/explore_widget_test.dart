@@ -543,4 +543,57 @@ void main() {
     expect(find.text('Dopo le 20:30'), findsOneWidget);
     await _teardown(tester, db);
   });
+
+  testWidgets('Sposta: una tappa va in un nuovo percorso e si può annullare', (
+    tester,
+  ) async {
+    _tallView(tester);
+    final db = AppDatabase.forExecutor(NativeDatabase.memory());
+    await AppSeed.ensureSeeded(db);
+    final tripId = await _trip(db);
+    final a = await _location(db, tripId, 'Colosseo', 41.89);
+    final b = await _location(db, tripId, 'Pantheon', 41.898);
+    final repo = SightseeingRouteRepository(db);
+    final routeId = await repo.createRoute(
+      tripId: tripId,
+      name: 'Percorso 1',
+      locationIds: [a, b],
+    );
+    final other = await repo.createRoute(
+      tripId: tripId,
+      name: 'Trastevere',
+      locationIds: [a],
+    );
+
+    await tester.pumpWidget(
+      _app(db, const [], RouteFlowScreen(tripId: tripId, routeId: routeId)),
+    );
+    await _settle(tester, 16);
+
+    // Tocco sulla tappa → scheda con "Sposta" e "Togli".
+    await tester.tap(find.text('Pantheon'));
+    await _settle(tester, 8);
+    await tester.tap(find.text('Sposta'));
+    await _settle(tester, 8);
+    expect(find.text('Sposta in un altro percorso'), findsOneWidget);
+    expect(find.text('Trastevere'), findsOneWidget);
+
+    await tester.tap(find.text('Nuovo percorso'));
+    await _settle(tester, 10);
+    expect(find.text('Spostato in «Percorso 3»'), findsOneWidget);
+    final routes = await db.select(db.sightseeingRoutes).get();
+    final created = routes.singleWhere((r) => r.name == 'Percorso 3');
+    expect((await repo.stopsFor(created.id)).single.locationId, b);
+    expect((await repo.stopsFor(routeId)).single.locationId, a);
+
+    await tester.tap(find.text('Annulla'));
+    await _settle(tester, 10);
+    expect((await repo.stopsFor(routeId)).map((s) => s.locationId), [a, b]);
+    expect(
+      (await db.select(db.sightseeingRoutes).get()).map((r) => r.id),
+      unorderedEquals([routeId, other]),
+      reason: 'il percorso creato solo per lo spostamento viene tolto',
+    );
+    await _teardown(tester, db);
+  });
 }

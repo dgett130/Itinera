@@ -339,6 +339,34 @@ class AppLocalizationsIt extends AppLocalizations {
   String get placeRemovedToast => 'Luogo rimosso';
 
   @override
+  String get placeMoveShort => 'Sposta';
+
+  @override
+  String get placeRemoveShort => 'Togli';
+
+  @override
+  String get moveTitle => 'Sposta in un altro percorso';
+
+  @override
+  String get moveNewRoute => 'Nuovo percorso';
+
+  @override
+  String get moveNewRouteHint => 'Crea un percorso con questo luogo';
+
+  @override
+  String get moveDraft => 'Bozza';
+
+  @override
+  String movedTo(String route) {
+    return 'Spostato in «$route»';
+  }
+
+  @override
+  String movedMerged(String route) {
+    return 'Era già in «$route»: tolto da qui';
+  }
+
+  @override
   String get placeRemoveFromRoute => 'Togli dal percorso';
 
   @override

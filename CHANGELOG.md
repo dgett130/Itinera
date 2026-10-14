@@ -10,6 +10,16 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ## [Non rilasciato]
 
+### Aggiunto
+- **Sposta una tappa in un altro percorso**: dalla scheda della tappa,
+  "Sposta" apre l'elenco degli altri percorsi del viaggio (con giorno e
+  numero di tappe) o ne crea uno nuovo. La tappa va in coda; se il luogo c'è
+  già, viene solo tolta da qui (niente doppioni). Si può **annullare**, e gli
+  orari degli eventi nella tabella di marcia si aggiornano.
+
+### Modificato
+- Scheda della tappa: i bottoni sono **"Sposta"** e **"Togli"**, affiancati.
+
 ## [1.4.0] - 2026-10-06
 
 ### Aggiunto

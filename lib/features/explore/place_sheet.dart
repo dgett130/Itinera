@@ -111,6 +111,7 @@ Future<void> showPlaceSheet(
   required PlaceInfo place,
   String? distanceLabel,
   PlaceSheetAction? action,
+  PlaceSheetAction? secondaryAction,
 }) {
   // Il pannello vive in una route separata: riporto il tema dello schermo
   // chiamante, così resta nello stile del viaggio.
@@ -133,6 +134,7 @@ Future<void> showPlaceSheet(
           place: place,
           distanceLabel: distanceLabel,
           action: action,
+          secondaryAction: secondaryAction,
           scrollController: scroll,
         ),
       ),
@@ -147,12 +149,17 @@ class PlaceSheet extends StatelessWidget {
     required this.place,
     this.distanceLabel,
     this.action,
+    this.secondaryAction,
     this.scrollController,
   });
 
   final PlaceInfo place;
   final String? distanceLabel;
   final PlaceSheetAction? action;
+
+  /// Seconda azione, affiancata alla principale (es. "Sposta" accanto a
+  /// "Togli").
+  final PlaceSheetAction? secondaryAction;
   final ScrollController? scrollController;
 
   @override
@@ -238,19 +245,14 @@ class PlaceSheet extends StatelessWidget {
           ),
           if (action != null) ...[
             const SizedBox(height: 16),
-            SizedBox(
-              height: 48,
-              child: action!.destructive
-                  ? OutlinedButton.icon(
-                      onPressed: () => _run(context),
-                      icon: Icon(action!.icon),
-                      label: Text(action!.label),
-                    )
-                  : FilledButton.icon(
-                      onPressed: () => _run(context),
-                      icon: Icon(action!.icon),
-                      label: Text(action!.label),
-                    ),
+            Row(
+              children: [
+                if (secondaryAction != null) ...[
+                  Expanded(child: _button(context, secondaryAction!)),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(child: _button(context, action!)),
+              ],
             ),
           ],
           const SizedBox(height: 12),
@@ -379,10 +381,31 @@ class PlaceSheet extends StatelessWidget {
         _ => null,
       };
 
-  Future<void> _run(BuildContext context) async {
+  Widget _button(BuildContext context, PlaceSheetAction a) {
+    final icon = Icon(a.icon);
+    final label = Text(a.label, maxLines: 1, overflow: TextOverflow.ellipsis);
+    return SizedBox(
+      height: 48,
+      child: a.destructive
+          ? OutlinedButton.icon(
+              onPressed: () => _run(context, a),
+              icon: icon,
+              label: label,
+            )
+          : FilledButton.icon(
+              onPressed: () => _run(context, a),
+              icon: icon,
+              label: label,
+            ),
+    );
+  }
+
+  /// La scheda si chiude PRIMA dell'azione: così l'azione può aprire un
+  /// altro pannello (es. la scelta del percorso) senza sovrapporsi.
+  Future<void> _run(BuildContext context, PlaceSheetAction a) async {
     final navigator = Navigator.of(context);
-    await action!.onPressed();
     if (navigator.canPop()) navigator.pop();
+    await a.onPressed();
   }
 
   static Future<void> _openInMaps(PlaceInfo p) async {

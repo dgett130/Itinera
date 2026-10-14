@@ -718,6 +718,54 @@ abstract class AppLocalizations {
   /// **'Luogo rimosso'**
   String get placeRemovedToast;
 
+  /// No description provided for @placeMoveShort.
+  ///
+  /// In it, this message translates to:
+  /// **'Sposta'**
+  String get placeMoveShort;
+
+  /// No description provided for @placeRemoveShort.
+  ///
+  /// In it, this message translates to:
+  /// **'Togli'**
+  String get placeRemoveShort;
+
+  /// No description provided for @moveTitle.
+  ///
+  /// In it, this message translates to:
+  /// **'Sposta in un altro percorso'**
+  String get moveTitle;
+
+  /// No description provided for @moveNewRoute.
+  ///
+  /// In it, this message translates to:
+  /// **'Nuovo percorso'**
+  String get moveNewRoute;
+
+  /// No description provided for @moveNewRouteHint.
+  ///
+  /// In it, this message translates to:
+  /// **'Crea un percorso con questo luogo'**
+  String get moveNewRouteHint;
+
+  /// No description provided for @moveDraft.
+  ///
+  /// In it, this message translates to:
+  /// **'Bozza'**
+  String get moveDraft;
+
+  /// No description provided for @movedTo.
+  ///
+  /// In it, this message translates to:
+  /// **'Spostato in «{route}»'**
+  String movedTo(String route);
+
+  /// No description provided for @movedMerged.
+  ///
+  /// In it, this message translates to:
+  /// **'Era già in «{route}»: tolto da qui'**
+  String movedMerged(String route);
+
   /// No description provided for @placeRemoveFromRoute.
   ///
   /// In it, this message translates to:

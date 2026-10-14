@@ -192,8 +192,8 @@ void main() {
     await db.close();
   });
 
-  testWidgets('Ordina: tocco su una tappa apre la scheda con note e '
-      '"Togli dal percorso"', (tester) async {
+  testWidgets('Ordina: tocco su una tappa apre la scheda con note, '
+      '"Sposta" e "Togli"', (tester) async {
     tester.view.physicalSize = const Size(1200, 4000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -235,10 +235,11 @@ void main() {
     await tester.tap(find.text('Pantheon'));
     await _settle(tester);
 
-    expect(find.text('Togli dal percorso'), findsOneWidget);
+    expect(find.text('Sposta'), findsOneWidget);
+    expect(find.text('Togli'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'Prenotare'), findsOneWidget);
 
-    await tester.tap(find.text('Togli dal percorso'));
+    await tester.tap(find.text('Togli'));
     await _settle(tester, 12);
 
     final stops = await db.select(db.sightseeingRouteStops).get();
