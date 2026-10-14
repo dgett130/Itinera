@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/enums.dart';
@@ -387,11 +388,17 @@ class PlaceSheet extends StatelessWidget {
         tokens.positive,
       );
     }
-    final opens = oh.opensAfter(now.weekday, minute);
-    return (
-      opens == null ? l10n.placeClosedNow : l10n.placeClosedUntil(t(opens)),
-      tokens.warning,
-    );
+    final next = oh.nextOpening(now.weekday, minute);
+    final text = switch (next) {
+      null => l10n.placeClosedNow,
+      (0, final m) => l10n.placeClosedUntil(t(m)),
+      (1, final m) => l10n.placeClosedUntilTomorrow(t(m)),
+      (final d, final m) => l10n.placeClosedUntilDay(
+        DateFormat.EEEE('it_IT').format(now.add(Duration(days: d))),
+        t(m),
+      ),
+    };
+    return (text, tokens.warning);
   }
 
   /// Tag OSM `fee`: `no` gratuito, `yes` a pagamento, `donation` offerta

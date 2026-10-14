@@ -213,6 +213,26 @@ class OpeningHours {
     return best;
   }
 
+  /// Prossima apertura dopo [minute] di [weekday], cercando anche nei giorni
+  /// seguenti (fino a una settimana): (giorni di distanza, minuto). Null se
+  /// sempre aperto o mai aperto.
+  (int, int)? nextOpening(int weekday, int minute) {
+    if (always) return null;
+    final today = opensAfter(weekday, minute);
+    if (today != null) return (0, today);
+    for (var d = 1; d <= 7; d++) {
+      final wd = (weekday - 1 + d) % 7 + 1;
+      // Solo le fasce che iniziano quel giorno (non quelle che proseguono
+      // dalla notte prima).
+      int? first;
+      for (final (s, _) in _on(wd)) {
+        if (first == null || s < first) first = s;
+      }
+      if (first != null) return (d, first);
+    }
+    return null;
+  }
+
   /// Ultima chiusura prima di [minute] nello stesso giorno.
   int? closedBefore(int weekday, int minute) {
     int? best;

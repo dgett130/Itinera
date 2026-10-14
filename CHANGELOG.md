@@ -32,6 +32,13 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 ### Corretto
 - L'avviso "Giornata lunga" poteva dire un minuto in più della durata totale
   mostrata sotto (arrotondamenti diversi).
+- Un percorso già nella tabella di marcia rimasto senza tappe non viene più
+  eliminato uscendo: prima l'evento restava "orfano" e non apriva più niente.
+- **"Chiuso ora"** dice anche quando riapre se riapre un altro giorno ("apre
+  domani alle 9:00", "apre martedì alle 9:00").
+- I luoghi trovati con la **ricerca per nome** hanno ora gli stessi dati di
+  quelli sulla mappa: categoria, **orari**, **ingresso** e **foto** (prima
+  solo nome e indirizzo, quindi niente avvisi sugli orari).
 
 ## [1.4.0] - 2026-10-06
 

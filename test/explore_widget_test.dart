@@ -20,20 +20,55 @@ import 'package:itinera/features/explore/route_math.dart';
 import 'package:itinera/features/explore/route_planner.dart';
 import 'package:itinera/features/explore/route_summary_screen.dart';
 import 'package:itinera/features/explore/sightseeing_route_repository.dart';
+import 'package:itinera/features/places/geocoding_service.dart';
 import 'package:itinera/features/transport/routing_service.dart';
 import 'package:itinera/features/settings/route_warnings_screen.dart';
 import 'package:itinera/l10n/app_localizations.dart';
 import 'package:itinera/providers.dart';
 
 class _FakePoiService implements PoiDiscoveryService {
-  _FakePoiService(this._pois);
+  _FakePoiService(this._pois, [this._known = const []]);
   final List<PoiSuggestion> _pois;
+
+  /// Luoghi trovabili solo per id (es. dalla ricerca per nome).
+  final List<PoiSuggestion> _known;
   @override
   Future<List<PoiSuggestion>> search({
     required double lat,
     required double lng,
     required double radiusMeters,
   }) async => _pois;
+
+  @override
+  Future<PoiSuggestion?> lookup(
+    String osmType,
+    int osmId, {
+    required double lat,
+    required double lng,
+  }) async => [
+    ..._pois,
+    ..._known,
+  ].where((p) => p.externalId == '$osmType/$osmId').firstOrNull;
+}
+
+/// Ricerca per nome finta: un solo risultato, con il suo id OpenStreetMap.
+class _FakeGeocoding extends GeocodingService {
+  @override
+  Future<List<PlaceResult>> search(
+    String query, {
+    int limit = 6,
+    double? lat,
+    double? lon,
+  }) async => const [
+    PlaceResult(
+      label: 'Galleria Borghese, Roma, Italia',
+      latitude: 41.914,
+      longitude: 12.492,
+      country: 'Italia',
+      osmType: 'way',
+      osmId: 77,
+    ),
+  ];
 }
 
 /// Planner senza rete: sempre la stima offline (niente chiamate HTTP nei test).
@@ -109,6 +144,8 @@ Widget _app(
   List<PoiSuggestion> pois,
   Widget home, {
   RoutePlanner? planner,
+  GeocodingService? geocoding,
+  List<PoiSuggestion> known = const [],
 }) {
   final router = GoRouter(
     routes: [
@@ -126,8 +163,14 @@ Widget _app(
   return ProviderScope(
     overrides: [
       databaseProvider.overrideWithValue(db),
-      poiDiscoveryServiceProvider.overrideWithValue(_FakePoiService(pois)),
+      poiDiscoveryServiceProvider.overrideWithValue(
+        _FakePoiService(pois, known),
+      ),
       routePlannerProvider.overrideWithValue(planner ?? _OfflinePlanner()),
+      // Niente rete nei test: nessuna foto.
+      placePhotoProvider.overrideWith((ref, qid) async => null),
+      if (geocoding != null)
+        geocodingServiceProvider.overrideWithValue(geocoding),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -693,6 +736,58 @@ void main() {
       ids[1],
     ]);
     expect(find.text('Diviso: «Centro (2)» è tra le bozze'), findsOneWidget);
+    await _teardown(tester, db);
+  });
+
+  testWidgets('Ricerca per nome: il risultato apre la scheda completa (orari, '
+      'categoria) e si aggiunge con i suoi dati', (tester) async {
+    _tallView(tester);
+    final db = AppDatabase.forExecutor(NativeDatabase.memory());
+    await AppSeed.ensureSeeded(db);
+    final tripId = await _trip(db);
+    final routeId = await SightseeingRouteRepository(
+      db,
+    ).createRoute(tripId: tripId, name: 'Centro');
+    const borghese = PoiSuggestion(
+      provider: 'osm',
+      externalId: 'way/77',
+      name: 'Galleria Borghese',
+      lat: 41.914,
+      lng: 12.492,
+      category: PoiCategory.museum,
+      openingHours: 'Tu-Su 09:00-19:00',
+      fee: 'yes',
+      wikidata: 'Q1284',
+    );
+
+    await tester.pumpWidget(
+      _app(
+        db,
+        // La scoperta nell'area non lo trova: arriva solo dalla ricerca.
+        const [],
+        RouteFlowScreen(tripId: tripId, routeId: routeId, startNew: true),
+        geocoding: _FakeGeocoding(),
+        known: const [borghese],
+      ),
+    );
+    await _settle(tester, 14);
+    await tester.enterText(find.byType(TextField), 'Borghese');
+    await _settle(tester, 12);
+    await tester.tap(find.text('Galleria Borghese, Roma, Italia'));
+    await _settle(tester, 10);
+
+    // Scheda "vera": nome OSM, categoria, orari leggibili, ingresso.
+    expect(find.text('Galleria Borghese'), findsWidgets);
+    expect(find.textContaining('Musei e cultura'), findsOneWidget);
+    expect(find.text('Mar–Dom 09:00–19:00'), findsOneWidget);
+    expect(find.text('A pagamento'), findsOneWidget);
+
+    await tester.tap(find.text('Aggiungi al percorso').last);
+    await _settle(tester, 10);
+    final loc = await db.select(db.locations).getSingle();
+    expect(loc.externalId, 'way/77');
+    expect(loc.openingHours, 'Tu-Su 09:00-19:00');
+    expect(loc.wikidata, 'Q1284');
     await _teardown(tester, db);
   });
 }

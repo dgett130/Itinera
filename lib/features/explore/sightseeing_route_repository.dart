@@ -159,8 +159,17 @@ class SightseeingRouteRepository {
   }
 
   /// Elimina un percorso rimasto senza tappe (bozza abbandonata).
+  /// Un percorso già nella tabella di marcia resta anche vuoto: eliminarlo
+  /// lascerebbe un evento orfano (che non apre più niente).
   Future<void> deleteIfEmpty(String id) async {
-    if ((await stopsFor(id)).isEmpty) await deleteRoute(id);
+    if ((await stopsFor(id)).isNotEmpty) return;
+    final event =
+        await (_db.select(_db.activities)
+              ..where((a) => a.routeId.equals(id))
+              ..limit(1))
+            .getSingleOrNull();
+    if (event != null) return;
+    await deleteRoute(id);
   }
 
   Future<Location?> _deleteLocationIfOrphan(String locationId) async {

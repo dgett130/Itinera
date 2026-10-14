@@ -1276,6 +1276,18 @@ abstract class AppLocalizations {
   /// **'Chiuso ora'**
   String get placeClosedNow;
 
+  /// No description provided for @placeClosedUntilTomorrow.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiuso ora · apre domani alle {time}'**
+  String placeClosedUntilTomorrow(String time);
+
+  /// No description provided for @placeClosedUntilDay.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiuso ora · apre {day} alle {time}'**
+  String placeClosedUntilDay(String day, String time);
+
   /// No description provided for @placeHoursCheck.
   ///
   /// In it, this message translates to:

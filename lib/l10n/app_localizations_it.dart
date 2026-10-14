@@ -699,6 +699,16 @@ class AppLocalizationsIt extends AppLocalizations {
   String get placeClosedNow => 'Chiuso ora';
 
   @override
+  String placeClosedUntilTomorrow(String time) {
+    return 'Chiuso ora · apre domani alle $time';
+  }
+
+  @override
+  String placeClosedUntilDay(String day, String time) {
+    return 'Chiuso ora · apre $day alle $time';
+  }
+
+  @override
   String get placeHoursCheck => 'Orari da verificare';
 
   @override

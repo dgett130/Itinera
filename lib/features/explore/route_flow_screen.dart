@@ -298,6 +298,30 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
       _map.move(point, 16);
       setState(() => _showSearchHere = true);
     }
+    // Photon dà solo nome e indirizzo: con l'id OSM chiedo i dati completi
+    // (categoria, orari, ingresso, foto), come per i luoghi sulla mappa.
+    final type = r.osmType;
+    final id = r.osmId;
+    if (type != null && id != null) {
+      setState(() => _searchingName = true);
+      final poi = await ref
+          .read(poiDiscoveryServiceProvider)
+          .lookup(type, id, lat: r.latitude, lng: r.longitude);
+      if (!mounted) return;
+      setState(() => _searchingName = false);
+      if (poi != null) {
+        final stops = ref.read(routeStopsProvider(widget.routeId)).value ?? [];
+        final inRoute = _stopRefs(stops, _locById())
+            .where(
+              (x) =>
+                  x.$2.externalProvider == poi.provider &&
+                  x.$2.externalId == poi.externalId,
+            )
+            .firstOrNull;
+        return _openPoi(poi, inRoute?.$1, inRoute?.$2);
+      }
+    }
+    if (!mounted) return;
     await showPlaceSheet(
       _themed,
       place: PlaceInfo(

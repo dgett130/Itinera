@@ -33,6 +33,14 @@ class _FakePoiService implements PoiDiscoveryService {
     required double lng,
     required double radiusMeters,
   }) async => _pois;
+
+  @override
+  Future<PoiSuggestion?> lookup(
+    String osmType,
+    int osmId, {
+    required double lat,
+    required double lng,
+  }) async => _pois.where((p) => p.externalId == '$osmType/$osmId').firstOrNull;
 }
 
 class _OfflinePlanner implements RoutePlanner {

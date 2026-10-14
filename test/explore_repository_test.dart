@@ -22,6 +22,14 @@ class _DummyPoiService implements PoiDiscoveryService {
     required double lng,
     required double radiusMeters,
   }) async => const [];
+
+  @override
+  Future<PoiSuggestion?> lookup(
+    String osmType,
+    int osmId, {
+    required double lat,
+    required double lng,
+  }) async => null;
 }
 
 void main() {

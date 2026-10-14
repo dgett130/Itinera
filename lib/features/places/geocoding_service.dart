@@ -10,6 +10,8 @@ class PlaceResult {
     required this.longitude,
     this.country,
     this.countryCode,
+    this.osmType,
+    this.osmId,
   });
 
   final String label;
@@ -17,6 +19,11 @@ class PlaceResult {
   final double longitude;
   final String? country;
   final String? countryCode;
+
+  /// Elemento OpenStreetMap da cui viene il risultato ("node", "way",
+  /// "relation"): permette di chiederne i dati completi.
+  final String? osmType;
+  final int? osmId;
 }
 
 /// Ricerca luoghi (geocoding/autocomplete) tramite Photon (OpenStreetMap).
@@ -67,6 +74,13 @@ class GeocodingService {
           latitude: (coords[1] as num).toDouble(),
           country: props['country'] as String?,
           countryCode: (props['countrycode'] as String?)?.toUpperCase(),
+          osmType: switch (props['osm_type']) {
+            'N' => 'node',
+            'W' => 'way',
+            'R' => 'relation',
+            _ => null,
+          },
+          osmId: (props['osm_id'] as num?)?.toInt(),
         ));
       }
       return results;

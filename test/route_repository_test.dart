@@ -121,6 +121,28 @@ void main() {
     expect(await repo.getRoute(full), isNotNull);
   });
 
+  test('deleteIfEmpty non elimina un percorso già nella tabella di marcia: '
+      'niente eventi orfani', () async {
+    final a = await loc('A');
+    final r = await repo.createRoute(
+      tripId: tripId,
+      name: 'Centro',
+      locationIds: [a],
+    );
+    final day = newId();
+    await db
+        .into(db.itineraryDays)
+        .insert(ItineraryDaysCompanion.insert(id: day, tripId: tripId));
+    await repo.addToItinerary(r, day, tripId);
+
+    await repo.removeStop((await repo.stopsFor(r)).single.id);
+    await repo.deleteIfEmpty(r);
+
+    expect(await repo.getRoute(r), isNotNull);
+    final event = await db.select(db.activities).getSingle();
+    expect(event.routeId, r, reason: "l'evento apre ancora il percorso");
+  });
+
   group('migrazione "Luoghi salvati"', () {
     test('raccoglie solo i luoghi di Luoghi e percorsi non ancora usati; '
         'è idempotente e deterministica', () async {
