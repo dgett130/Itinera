@@ -1,28 +1,30 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../app.dart';
-import '../../core/enum_labels.dart';
+import 'package:flutter/services.dart';
+
 import '../../core/enums.dart';
 import '../../core/format.dart';
 import '../../data/database.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/itinera_theme.dart';
-import '../../ui/signatures.dart';
+import '../../ui/motion.dart';
+import '../../ui/posters.dart';
 import '../../ui/widgets.dart';
 import '../bacheca/bacheca_providers.dart';
+import '../explore/explore_providers.dart';
 import '../itinerary/itinerary_providers.dart';
 import '../packing/packing_providers.dart';
 import '../transport/transport_providers.dart';
 import 'trip_providers.dart';
+import 'trip_status.dart';
 
-/// Dettaglio di un viaggio: eroe + statistiche + accesso ai tre moduli.
-///
-/// Tutto il sottoalbero indossa il tema dello stile del viaggio.
+/// Dettaglio di un viaggio: poster + dati principali + tessere dei moduli.
 class TripDetailScreen extends ConsumerWidget {
   const TripDetailScreen({super.key, required this.tripId});
 
@@ -44,30 +46,84 @@ class TripDetailScreen extends ConsumerWidget {
             ),
           );
         }
-        return TripThemeScope(
-          style: ItineraTheme.effectiveStyle(trip),
-          child: _TripDetailBody(trip: trip),
-        );
+        return _TripDetailBody(trip: trip);
       },
     );
   }
 }
 
-class _TripDetailBody extends ConsumerWidget {
+class _TripDetailBody extends ConsumerStatefulWidget {
   const _TripDetailBody({required this.trip});
   final Trip trip;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_TripDetailBody> createState() => _TripDetailBodyState();
+}
+
+class _TripDetailBodyState extends ConsumerState<_TripDetailBody> {
+  static const _posterHeight = 420.0;
+  final _scroll = ScrollController();
+
+  /// Quanto il sole e' tramontato: segue lo scorrimento senza ricostruire.
+  final _sink = ValueNotifier<double>(0);
+
+  /// Il poster e' arrotolato: il nome passa nella barra in alto.
+  bool _collapsed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(() {
+      _sink.value = (_scroll.offset / (_posterHeight - 150)).clamp(0.0, 1.0);
+      final collapsed = _scroll.offset > _posterHeight - 150;
+      if (collapsed != _collapsed) setState(() => _collapsed = collapsed);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    _sink.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final trip = widget.trip;
     final tripId = trip.id;
+    final c = trip.tripType.posterColors;
+    final overlay = c.overlayBrightness == Brightness.dark
+        ? SystemUiOverlayStyle.light
+        : SystemUiOverlayStyle.dark;
 
     return Scaffold(
       body: CustomScrollView(
+        controller: _scroll,
         slivers: [
           SliverAppBar(
             pinned: true,
-            title: Text(trip.name),
+            expandedHeight: _posterHeight,
+            backgroundColor: c.background,
+            foregroundColor: c.foreground,
+            systemOverlayStyle: overlay,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            title: AnimatedOpacity(
+              opacity: _collapsed ? 1 : 0,
+              duration: const Duration(milliseconds: 160),
+              child: Text(
+                trip.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: c.foreground),
+              ),
+            ),
+            flexibleSpace: FlexibleSpaceBar(
+              background: _DetailPoster(trip: trip, sink: _sink),
+            ),
             actions: [
               IconButton(
                 icon: const Icon(Icons.people_outline),
@@ -80,7 +136,7 @@ class _TripDetailBody extends ConsumerWidget {
                 onPressed: () => context.push('/trip/$tripId/edit'),
               ),
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
+                icon: Icon(Icons.more_vert, color: c.foreground),
                 onSelected: (v) async {
                   final repo = ref.read(tripRepositoryProvider);
                   switch (v) {
@@ -109,43 +165,72 @@ class _TripDetailBody extends ConsumerWidget {
             ],
           ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
             sliver: SliverList.list(
               children: [
-                TripHero(
-                  title: trip.name,
-                  typeIcon: trip.tripType.icon,
-                  kicker: _kicker(),
-                  meta: _meta(l10n),
-                  heroTag: 'trip-hero-${trip.id}',
-                ),
+                StaggerIn(index: 1, child: _FactsRow(trip: trip)),
                 const SizedBox(height: 16),
-                _StatsRow(trip: trip, l10n: l10n),
-                // Le tre sezioni operative subito sotto l'intestazione, cosi'
-                // sono visibili senza scorrere.
-                SectionHeader('Sezioni'),
-                _PackingModuleCard(tripId: tripId),
-                const SizedBox(height: 12),
-                _TransportModuleCard(tripId: tripId),
-                const SizedBox(height: 12),
-                _ItineraryModuleCard(tripId: tripId),
-                const SizedBox(height: 12),
-                _ModuleCard(
-                  icon: Icons.explore_outlined,
-                  title: l10n.sectionExplore,
-                  subtitle: l10n.exploreModuleSubtitle,
-                  onTap: () => context.push('/trip/$tripId/explore'),
+                StaggerIn(
+                  index: 2,
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(child: _PackingTile(tripId: tripId)),
+                        const SizedBox(width: 12),
+                        Expanded(child: _TransportTile(tripId: tripId)),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
-                _BachecaModuleCard(tripId: tripId),
+                StaggerIn(index: 3, child: _ItineraryTile(tripId: tripId)),
+                const SizedBox(height: 12),
+                StaggerIn(
+                  index: 4,
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(child: _PlacesTile(tripId: tripId)),
+                        const SizedBox(width: 12),
+                        Expanded(child: _BachecaTile(tripId: tripId)),
+                      ],
+                    ),
+                  ),
+                ),
                 if (trip.driveUrl != null &&
                     trip.driveUrl!.trim().isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  _ModuleCard(
-                    icon: Icons.photo_library_outlined,
-                    title: l10n.tripDrivePhotos,
-                    subtitle: l10n.tripDriveOpen,
+                  ItineraCard(
                     onTap: () => _openDrive(context, trip.driveUrl!.trim()),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.photo_library_outlined,
+                          color: context.tokens.accent,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l10n.tripDrivePhotos,
+                                style: context.texts.titleMedium,
+                              ),
+                              Text(
+                                l10n.tripDriveOpen,
+                                style: context.texts.bodySmall?.copyWith(
+                                  color: context.scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.open_in_new, size: 18),
+                      ],
+                    ),
                   ),
                 ],
                 if (trip.notes != null && trip.notes!.trim().isNotEmpty) ...[
@@ -160,29 +245,6 @@ class _TripDetailBody extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  String? _kicker() {
-    if (trip.destination != null && trip.destination!.isNotEmpty) {
-      final country = trip.country;
-      if (country != null && country.isNotEmpty) {
-        return '${trip.destination} · $country';
-      }
-      return trip.destination;
-    }
-    return trip.country?.isNotEmpty == true
-        ? trip.country
-        : trip.tripType.label;
-  }
-
-  String? _meta(AppLocalizations l10n) {
-    final s = trip.startDate;
-    final e = trip.endDate;
-    if (s != null && e != null) {
-      return '${Fmt.date(s)} → ${Fmt.date(e)}';
-    }
-    if (s != null) return Fmt.date(s);
-    return null;
   }
 
   Future<void> _openDrive(BuildContext context, String url) async {
@@ -223,104 +285,123 @@ class _TripDetailBody extends ConsumerWidget {
   }
 }
 
-class _StatsRow extends StatelessWidget {
-  const _StatsRow({required this.trip, required this.l10n});
+/// Il poster del viaggio, a tutta larghezza.
+class _DetailPoster extends StatelessWidget {
+  const _DetailPoster({required this.trip, required this.sink});
   final Trip trip;
-  final AppLocalizations l10n;
+  final ValueListenable<double> sink;
 
   @override
   Widget build(BuildContext context) {
-    final tiles = <StatTile>[];
-    final s = trip.startDate;
-    final e = trip.endDate;
-    if (s != null && e != null) {
-      final days = e.difference(s).inDays + 1;
-      tiles.add(
-        StatTile(value: '$days', label: days == 1 ? 'giorno' : 'giorni'),
-      );
-    }
-    tiles.add(
-      StatTile(
-        value: '${trip.travelerCount}',
-        label: trip.travelerCount == 1 ? 'viaggiatore' : 'viaggiatori',
-      ),
-    );
-    tiles.add(
-      StatTile(
-        value: trip.startDate != null ? Fmt.dayMonth(trip.startDate!) : '—',
-        label: 'partenza',
-        mono: true,
-      ),
-    );
-    return StatStrip(tiles: tiles);
-  }
-}
-
-/// Card di modulo con statistica live.
-class _ModuleCard extends StatelessWidget {
-  const _ModuleCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.progress,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-  final double? progress;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final scheme = context.scheme;
-    return ItineraCard(
-      onTap: onTap,
-      accentEdge: tokens.accent,
-      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-      child: Row(
+    final c = trip.tripType.posterColors;
+    final place = tripPlaceLine(trip);
+    return LayoutBuilder(
+      builder: (context, box) => Stack(
+        fit: StackFit.expand,
         children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: tokens.accentSoft,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: tokens.accent),
+          PosterHero(
+            tripId: trip.id,
+            child: PosterArt(type: trip.tripType, alive: true, sink: sink),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: context.texts.titleMedium),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: context.texts.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
+          Positioned(
+            left: 20,
+            right: 20,
+            top: MediaQuery.paddingOf(context).top + kToolbarHeight + 4,
+            // Svanisce scorrendo, prima di arrivare sotto le icone in alto.
+            child: ValueListenableBuilder<double>(
+              valueListenable: sink,
+              builder: (context, v, child) =>
+                  Opacity(opacity: (1 - v * 5).clamp(0.0, 1.0), child: child),
+              child: Text(
+                trip.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: context.texts.displaySmall?.copyWith(
+                  fontSize: box.maxWidth * 0.105,
+                  height: 1.02,
+                  color: c.foreground,
                 ),
-                if (progress != null) ...[
-                  const SizedBox(height: 10),
-                  MeterBar(value: progress!),
-                ],
-              ],
+              ),
             ),
           ),
-          const SizedBox(width: 6),
-          Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+          if (place.isNotEmpty)
+            Positioned(
+              left: 20,
+              right: 20,
+              bottom: 24,
+              child: Text(
+                place,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.texts.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: c.lowerForeground,
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
-class _PackingModuleCard extends ConsumerWidget {
-  const _PackingModuleCard({required this.tripId});
+/// Stato, durata e persone del viaggio.
+class _FactsRow extends StatelessWidget {
+  const _FactsRow({required this.trip});
+  final Trip trip;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = trip.startDate;
+    final e = trip.endDate;
+    final days = s != null && e != null ? e.difference(s).inDays + 1 : null;
+    final people = trip.travelerCount;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          PosterPill(tripStatusLabel(trip)),
+          const SizedBox(width: 8),
+          if (days != null) ...[
+            _OutlinePill(days == 1 ? '1 giorno' : '$days giorni'),
+            const SizedBox(width: 8),
+          ],
+          _OutlinePill(people == 1 ? '1 persona' : '$people persone'),
+        ],
+      ),
+    );
+  }
+}
+
+class _OutlinePill extends StatelessWidget {
+  const _OutlinePill(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+      decoration: ShapeDecoration(
+        shape: StadiumBorder(
+          side: BorderSide(color: context.scheme.onSurface, width: 1.5),
+        ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontFamily: context.tokens.displayFont,
+          fontWeight: FontWeight.w700,
+          fontSize: 15,
+          height: 1.2,
+          color: context.scheme.onSurface,
+        ),
+      ),
+    );
+  }
+}
+
+class _PackingTile extends ConsumerWidget {
+  const _PackingTile({required this.tripId});
   final String tripId;
 
   @override
@@ -331,21 +412,25 @@ class _PackingModuleCard extends ConsumerWidget {
     final packed = items
         .where((i) => i.packedCount >= i.quantity && i.quantity > 0)
         .length;
-    final subtitle = total == 0
-        ? 'Prepara e spunta il bagaglio'
-        : '$packed di $total oggetti in valigia';
-    return _ModuleCard(
-      icon: Icons.luggage_outlined,
+    return PosterTile(
+      color: Cartolina.sole,
+      value: total == 0 ? null : '$packed/$total',
       title: l10n.sectionPacking,
-      subtitle: subtitle,
-      progress: total == 0 ? null : packed / total,
+      note: total == 0 ? 'Prepara e spunta il bagaglio' : null,
       onTap: () => context.push('/trip/$tripId/packing'),
+      child: total == 0
+          ? null
+          : MeterBar(
+              value: packed / total,
+              color: Cartolina.inchiostro,
+              track: const Color(0x3011153A),
+            ),
     );
   }
 }
 
-class _TransportModuleCard extends ConsumerWidget {
-  const _TransportModuleCard({required this.tripId});
+class _TransportTile extends ConsumerWidget {
+  const _TransportTile({required this.tripId});
   final String tripId;
 
   @override
@@ -356,72 +441,118 @@ class _TransportModuleCard extends ConsumerWidget {
     final spent = expenses
         .where((e) => e.status == CostStatus.actual)
         .fold<int>(0, (a, e) => a + e.amountCents);
-    final parts = <String>[];
-    if (segments.isNotEmpty) {
-      parts.add(
-        segments.length == 1 ? '1 tratta' : '${segments.length} tratte',
-      );
-    }
-    if (spent > 0) parts.add('${Fmt.currencyCents(spent)} spesi');
-    final subtitle = parts.isEmpty
-        ? 'Tratte, carburante e spese'
-        : parts.join(' · ');
-    return _ModuleCard(
-      icon: Icons.route_outlined,
+    final note = segments.isEmpty
+        ? (spent > 0 ? null : 'Tratte, carburante e spese')
+        : (segments.length == 1 ? '1 tratta' : '${segments.length} tratte');
+    return PosterTile(
+      color: Cartolina.laguna,
+      value: spent > 0 ? Fmt.currencyCents(spent) : null,
       title: l10n.sectionTransport,
-      subtitle: subtitle,
+      note: note,
       onTap: () => context.push('/trip/$tripId/transport'),
     );
   }
 }
 
-class _BachecaModuleCard extends ConsumerWidget {
-  const _BachecaModuleCard({required this.tripId});
-  final String tripId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    final files = ref.watch(tripFilesProvider(tripId)).value ?? const [];
-    final subtitle = files.isEmpty
-        ? l10n.bachecaModuleSubtitle
-        : (files.length == 1 ? '1 file' : '${files.length} file');
-    return _ModuleCard(
-      icon: Icons.folder_shared_outlined,
-      title: l10n.bachecaTitle,
-      subtitle: subtitle,
-      onTap: () => context.push('/trip/$tripId/files'),
-    );
-  }
-}
-
-class _ItineraryModuleCard extends ConsumerWidget {
-  const _ItineraryModuleCard({required this.tripId});
+class _ItineraryTile extends ConsumerWidget {
+  const _ItineraryTile({required this.tripId});
   final String tripId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final activities = ref.watch(activitiesProvider(tripId)).value ?? const [];
-    final days = ref.watch(itineraryDaysProvider(tripId)).value ?? const [];
-    final dayCount = days.where((d) => d.date != null).length;
-    final parts = <String>[];
-    if (activities.isNotEmpty) {
-      parts.add(
-        activities.length == 1 ? '1 attività' : '${activities.length} attività',
-      );
-    }
-    if (dayCount > 0) {
-      parts.add(dayCount == 1 ? '1 giorno' : '$dayCount giorni');
-    }
-    final subtitle = parts.isEmpty
-        ? 'Programma giorno per giorno'
-        : parts.join(' · ');
-    return _ModuleCard(
-      icon: Icons.map_outlined,
+    final days = <DateTime>[
+      for (final d
+          in ref.watch(itineraryDaysProvider(tripId)).value ??
+              const <ItineraryDay>[])
+        if (d.date != null) d.date!,
+    ];
+    final now = DateTime.now();
+    bool isToday(DateTime d) =>
+        d.year == now.year && d.month == now.month && d.day == now.day;
+    final highlight = days.any(isToday) ? null : days.firstOrNull;
+    return PosterTile(
+      color: Cartolina.cobalto,
+      foreground: Colors.white,
       title: l10n.sectionItinerary,
-      subtitle: subtitle,
+      note: activities.isEmpty
+          ? 'Programma giorno per giorno'
+          : (activities.length == 1
+                ? '1 attività'
+                : '${activities.length} attività'),
       onTap: () => context.push('/trip/$tripId/itinerary'),
+      child: days.isEmpty
+          ? null
+          : SizedBox(
+              height: 52,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: days.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  final d = days[i];
+                  final on = isToday(d) || d == highlight;
+                  return Container(
+                    width: 46,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: on ? Cartolina.sole : Cartolina.cobaltoScuro,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      '${d.day}',
+                      style: TextStyle(
+                        fontFamily: context.tokens.displayFont,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 19,
+                        color: on ? Cartolina.inchiostro : Colors.white,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+    );
+  }
+}
+
+class _PlacesTile extends ConsumerWidget {
+  const _PlacesTile({required this.tripId});
+  final String tripId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final routes = ref.watch(routesProvider(tripId)).value ?? const [];
+    return PosterTile(
+      color: Cartolina.corallo,
+      value: routes.isEmpty ? null : '${routes.length}',
+      title: l10n.sectionExplore,
+      note: routes.isEmpty ? l10n.exploreModuleSubtitle : null,
+      onTap: () => context.push('/trip/$tripId/explore'),
+    );
+  }
+}
+
+class _BachecaTile extends ConsumerWidget {
+  const _BachecaTile({required this.tripId});
+  final String tripId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final files = ref.watch(tripFilesProvider(tripId)).value ?? const [];
+    final scheme = context.scheme;
+    return PosterTile(
+      color: scheme.surfaceContainerLow,
+      foreground: scheme.onSurface,
+      borderColor: scheme.onSurface,
+      valueColor: context.tokens.accent,
+      value: files.isEmpty ? null : '${files.length}',
+      title: l10n.bachecaTitle,
+      note: files.isEmpty ? l10n.bachecaModuleSubtitle : 'file condivisi',
+      onTap: () => context.push('/trip/$tripId/files'),
     );
   }
 }

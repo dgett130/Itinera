@@ -3,13 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
 import '../../ui/widgets.dart';
 import '../trip/trip_providers.dart';
 import 'notifications_providers.dart';
 import 'notifications_repository.dart';
 
 /// Preferenze notifiche: master + toggle per categoria. L'utente decide se e
-/// quali notifiche ricevere; le preferenze sono su Supabase, cosi' il server
+/// quali notifiche ricevere; le preferenze sono su Supabase, così il server
 /// (Edge Function) le rispetta prima di inviare il push.
 class NotificationPrefsScreen extends ConsumerStatefulWidget {
   const NotificationPrefsScreen({super.key});
@@ -59,129 +60,200 @@ class _NotificationPrefsScreenState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final p = _prefs;
+    const sectionPadding = EdgeInsets.fromLTRB(0, 16, 0, 10);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.notificationsPrefsTitle)),
-      body: !_loaded || p == null
-          ? const LoadingView()
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-              children: [
-                _SwitchCard(
-                  title: l10n.notificationsPushMaster,
-                  subtitle: l10n.notificationsPushMasterHint,
-                  value: p.pushEnabled,
-                  onChanged: (v) => _update(p.copyWith(pushEnabled: v)),
-                ),
-                const SizedBox(height: 8),
-                SectionHeader(l10n.notificationsCategories),
-                _SwitchCard(
-                  title: l10n.notificationsFriendRequests,
-                  icon: Icons.person_add_alt_1_outlined,
-                  value: p.friendRequests,
-                  enabled: p.pushEnabled,
-                  onChanged: (v) => _update(p.copyWith(friendRequests: v)),
-                ),
-                const SizedBox(height: 8),
-                _SwitchCard(
-                  title: l10n.notificationsSharedTrips,
-                  icon: Icons.card_travel_outlined,
-                  value: p.sharedTrips,
-                  enabled: p.pushEnabled,
-                  onChanged: (v) => _update(p.copyWith(sharedTrips: v)),
-                ),
-                const SizedBox(height: 8),
-                _SwitchCard(
-                  title: l10n.notificationsNewDocuments,
-                  icon: Icons.folder_shared_outlined,
-                  value: p.newDocuments,
-                  enabled: p.pushEnabled,
-                  onChanged: (v) => _update(p.copyWith(newDocuments: v)),
-                ),
-                const SizedBox(height: 8),
-                _SwitchCard(
-                  title: l10n.notificationsSystemMessages,
-                  icon: Icons.campaign_outlined,
-                  value: p.systemMessages,
-                  enabled: p.pushEnabled,
-                  onChanged: (v) => _update(p.copyWith(systemMessages: v)),
-                ),
-                SectionHeader(l10n.notificationsLocalSection),
-                _SwitchCard(
-                  title: l10n.notificationsDeadlines,
-                  subtitle: l10n.notificationsDeadlinesHint,
-                  icon: Icons.event_outlined,
-                  value: _deadlines,
-                  onChanged: _setDeadlines,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  l10n.notificationsPrefsFooter,
-                  style: context.texts.bodySmall?.copyWith(
-                    color: context.scheme.onSurfaceVariant,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PlainHeader(title: l10n.notificationsPrefsTitle, size: 30),
+          Expanded(
+            child: !_loaded || p == null
+                ? const _PrefsSkeleton()
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        StaggerIn(
+                          child: ItineraCard(
+                            padding: _cardPadding,
+                            child: _SwitchRow(
+                              title: l10n.notificationsPushMaster,
+                              subtitle: l10n.notificationsPushMasterHint,
+                              value: p.pushEnabled,
+                              onChanged: (v) =>
+                                  _update(p.copyWith(pushEnabled: v)),
+                            ),
+                          ),
+                        ),
+                        StaggerIn(
+                          index: 1,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SectionHeader(
+                                l10n.notificationsCategories,
+                                padding: sectionPadding,
+                              ),
+                              ItineraCard(
+                                padding: _cardPadding,
+                                child: Column(
+                                  children: [
+                                    _SwitchRow(
+                                      title: l10n.notificationsFriendRequests,
+                                      light: true,
+                                      value: p.friendRequests,
+                                      enabled: p.pushEnabled,
+                                      onChanged: (v) => _update(
+                                        p.copyWith(friendRequests: v),
+                                      ),
+                                    ),
+                                    _SwitchRow(
+                                      title: l10n.notificationsSharedTrips,
+                                      light: true,
+                                      value: p.sharedTrips,
+                                      enabled: p.pushEnabled,
+                                      onChanged: (v) =>
+                                          _update(p.copyWith(sharedTrips: v)),
+                                    ),
+                                    _SwitchRow(
+                                      title: l10n.notificationsNewDocuments,
+                                      light: true,
+                                      value: p.newDocuments,
+                                      enabled: p.pushEnabled,
+                                      onChanged: (v) =>
+                                          _update(p.copyWith(newDocuments: v)),
+                                    ),
+                                    _SwitchRow(
+                                      title: l10n.notificationsSystemMessages,
+                                      light: true,
+                                      value: p.systemMessages,
+                                      enabled: p.pushEnabled,
+                                      onChanged: (v) => _update(
+                                        p.copyWith(systemMessages: v),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        StaggerIn(
+                          index: 2,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SectionHeader(
+                                l10n.notificationsLocalSection,
+                                padding: sectionPadding,
+                              ),
+                              ItineraCard(
+                                padding: _cardPadding,
+                                child: _SwitchRow(
+                                  title: l10n.notificationsDeadlines,
+                                  subtitle: l10n.notificationsDeadlinesHint,
+                                  value: _deadlines,
+                                  onChanged: _setDeadlines,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                l10n.notificationsPrefsFooter,
+                                style: context.texts.bodySmall?.copyWith(
+                                  color: context.scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _SwitchCard extends StatelessWidget {
-  const _SwitchCard({
+const _cardPadding = EdgeInsets.symmetric(horizontal: 14, vertical: 6);
+
+/// Segnaposto mentre le preferenze arrivano dal server.
+class _PrefsSkeleton extends StatelessWidget {
+  const _PrefsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(20, 4, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Skeleton(height: 68, radius: 20),
+          SizedBox(height: 48),
+          Skeleton(height: 184, radius: 20),
+        ],
+      ),
+    );
+  }
+}
+
+/// Riga con interruttore: titolo in evidenza o, con [light], semplice voce di un
+/// elenco. Si attenua quando il push generale è spento.
+class _SwitchRow extends StatelessWidget {
+  const _SwitchRow({
     required this.title,
     required this.value,
     required this.onChanged,
     this.subtitle,
-    this.icon,
+    this.light = false,
     this.enabled = true,
   });
 
   final String title;
   final String? subtitle;
-  final IconData? icon;
+  final bool light;
   final bool value;
   final bool enabled;
   final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final scheme = context.scheme;
-    return ItineraCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      child: Opacity(
-        opacity: enabled ? 1 : 0.5,
-        child: Row(
-          children: [
-            if (icon != null) ...[
-              Icon(icon, color: tokens.accent),
-              const SizedBox(width: 14),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(title, style: context.texts.titleSmall),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle!,
-                      style: context.texts.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
+    return AnimatedOpacity(
+      opacity: enabled ? 1 : 0.5,
+      duration: Motion.of(context, Motion.standard),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: light
+                      ? context.texts.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        )
+                      : context.texts.titleMedium,
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    style: context.texts.bodySmall?.copyWith(
+                      color: context.scheme.onSurfaceVariant,
                     ),
-                  ],
+                  ),
                 ],
-              ),
+              ],
             ),
-            Switch(
-              value: value,
-              onChanged: enabled ? onChanged : null,
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          Switch(value: value, onChanged: enabled ? onChanged : null),
+        ],
       ),
     );
   }

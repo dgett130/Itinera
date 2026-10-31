@@ -32,15 +32,15 @@ class PackingRepository {
   }
 
   Stream<List<PackingTemplate>> watchTemplates() {
-    return (_db.select(_db.packingTemplates)
-          ..orderBy([(t) => OrderingTerm(expression: t.name)]))
-        .watch();
+    return (_db.select(
+      _db.packingTemplates,
+    )..orderBy([(t) => OrderingTerm(expression: t.name)])).watch();
   }
 
   Future<int> _nextItemOrder(String tripId) async {
-    final items = await (_db.select(_db.packingItems)
-          ..where((i) => i.tripId.equals(tripId)))
-        .get();
+    final items = await (_db.select(
+      _db.packingItems,
+    )..where((i) => i.tripId.equals(tripId))).get();
     if (items.isEmpty) return 0;
     return items.map((i) => i.sortOrder).reduce((a, b) => a > b ? a : b) + 1;
   }
@@ -54,7 +54,9 @@ class PackingRepository {
     int? unitWeightGrams,
     bool isEssential = false,
   }) async {
-    await _db.into(_db.packingItems).insert(
+    await _db
+        .into(_db.packingItems)
+        .insert(
           PackingItemsCompanion.insert(
             id: newId(),
             tripId: tripId,
@@ -90,7 +92,7 @@ class PackingRepository {
     );
   }
 
-  /// Spunta/despunta tutto: se non e' completo lo completa, altrimenti azzera.
+  /// Spunta/despunta tutto: se non è completo lo completa, altrimenti azzera.
   Future<void> togglePacked(PackingItem item) async {
     final newCount = item.packedCount >= item.quantity ? 0 : item.quantity;
     await (_db.update(_db.packingItems)..where((i) => i.id.equals(item.id)))
@@ -98,12 +100,54 @@ class PackingRepository {
   }
 
   Future<void> setPackedCount(String id, int count) async {
-    await (_db.update(_db.packingItems)..where((i) => i.id.equals(id)))
-        .write(PackingItemsCompanion(packedCount: Value(count)));
+    await (_db.update(_db.packingItems)..where((i) => i.id.equals(id))).write(
+      PackingItemsCompanion(packedCount: Value(count)),
+    );
   }
 
-  Future<void> deleteItem(String id) async {
-    await (_db.delete(_db.packingItems)..where((i) => i.id.equals(id))).go();
+  /// Elimina un oggetto e ne restituisce la copia per [restoreItem] (null se
+  /// non esiste più).
+  Future<PackingItem?> deleteItem(String id) {
+    return _db.transaction(() async {
+      final item = await (_db.select(
+        _db.packingItems,
+      )..where((i) => i.id.equals(id))).getSingleOrNull();
+      await (_db.delete(_db.packingItems)..where((i) => i.id.equals(id))).go();
+      return item;
+    });
+  }
+
+  /// Annulla [deleteItem]: la riga torna con lo stesso id e tutti i suoi dati.
+  /// Il trigger riporta la voce di `_outbox` da 'delete' a 'upsert': il push
+  /// azzera `deleted_at` anche se l'eliminazione era già arrivata su Supabase.
+  /// Restituisce false se il viaggio non esiste più (niente da ripristinare).
+  Future<bool> restoreItem(PackingItem item) {
+    return _db.transaction(() async {
+      if (!await _tripExists(item.tripId)) return false;
+      // Il bagaglio può essere sparito nel frattempo (es. da un altro device).
+      final bagId = item.bagId;
+      final keepBag = bagId != null && await _bagExists(bagId);
+      await _db
+          .into(_db.packingItems)
+          .insertOnConflictUpdate(
+            keepBag ? item : item.copyWith(bagId: const Value(null)),
+          );
+      return true;
+    });
+  }
+
+  Future<bool> _tripExists(String tripId) async {
+    final row = await (_db.select(
+      _db.trips,
+    )..where((t) => t.id.equals(tripId))).getSingleOrNull();
+    return row != null;
+  }
+
+  Future<bool> _bagExists(String bagId) async {
+    final row = await (_db.select(
+      _db.bags,
+    )..where((b) => b.id.equals(bagId))).getSingleOrNull();
+    return row != null;
   }
 
   // --- Bagagli ---
@@ -116,7 +160,9 @@ class PackingRepository {
     int? maxWeightGrams,
   }) async {
     final bags = await watchBags(tripId).first;
-    await _db.into(_db.bags).insert(
+    await _db
+        .into(_db.bags)
+        .insert(
           BagsCompanion.insert(
             id: newId(),
             tripId: tripId,
@@ -146,9 +192,35 @@ class PackingRepository {
     );
   }
 
-  Future<void> deleteBag(String id) async {
-    // Gli oggetti restano (bagId -> null via ON DELETE SET NULL).
-    await (_db.delete(_db.bags)..where((b) => b.id.equals(id))).go();
+  /// Elimina un bagaglio e restituisce quanto serve a [restoreBag] (null se
+  /// non esiste più).
+  Future<DeletedBag?> deleteBag(String id) {
+    return _db.transaction(() async {
+      final bag = await (_db.select(
+        _db.bags,
+      )..where((b) => b.id.equals(id))).getSingleOrNull();
+      if (bag == null) return null;
+      final items = await (_db.select(
+        _db.packingItems,
+      )..where((i) => i.bagId.equals(id))).get();
+      // Gli oggetti restano (bagId -> null via ON DELETE SET NULL).
+      await (_db.delete(_db.bags)..where((b) => b.id.equals(id))).go();
+      return DeletedBag(bag: bag, itemIds: [for (final i in items) i.id]);
+    });
+  }
+
+  /// Annulla [deleteBag]: il bagaglio torna con lo stesso id e riprende i suoi
+  /// oggetti. Quelli spostati altrove o eliminati nel frattempo restano come
+  /// sono. Restituisce false se il viaggio non esiste più.
+  Future<bool> restoreBag(DeletedBag deleted) {
+    return _db.transaction(() async {
+      if (!await _tripExists(deleted.bag.tripId)) return false;
+      await _db.into(_db.bags).insertOnConflictUpdate(deleted.bag);
+      await (_db.update(_db.packingItems)
+            ..where((i) => i.id.isIn(deleted.itemIds) & i.bagId.isNull()))
+          .write(PackingItemsCompanion(bagId: Value(deleted.bag.id)));
+      return true;
+    });
   }
 
   // --- Template ---
@@ -156,10 +228,11 @@ class PackingRepository {
   /// Applica un modello: aggiunge i suoi oggetti al viaggio, mappando la
   /// categoria per nome (fallback su "Varie" se assente).
   Future<int> applyTemplate(String tripId, String templateId) async {
-    final tplItems = await (_db.select(_db.packingTemplateItems)
-          ..where((t) => t.templateId.equals(templateId))
-          ..orderBy([(t) => OrderingTerm(expression: t.sortOrder)]))
-        .get();
+    final tplItems =
+        await (_db.select(_db.packingTemplateItems)
+              ..where((t) => t.templateId.equals(templateId))
+              ..orderBy([(t) => OrderingTerm(expression: t.sortOrder)]))
+            .get();
     final categories = await _db.select(_db.packingCategories).get();
     final byName = {for (final c in categories) c.name: c.id};
     final fallback = byName['Varie'] ?? categories.first.id;
@@ -192,7 +265,9 @@ class PackingRepository {
     final byId = {for (final c in categories) c.id: c.name};
 
     final templateId = newId();
-    await _db.into(_db.packingTemplates).insert(
+    await _db
+        .into(_db.packingTemplates)
+        .insert(
           PackingTemplatesCompanion.insert(
             id: templateId,
             name: name,
@@ -220,8 +295,15 @@ class PackingRepository {
   }
 }
 
-/// Peso totale di una borsa: tara + somma(peso unitario x quantita').
-/// [complete] e' false se qualche oggetto non ha peso (stima parziale).
+/// Bagaglio appena eliminato, con gli oggetti che conteneva: serve ad annullare.
+class DeletedBag {
+  const DeletedBag({required this.bag, required this.itemIds});
+  final Bag bag;
+  final List<String> itemIds;
+}
+
+/// Peso totale di una borsa: tara + somma(peso unitario x quantità).
+/// [complete] è false se qualche oggetto non ha peso (stima parziale).
 class BagWeight {
   const BagWeight({required this.grams, required this.complete});
   final int grams;

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_card">#FFFFFF</color>
+    <color name="widget_on_card">#11153A</color>
+    <color name="widget_muted">#565C85</color>
+    <color name="widget_accent">#1B3FD8</color>
+</resources>

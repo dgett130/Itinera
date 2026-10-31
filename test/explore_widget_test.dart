@@ -773,7 +773,7 @@ void main() {
     await _settle(tester, 14);
     await tester.enterText(find.byType(TextField), 'Borghese');
     await _settle(tester, 12);
-    await tester.tap(find.text('Galleria Borghese, Roma, Italia'));
+    await tester.tap(find.text('Galleria Borghese'));
     await _settle(tester, 10);
 
     // Scheda "vera": nome OSM, categoria, orari leggibili, ingresso.

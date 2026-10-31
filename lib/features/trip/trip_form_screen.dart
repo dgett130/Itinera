@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,7 +8,8 @@ import '../../core/enums.dart';
 import '../../core/format.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/itinera_theme.dart';
-import '../../ui/signatures.dart';
+import '../../ui/motion.dart';
+import '../../ui/posters.dart';
 import '../../ui/widgets.dart';
 import '../auth/auth_providers.dart';
 import '../places/country_autocomplete_field.dart';
@@ -48,13 +50,10 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   double? _destLat;
   double? _destLng;
 
-  /// null = automatico (dedotto dal tipo di viaggio).
+  /// Dato dei vecchi stili: non piu' usato, si conserva cosi' com'e'.
   TripStyle? _style;
 
   bool _loading = false;
-
-  TripStyle get _effectiveStyle =>
-      _style ?? ItineraTheme.suggestStyle(_tripType);
 
   @override
   void initState() {
@@ -98,7 +97,11 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   }
 
   Future<void> _pickDate({required bool isStart}) async {
-    final initial = (isStart ? _startDate : _endDate) ?? DateTime.now();
+    // Chiude la tastiera, che altrimenti si riapre al ritorno dal selettore.
+    FocusManager.instance.primaryFocus?.unfocus();
+    // Il ritorno parte dal mese della partenza, se c'e' gia'.
+    final initial =
+        (isStart ? _startDate : _endDate ?? _startDate) ?? DateTime.now();
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
@@ -208,159 +211,173 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final brightness = Theme.of(context).brightness;
     final googleLinked = ref.watch(googleLinkedProvider);
 
-    // Il form stesso anticipa l'identita' scelta: si ri-tematizza in tempo reale.
-    return Theme(
-      data: ItineraTheme.forStyle(_effectiveStyle, brightness),
-      child: Builder(
-        builder: (context) {
-          if (_loading) {
-            return const Scaffold(body: LoadingView());
-          }
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(widget.isEditing ? l10n.tripEdit : l10n.tripNew),
-            ),
-            body: Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
-                children: [
-                  SectionHeader('Il viaggio'),
-                  TextFormField(
-                    controller: _nameCtrl,
-                    decoration: InputDecoration(
-                      labelText: l10n.tripName,
-                      prefixIcon: const Icon(Icons.title),
-                    ),
-                    textInputAction: TextInputAction.next,
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? l10n.commonRequired
-                        : null,
-                  ),
-                  const SizedBox(height: 12),
-                  PlaceAutocompleteField(
-                    controller: _destCtrl,
-                    label: l10n.tripDestination,
-                    onSelected: (place) {
-                      _destLat = place.latitude;
-                      _destLng = place.longitude;
-                      if (place.country != null && place.country!.isNotEmpty) {
-                        _countryCtrl.text = place.country!;
-                      }
-                    },
-                    onManualEdit: (_) {
-                      // Modifica manuale del testo: invalida le coordinate.
-                      _destLat = null;
-                      _destLng = null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  CountryAutocompleteField(
-                    controller: _countryCtrl,
-                    label: l10n.tripCountry,
-                  ),
-                  SectionHeader('Quando'),
-                  Row(
+    return Builder(
+      builder: (context) {
+        if (_loading) {
+          return const Scaffold(body: LoadingView());
+        }
+        // Ricostruisce il poster quando si apre o chiude la tastiera.
+        MediaQuery.viewInsetsOf(context);
+        return Scaffold(
+          body: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                // Il poster resta in vista: si vede cambiare col tipo di viaggio.
+                _FormPoster(
+                  type: _tripType,
+                  name: _nameCtrl,
+                  note: widget.isEditing ? l10n.tripEdit : l10n.tripNew,
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
                     children: [
-                      Expanded(
-                        child: _DateField(
-                          label: l10n.tripStartDate,
-                          value: _startDate,
-                          onTap: () => _pickDate(isStart: true),
-                          onClear: () => setState(() => _startDate = null),
+                      SectionHeader('Il viaggio'),
+                      TextFormField(
+                        controller: _nameCtrl,
+                        decoration: InputDecoration(labelText: l10n.tripName),
+                        textInputAction: TextInputAction.next,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? l10n.commonRequired
+                            : null,
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: PlaceAutocompleteField(
+                              controller: _destCtrl,
+                              label: l10n.tripDestination,
+                              onSelected: (place) {
+                                _destLat = place.latitude;
+                                _destLng = place.longitude;
+                                if (place.country != null &&
+                                    place.country!.isNotEmpty) {
+                                  _countryCtrl.text = place.country!;
+                                }
+                              },
+                              onManualEdit: (_) {
+                                // Modifica manuale del testo: invalida le coordinate.
+                                _destLat = null;
+                                _destLng = null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 2,
+                            child: CountryAutocompleteField(
+                              controller: _countryCtrl,
+                              label: l10n.tripCountry,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SectionHeader('Quando'),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _DateField(
+                              label: l10n.tripStartDate,
+                              value: _startDate,
+                              onTap: () => _pickDate(isStart: true),
+                              onClear: () => setState(() => _startDate = null),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _DateField(
+                              label: l10n.tripEndDate,
+                              value: _endDate,
+                              onTap: () => _pickDate(isStart: false),
+                              onClear: () => setState(() => _endDate = null),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      _TravelerStepper(
+                        label: l10n.tripTravelers,
+                        value: _travelerCount,
+                        onChanged: (v) => setState(() => _travelerCount = v),
+                      ),
+                      SectionHeader(l10n.tripType),
+                      _TypeSelector(
+                        value: _tripType,
+                        onChanged: (t) => setState(() => _tripType = t),
+                      ),
+                      SectionHeader(l10n.tripClimate),
+                      _ClimateSelector(
+                        value: _climate,
+                        onChanged: (c) => setState(() => _climate = c),
+                      ),
+                      SectionHeader(l10n.tripDriveSection),
+                      TextFormField(
+                        controller: _driveCtrl,
+                        decoration: InputDecoration(
+                          labelText: l10n.tripDriveLink,
+                          hintText: 'https://drive.google.com/…',
+                        ),
+                        keyboardType: TextInputType.url,
+                        autocorrect: false,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        l10n.tripDriveHint,
+                        style: context.texts.bodySmall?.copyWith(
+                          color: context.scheme.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _DateField(
-                          label: l10n.tripEndDate,
-                          value: _endDate,
-                          onTap: () => _pickDate(isStart: false),
-                          onClear: () => setState(() => _endDate = null),
+                      if (googleLinked) ...[
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: OutlinedButton.icon(
+                            onPressed: _creatingDrive
+                                ? null
+                                : _createDriveFolder,
+                            icon: _creatingDrive
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.add_to_drive_outlined),
+                            label: Text(l10n.tripDriveCreate),
+                          ),
+                        ),
+                      ],
+                      SectionHeader(l10n.commonNotes),
+                      TextFormField(
+                        controller: _notesCtrl,
+                        decoration: const InputDecoration(
+                          hintText: 'Promemoria, link, idee…',
+                        ),
+                        maxLines: 4,
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        height: 56,
+                        child: FilledButton(
+                          onPressed: _save,
+                          child: Text(l10n.commonSave),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  _TravelerStepper(
-                    label: l10n.tripTravelers,
-                    value: _travelerCount,
-                    onChanged: (v) => setState(() => _travelerCount = v),
-                  ),
-                  SectionHeader(l10n.tripType),
-                  _TypeSelector(
-                    value: _tripType,
-                    onChanged: (t) => setState(() => _tripType = t),
-                  ),
-                  SectionHeader(l10n.tripClimate),
-                  _ClimateSelector(
-                    value: _climate,
-                    onChanged: (c) => setState(() => _climate = c),
-                  ),
-                  SectionHeader('Stile visivo'),
-                  _StylePicker(
-                    value: _style,
-                    suggested: ItineraTheme.suggestStyle(_tripType),
-                    onChanged: (s) => setState(() => _style = s),
-                  ),
-                  SectionHeader(l10n.tripDriveSection),
-                  TextFormField(
-                    controller: _driveCtrl,
-                    decoration: InputDecoration(
-                      labelText: l10n.tripDriveLink,
-                      hintText: 'https://drive.google.com/…',
-                      prefixIcon: const Icon(Icons.folder_shared_outlined),
-                    ),
-                    keyboardType: TextInputType.url,
-                    autocorrect: false,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    l10n.tripDriveHint,
-                    style: context.texts.bodySmall?.copyWith(
-                      color: context.scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  if (googleLinked) ...[
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: OutlinedButton.icon(
-                        onPressed: _creatingDrive ? null : _createDriveFolder,
-                        icon: _creatingDrive
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.add_to_drive_outlined),
-                        label: Text(l10n.tripDriveCreate),
-                      ),
-                    ),
-                  ],
-                  SectionHeader(l10n.commonNotes),
-                  TextFormField(
-                    controller: _notesCtrl,
-                    decoration: const InputDecoration(
-                      hintText: 'Promemoria, link, idee…',
-                    ),
-                    maxLines: 4,
-                  ),
-                  const SizedBox(height: 28),
-                  FilledButton.icon(
-                    onPressed: _save,
-                    icon: const Icon(Icons.check),
-                    label: Text(l10n.commonSave),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -382,18 +399,23 @@ class _DateField extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: const Icon(Icons.event),
+          floatingLabelBehavior: FloatingLabelBehavior.always,
           suffixIcon: value == null
-              ? const Icon(Icons.chevron_right, size: 20)
+              ? null
               : IconButton(
-                  icon: const Icon(Icons.clear, size: 18),
+                  icon: const Icon(Icons.close, size: 18),
+                  tooltip: 'Togli la data',
                   onPressed: onClear,
                 ),
         ),
-        child: Text(value == null ? '—' : Fmt.date(value!)),
+        child: Text(
+          value == null ? '—' : Fmt.date(value!),
+          style: context.texts.bodyLarge,
+        ),
       ),
     );
   }
@@ -412,29 +434,56 @@ class _TravelerStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: const Icon(Icons.group_outlined),
+    final tokens = context.tokens;
+    final scheme = context.scheme;
+    final button = Theme.of(context).filledButtonTheme.style;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: tokens.hairline),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('$value', style: context.texts.titleMedium),
-          Row(
-            children: [
-              IconButton.outlined(
-                icon: const Icon(Icons.remove),
-                visualDensity: VisualDensity.compact,
-                onPressed: value > 1 ? () => onChanged(value - 1) : null,
+          Expanded(
+            child: Text(
+              label,
+              style: context.texts.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w500,
               ),
-              const SizedBox(width: 6),
-              IconButton.outlined(
-                icon: const Icon(Icons.add),
-                visualDensity: VisualDensity.compact,
-                onPressed: () => onChanged(value + 1),
+            ),
+          ),
+          IconButton.outlined(
+            icon: const Icon(Icons.remove, size: 20),
+            tooltip: 'Meno',
+            style: IconButton.styleFrom(
+              side: BorderSide(
+                color: value > 1 ? scheme.onSurface : tokens.hairline,
+                width: 1.5,
               ),
-            ],
+            ),
+            onPressed: value > 1 ? () => onChanged(value - 1) : null,
+          ),
+          SizedBox(
+            width: 44,
+            child: Text(
+              '$value',
+              textAlign: TextAlign.center,
+              style: context.texts.titleLarge?.copyWith(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          IconButton.filled(
+            icon: const Icon(Icons.add, size: 20),
+            tooltip: 'Più',
+            style: IconButton.styleFrom(
+              backgroundColor: button?.backgroundColor?.resolve(const {}),
+              foregroundColor: button?.foregroundColor?.resolve(const {}),
+            ),
+            onPressed: () => onChanged(value + 1),
           ),
         ],
       ),
@@ -455,7 +504,6 @@ class _TypeSelector extends StatelessWidget {
       children: [
         for (final t in TripType.values)
           _PickChip(
-            icon: t.icon,
             label: t.label,
             selected: t == value,
             onTap: () => onChanged(t),
@@ -487,230 +535,168 @@ class _ClimateSelector extends StatelessWidget {
   }
 }
 
-/// Chip selezionabile con icona opzionale.
+/// Pillola selezionabile: gialla quando e' scelta.
 class _PickChip extends StatelessWidget {
   const _PickChip({
     required this.label,
     required this.selected,
     required this.onTap,
-    this.icon,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final scheme = context.scheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? tokens.accentSoft : scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? tokens.accent : tokens.hairline,
-            width: selected ? 1.6 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(
-                icon,
-                size: 17,
-                color: selected ? tokens.accent : scheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 7),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? tokens.accent : scheme.onSurface,
-              ),
+    final radius = BorderRadius.circular(20);
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        onTap: () {
+          if (!selected) HapticFeedback.selectionClick();
+          onTap();
+        },
+        borderRadius: radius,
+        child: AnimatedContainer(
+          duration: Motion.of(context, Motion.fast),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            color: selected ? Cartolina.sole : scheme.surfaceContainerLow,
+            borderRadius: radius,
+            border: Border.all(
+              color: selected ? Cartolina.sole : tokens.hairline,
             ),
-          ],
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: selected ? Cartolina.inchiostro : scheme.onSurface,
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-/// Selettore dello stile visivo: Automatico + i tre stili con anteprima.
-class _StylePicker extends StatelessWidget {
-  const _StylePicker({
-    required this.value,
-    required this.suggested,
-    required this.onChanged,
+/// Poster del viaggio in cima al form: cambia con il tipo e il nome. Si
+/// riduce quando c'e' la tastiera, per lasciare spazio ai campi.
+class _FormPoster extends StatelessWidget {
+  const _FormPoster({
+    required this.type,
+    required this.name,
+    required this.note,
   });
 
-  final TripStyle? value;
-  final TripStyle suggested;
-  final ValueChanged<TripStyle?> onChanged;
+  final TripType type;
+  final TextEditingController name;
+  final String note;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _AutoStyleTile(
-          selected: value == null,
-          suggested: suggested,
-          onTap: () => onChanged(null),
-        ),
-        const SizedBox(height: 10),
-        for (final s in TripStyle.values) ...[
-          _StyleOptionTile(
-            style: s,
-            selected: value == s,
-            onTap: () => onChanged(s),
-          ),
-          if (s != TripStyle.values.last) const SizedBox(height: 10),
-        ],
-      ],
-    );
-  }
-}
-
-class _AutoStyleTile extends StatelessWidget {
-  const _AutoStyleTile({
-    required this.selected,
-    required this.suggested,
-    required this.onTap,
-  });
-  final bool selected;
-  final TripStyle suggested;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final scheme = context.scheme;
-    final meta = ItineraTheme.meta(suggested);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: selected ? tokens.accentSoft : scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? tokens.accent : tokens.hairline,
-            width: selected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.auto_awesome, color: tokens.accent),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Automatico', style: context.texts.titleMedium),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Segue il tipo di viaggio → ${meta.name}',
-                    style: context.texts.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
+    final c = type.posterColors;
+    final media = MediaQuery.of(context);
+    final top = media.padding.top;
+    final typing = View.of(context).viewInsets.bottom > 0;
+    final width = media.size.width;
+    // La scena parte sotto la riga del titolo e la sua fascia bassa si taglia.
+    final sceneHeight = width * 240 / 372;
+    final height = top + (typing ? 56.0 : sceneHeight - 26);
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlayStyleOn(c.background),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+        child: AnimatedContainer(
+          duration: Motion.of(context, Motion.emphasis),
+          curve: Curves.easeOutCubic,
+          height: height,
+          // Il cielo sfuma; il paesaggio nuovo sale e quello vecchio svanisce.
+          color: c.background,
+          child: Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              Positioned(
+                left: 0,
+                right: 0,
+                top: top + 44,
+                height: sceneHeight,
+                child: AnimatedSwitcher(
+                  duration: Motion.of(context, Motion.emphasis),
+                  switchInCurve: Motion.spring,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation.drive(
+                      CurveTween(curve: const Interval(0, 0.4)),
+                    ),
+                    child: SlideTransition(
+                      position: animation.drive(
+                        Tween(begin: const Offset(0, 0.6), end: Offset.zero),
+                      ),
+                      child: child,
                     ),
                   ),
-                ],
-              ),
-            ),
-            if (selected) Icon(Icons.check_circle, color: tokens.accent),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StyleOptionTile extends StatelessWidget {
-  const _StyleOptionTile({
-    required this.style,
-    required this.selected,
-    required this.onTap,
-  });
-  final TripStyle style;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final scheme = context.scheme;
-    final meta = ItineraTheme.meta(style);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: selected ? tokens.accentSoft : scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? tokens.accent : tokens.hairline,
-            width: selected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            // Anteprima gradiente con le tacche/firma dello stile.
-            Container(
-              width: 78,
-              height: 78,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [meta.swatch.first, meta.swatch[1]],
+                  child: PosterArt(
+                    key: ValueKey(type),
+                    type: type,
+                    paintBackground: false,
+                  ),
                 ),
               ),
-              child: CustomPaint(
-                painter: _miniPainter(style, Colors.white),
-                child: Center(child: Icon(meta.icon, color: Colors.white)),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(meta.name, style: context.texts.titleMedium),
-                  const SizedBox(height: 2),
-                  Text(
-                    meta.tagline,
-                    style: context.texts.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
+              Positioned(
+                left: 4,
+                right: 20,
+                top: top + 4,
+                height: 48,
+                child: Row(
+                  children: [
+                    BackButton(color: c.foreground),
+                    Expanded(
+                      child: ValueListenableBuilder(
+                        valueListenable: name,
+                        builder: (context, value, _) =>
+                            AnimatedDefaultTextStyle(
+                              duration: Motion.of(context, Motion.standard),
+                              style: context.texts.titleLarge!.copyWith(
+                                fontSize: 26,
+                                color: c.foreground,
+                              ),
+                              child: Text(
+                                value.text.trim().isEmpty
+                                    ? type.label
+                                    : value.text.trim(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 14),
-              child: selected
-                  ? Icon(Icons.check_circle, color: tokens.accent)
-                  : Icon(Icons.circle_outlined, color: tokens.hairline),
-            ),
-          ],
+              if (!typing)
+                Positioned(
+                  left: 20,
+                  right: 20,
+                  bottom: 12,
+                  child: AnimatedDefaultTextStyle(
+                    duration: Motion.of(context, Motion.standard),
+                    style: context.texts.bodyMedium!.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: c.lowerForeground,
+                    ),
+                    child: Text(note, maxLines: 1),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
-
-  CustomPainter _miniPainter(TripStyle style, Color c) => switch (style) {
-    TripStyle.atlante => ContourPainter(c),
-    TripStyle.boardingPass => TicketPainter(c),
-    TripStyle.sunset => SunsetPreviewPainter(c),
-  };
 }

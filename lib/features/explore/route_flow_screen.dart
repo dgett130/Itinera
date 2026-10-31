@@ -1,22 +1,25 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../../app.dart';
 import '../../core/enums.dart';
 import '../../core/format.dart';
 import '../../core/visit_duration.dart';
 import '../../data/database.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
 import '../../ui/widgets.dart';
 import '../itinerary/itinerary_providers.dart';
 import '../places/geocoding_service.dart';
+import '../places/place_autocomplete_field.dart';
 import '../transport/routing_service.dart';
 import '../trip/trip_providers.dart';
 import 'explore_providers.dart';
@@ -34,8 +37,8 @@ import 'warning_settings_provider.dart';
 
 /// Costruzione di un percorso a passi: ① Scegli → ② Ordina → ③ Pianifica.
 ///
-/// Mappa a schermo pieno, indicatore dei passi in alto (tappabile: i passi
-/// si possono saltare), vassoio trascinabile col contenuto del passo e bottone
+/// Mappa a schermo pieno, pillola dei passi in alto (tappabile: i passi si
+/// possono saltare), vassoio trascinabile col contenuto del passo e bottone
 /// principale sempre in basso. Il percorso è salvato a ogni modifica (bozza
 /// finché non è nell'itinerario); uscendo senza tappe viene eliminato.
 class RouteFlowScreen extends ConsumerStatefulWidget {
@@ -60,7 +63,21 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
   static const _fallbackCenter = LatLng(41.9028, 12.4964);
   static const _pageSize = 12;
 
+  /// Altezza del vassoio in ogni passo e punti in cui si ferma trascinandolo.
+  static const _trayHeights = [0.60, 0.69, 0.76];
+  static const _traySnaps = [
+    [0.14, 0.60],
+    [0.14, 0.69],
+    [0.14, 0.76],
+  ];
+  static const _trayFull = 0.92;
+
   final _map = MapController();
+  final _line = GlobalKey<RouteLineState>();
+
+  /// Spilli già caduti e righe di "Ordina" già entrate.
+  final _seenPins = <String>{};
+  final _seenRows = <String>{};
 
   /// Contesto dentro lo stile del viaggio: pannelli e dialoghi aperti da qui
   /// ne ereditano colori e font.
@@ -73,6 +90,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
   late final ExploreRepository _explore;
 
   int _step = 0;
+  double _trayInitial = _trayHeights[0];
   bool _stepInited = false;
   bool _mapReady = false;
   bool _centerInited = false;
@@ -111,13 +129,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     _routes = ref.read(sightseeingRouteRepositoryProvider);
     _explore = ref.read(exploreRepositoryProvider);
     _searchFocus.addListener(() {
-      if (_searchFocus.hasFocus && _sheet.isAttached) {
-        _sheet.animateTo(
-          0.92,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
-      }
+      if (_searchFocus.hasFocus) _trayTo(_trayFull);
     });
   }
 
@@ -170,12 +182,11 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
         if (l.latitude != null && l.longitude != null)
           LatLng(l.latitude!, l.longitude!),
     ];
-    final bottom = MediaQuery.sizeOf(context).height * 0.45;
     if (pts.length >= 2) {
       _map.fitCamera(
         CameraFit.coordinates(
           coordinates: pts,
-          padding: EdgeInsets.fromLTRB(48, 140, 48, bottom),
+          padding: _fitPadding(_trayHeights[_step]),
         ),
       );
     } else if (pts.length == 1) {
@@ -352,6 +363,11 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
       );
   }
 
+  /// Avviso con "Annulla" e barra del tempo.
+  void _undoSnack(String msg, Future<void> Function() onUndo) {
+    showUndoSnackBar(context, message: msg, onUndo: () => unawaited(onUndo()));
+  }
+
   Future<void> _addPoi(PoiSuggestion p) async {
     final l10n = AppLocalizations.of(context);
     final locId = await _explore.savePoi(widget.tripId, p);
@@ -378,16 +394,10 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     final removed = await _routes.removeStop(stop.id);
     _scheduleRecompute();
     if (removed == null || !mounted) return;
-    _snack(
-      l10n.flowRemoved(name),
-      action: SnackBarAction(
-        label: l10n.flowUndo,
-        onPressed: () async {
-          await _routes.restoreStop(removed);
-          _scheduleRecompute();
-        },
-      ),
-    );
+    _undoSnack(l10n.flowRemoved(name), () async {
+      await _routes.restoreStop(removed);
+      _scheduleRecompute();
+    });
   }
 
   Future<void> _addPinAt(LatLng point) async {
@@ -397,18 +407,31 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
       context: _themed,
       builder: (context) => AlertDialog(
         title: Text(l10n.flowPinTitle),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(hintText: l10n.flowPinNameHint),
-          onSubmitted: (v) => Navigator.pop(context, v),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Lo trovi nel percorso con il nome che scegli.',
+              style: context.texts.bodyMedium?.copyWith(
+                color: context.scheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: 'Nome',
+                hintText: l10n.flowPinNameHint,
+              ),
+              onSubmitted: (v) => Navigator.pop(context, v),
+            ),
+          ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.commonCancel),
-          ),
+          _DialogCancel(l10n.commonCancel),
           FilledButton(
             onPressed: () => Navigator.pop(context, ctrl.text),
             child: Text(l10n.commonAdd),
@@ -483,16 +506,10 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     _scheduleRecompute();
     final split = await _routes.splitRoute(widget.routeId, fromStopId, name);
     if (split == null || !mounted) return;
-    _snack(
-      l10n.splitDone(name),
-      action: SnackBarAction(
-        label: l10n.flowUndo,
-        onPressed: () async {
-          _scheduleRecompute();
-          await _routes.undoSplit(widget.routeId, split);
-        },
-      ),
-    );
+    _undoSnack(l10n.splitDone(name), () async {
+      _scheduleRecompute();
+      await _routes.undoSplit(widget.routeId, split);
+    });
   }
 
   /// "Dividi in 2 giorni": taglia dove le due parti durano più o meno uguali.
@@ -509,7 +526,6 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
   /// ci porta la tappa, con Annulla.
   Future<void> _moveStop(SightseeingRouteStop stop, Location loc) async {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(_themed);
     // Elenchi tenuti vivi dal build (vedi "Sposta"): disponibili subito.
     final all = ref.read(routesProvider(widget.tripId)).value ?? const [];
     final tripStops =
@@ -525,57 +541,70 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
       stopCount[s.routeId] = (stopCount[s.routeId] ?? 0) + 1;
     }
     final days = {for (final d in dayList) d.id: d};
+    final fromName = ref.read(routeByIdProvider(widget.routeId)).value?.name;
     // Valore restituito: id del percorso, oppure '' per "Nuovo percorso".
-    final picked = await showModalBottomSheet<String>(
-      context: _themed,
-      showDragHandle: true,
-      useSafeArea: true,
-      isScrollControlled: true,
-      builder: (context) => Theme(
-        data: theme,
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.only(bottom: 16),
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l10n.moveTitle, style: context.texts.titleLarge),
-                  Text(
-                    loc.label,
-                    style: context.texts.bodyMedium?.copyWith(
+    final picked = await _showTraySheet<String>(
+      title: l10n.moveTitle,
+      subtitle: fromName == null ? loc.label : '${loc.label} lascia $fromName.',
+      builder: (context) => [
+        for (final (i, r) in others.indexed)
+          StaggerIn(
+            index: i,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: ItineraCard(
+                onTap: () => Navigator.pop(context, r.id),
+                padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
+                child: Row(
+                  children: [
+                    RouteModeTile(r.travelMode),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            r.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.texts.titleMedium,
+                          ),
+                          Text(
+                            [
+                              if (days[r.dayId] case final d?)
+                                _dayLabel(l10n, d)
+                              else
+                                l10n.moveDraft,
+                              l10n.routeStopsCount(stopCount[r.id] ?? 0),
+                            ].join(' · '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.texts.bodySmall?.copyWith(
+                              color: context.scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right,
                       color: context.scheme.onSurfaceVariant,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.add_road, color: context.tokens.accent),
-              title: Text(l10n.moveNewRoute),
-              subtitle: Text(l10n.moveNewRouteHint),
-              onTap: () => Navigator.pop(context, ''),
-            ),
-            for (final r in others)
-              ListTile(
-                leading: Icon(routeModeIcon(r.travelMode)),
-                title: Text(r.name),
-                subtitle: Text(
-                  [
-                    if (days[r.dayId] case final d?)
-                      _dayLabel(l10n, d)
-                    else
-                      l10n.moveDraft,
-                    l10n.routeStopsCount(stopCount[r.id] ?? 0),
-                  ].join(' · '),
+                  ],
                 ),
-                onTap: () => Navigator.pop(context, r.id),
               ),
-          ],
+            ),
+          ),
+        const SizedBox(height: 2),
+        SizedBox(
+          height: 52,
+          child: OutlinedButton.icon(
+            onPressed: () => Navigator.pop(context, ''),
+            icon: const Icon(Icons.add),
+            label: Text(l10n.moveNewRoute),
+          ),
         ),
-      ),
+      ],
     );
     if (picked == null || !mounted) return;
 
@@ -591,19 +620,16 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     _scheduleRecompute();
     final moved = await _routes.moveStop(stop.id, targetId);
     if (moved == null || !mounted) return;
-    _snack(
+    _undoSnack(
       moved.merged
           ? l10n.movedMerged(targetName ?? '')
           : l10n.movedTo(targetName ?? ''),
-      action: SnackBarAction(
-        label: l10n.flowUndo,
-        onPressed: () async {
-          _scheduleRecompute();
-          await _routes.undoMove(moved, targetId);
-          // Il percorso nuovo creato solo per lo spostamento torna via.
-          if (picked.isEmpty) await _routes.deleteIfEmpty(targetId);
-        },
-      ),
+      () async {
+        _scheduleRecompute();
+        await _routes.undoMove(moved, targetId);
+        // Il percorso nuovo creato solo per lo spostamento torna via.
+        if (picked.isEmpty) await _routes.deleteIfEmpty(targetId);
+      },
     );
   }
 
@@ -764,29 +790,18 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     _scheduleRecompute();
     await _routes.applyOptimizedOrder(widget.routeId, ids);
     if (!mounted) return;
-    _snack(
-      l10n.flowOrderChanged,
-      action: SnackBarAction(
-        label: l10n.flowUndo,
-        onPressed: () async {
-          _scheduleRecompute();
-          await _routes.reorder(widget.routeId, previous);
-        },
-      ),
-    );
+    _undoSnack(l10n.flowOrderChanged, () async {
+      _scheduleRecompute();
+      await _routes.reorder(widget.routeId, previous);
+    });
   }
 
   /// "Parti da": una tappa (bloccata in testa) oppure la più comoda.
   Future<void> _pickStart() async {
-    final theme = Theme.of(_themed);
-    await showModalBottomSheet<void>(
-      context: _themed,
-      showDragHandle: true,
-      useSafeArea: true,
-      isScrollControlled: true,
-      builder: (_) => Theme(
-        data: theme,
-        child: Consumer(
+    await _showTraySheet<void>(
+      title: AppLocalizations.of(context).flowStartPickTitle,
+      builder: (_) => [
+        Consumer(
           builder: (context, ref, _) {
             final l10n = AppLocalizations.of(context);
             final route = ref.watch(routeByIdProvider(widget.routeId)).value;
@@ -807,13 +822,10 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
               required String title,
               String? subtitle,
               required Future<void> Function() onTap,
-            }) => ListTile(
-              leading: Icon(
-                selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                color: selected ? context.tokens.accent : null,
-              ),
-              title: Text(title),
-              subtitle: subtitle == null ? null : Text(subtitle),
+            }) => _RadioRow(
+              selected: selected,
+              title: title,
+              subtitle: subtitle,
               onTap: () async {
                 final nav = Navigator.of(context);
                 _scheduleRecompute();
@@ -821,17 +833,9 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
                 nav.pop();
               },
             );
-            return ListView(
-              shrinkWrap: true,
-              padding: const EdgeInsets.only(bottom: 16),
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                  child: Text(
-                    l10n.flowStartPickTitle,
-                    style: context.texts.titleLarge,
-                  ),
-                ),
                 option(
                   selected: !fixed,
                   title: l10n.flowStartAny,
@@ -847,6 +851,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
                 if (fixed) ...[
                   const Divider(),
                   SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
                     title: Text(l10n.flowStartOnly),
                     subtitle: Text(l10n.flowStartOnlyHint),
                     value: refs.first.$1.visitMinutes == 0,
@@ -858,6 +863,41 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
             );
           },
         ),
+      ],
+    );
+  }
+
+  /// Foglio del flusso: titolo, sottotitolo facoltativo e righe.
+  Future<T?> _showTraySheet<T>({
+    required String title,
+    String? subtitle,
+    required List<Widget> Function(BuildContext context) builder,
+  }) {
+    final theme = Theme.of(_themed);
+    return showCartolinaSheet<T>(
+      context: _themed,
+      builder: (_) => Theme(
+        data: theme,
+        child: Builder(
+          builder: (context) => ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+            children: [
+              SheetHeader(title),
+              if (subtitle != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: context.texts.bodyMedium?.copyWith(
+                    color: context.scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              ...builder(context),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -866,9 +906,38 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
 
   void _goStep(int step) {
     FocusScope.of(context).unfocus();
+    _seenRows.clear();
     setState(() => _step = step);
     if (step >= 1) _fitStops();
     if (step == 2) unawaited(_ensureDays());
+    unawaited(_trayToStep(step));
+  }
+
+  /// Il vassoio prende l'altezza del passo. Si parte a fine frame: cambiando
+  /// passo cambiano anche i punti di aggancio, e l'aggancio deve venire prima.
+  Future<void> _trayToStep(int step) async {
+    await WidgetsBinding.instance.endOfFrame;
+    if (mounted && step == _step) _trayTo(_trayHeights[step]);
+  }
+
+  void _trayTo(double size) {
+    if (!_sheet.isAttached) return;
+    if (Motion.off(context)) {
+      _sheet.jumpTo(size);
+    } else {
+      unawaited(
+        _sheet.animateTo(size, duration: Motion.emphasis, curve: Motion.spring),
+      );
+    }
+  }
+
+  /// Margini per inquadrare le tappe nella parte di mappa libera dal vassoio
+  /// (alto [tray], in frazione): su schermi bassi la mappa non resta mai a zero.
+  EdgeInsets _fitPadding(double tray) {
+    final h = _map.camera.nonRotatedSize.height;
+    final top = math.min(MediaQuery.paddingOf(context).top + 72, h * 0.3);
+    final bottom = math.min(h * tray + 24, math.max(24.0, h - top - 72));
+    return EdgeInsets.fromLTRB(48, top, 48, bottom);
   }
 
   /// Inquadra tutte le tappe, lasciando libera la parte coperta dal vassoio.
@@ -891,12 +960,10 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
       _map.move(pts.first, 15);
       return;
     }
-    final size = MediaQuery.sizeOf(context);
-    final sheet = _sheet.isAttached ? _sheet.size : 0.45;
     _map.fitCamera(
       CameraFit.coordinates(
         coordinates: pts,
-        padding: EdgeInsets.fromLTRB(48, 140, 48, size.height * sheet + 24),
+        padding: _fitPadding(_trayHeights[_step]),
         maxZoom: 17,
       ),
     );
@@ -941,12 +1008,10 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
           controller: ctrl,
           autofocus: true,
           textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(labelText: l10n.flowRouteName),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.commonCancel),
-          ),
+          _DialogCancel(l10n.commonCancel),
           FilledButton(
             onPressed: () => Navigator.pop(context, ctrl.text.trim()),
             child: Text(l10n.commonSave),
@@ -963,20 +1028,31 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: _themed,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.routeDelete),
-        content: Text(l10n.routeDeleteConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.commonCancel),
+      builder: (context) {
+        final warning = context.tokens.warning;
+        return AlertDialog(
+          title: Text(l10n.routeDelete),
+          content: Text(
+            l10n.routeDeleteConfirm,
+            style: context.texts.bodyMedium?.copyWith(
+              color: context.scheme.onSurfaceVariant,
+            ),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l10n.commonDelete),
-          ),
-        ],
-      ),
+          actions: [
+            _DialogCancel(l10n.commonCancel, result: false),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: warning,
+                foregroundColor: warning.computeLuminance() > 0.4
+                    ? Cartolina.inchiostro
+                    : Colors.white,
+              ),
+              child: Text(l10n.commonDelete),
+            ),
+          ],
+        );
+      },
     );
     if (ok == true) {
       await _routes.deleteRoute(widget.routeId);
@@ -1001,7 +1077,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     ref.watch(itineraryDaysProvider(widget.tripId));
 
     if (trip == null || (route == null && routeAsync.isLoading)) {
-      return const Scaffold(body: LoadingView());
+      return const RouteLoadingView();
     }
     if (route == null) {
       return Scaffold(
@@ -1019,6 +1095,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     if (!_stepInited && stopsAsync.hasValue) {
       _stepInited = true;
       _step = widget.startNew || stops.length < 2 ? 0 : 1;
+      _trayInitial = _trayHeights[_step];
     }
     // Percorso calcolato prima dei tratti (o cambiato altrove): ricalcolo.
     if (!_legsChecked && stopsAsync.hasValue && locsAsync.hasValue) {
@@ -1044,8 +1121,8 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
       );
     }
 
-    return TripThemeScope(
-      style: ItineraTheme.effectiveStyle(trip),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlayStyleOn(context.scheme.surface),
       child: Builder(
         key: _themeKey,
         builder: (context) => Scaffold(
@@ -1092,6 +1169,11 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
               .toList()
         : const <PoiSuggestion>[];
     final hasDest = trip.destinationLat != null && trip.destinationLng != null;
+    // Un punto sparito e poi tornato (annulla, filtri) ricade.
+    _seenPins.retainAll({
+      for (final p in stopPts) p.$1.$1.id,
+      for (final p in pois) '${p.provider}/${p.externalId}',
+    });
 
     return FlutterMap(
       mapController: _map,
@@ -1106,39 +1188,46 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
         onMapReady: () => setState(() => _mapReady = true),
         onPositionChanged: _onMapMoved,
         onLongPress: (_, p) => _addPinAt(p),
+        onPointerDown: (_, _) => _line.currentState?.finish(),
       ),
       children: [
         TileLayer(
+          tileBuilder: Theme.of(context).brightness == Brightness.dark
+              ? darkModeTileBuilder
+              : null,
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'org.itinera.app',
         ),
         if (line.length >= 2)
-          PolylineLayer(
-            polylines: [
-              Polyline(
-                points: line,
-                strokeWidth: 5,
-                color: tokens.accent.withValues(alpha: 0.85),
-              ),
-            ],
-          ),
+          RouteLine(key: _line, points: line, color: tokens.accent),
         MarkerLayer(
           markers: [
-            for (final p in pois)
+            for (final (i, p) in pois.indexed)
               Marker(
                 point: LatLng(p.lat, p.lng),
                 width: 36,
                 height: 36,
-                child: GestureDetector(
-                  onTap: () => _openPoi(p, null, null),
-                  child: Center(
-                    child: Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: poiCategoryColor(p.category),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
+                child: PinDrop(
+                  key: ValueKey('${p.provider}/${p.externalId}'),
+                  id: '${p.provider}/${p.externalId}',
+                  seen: _seenPins,
+                  index: i,
+                  child: GestureDetector(
+                    onTap: () => _openPoi(p, null, null),
+                    child: Center(
+                      child: Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          color: Cartolina.corallo,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Icon(
+                          Icons.add,
+                          size: 14,
+                          color: Cartolina.inchiostro,
+                        ),
                       ),
                     ),
                   ),
@@ -1149,9 +1238,15 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
                 point: stopPts[i].$2,
                 width: 40,
                 height: 40,
-                child: RouteStopMarker(
-                  number: refs.indexOf(stopPts[i].$1) + 1,
-                  onTap: () => _openStop(stopPts[i].$1.$1, stopPts[i].$1.$2),
+                child: PinDrop(
+                  key: ValueKey(stopPts[i].$1.$1.id),
+                  id: stopPts[i].$1.$1.id,
+                  seen: _seenPins,
+                  index: i,
+                  child: RouteStopMarker(
+                    number: refs.indexOf(stopPts[i].$1) + 1,
+                    onTap: () => _openStop(stopPts[i].$1.$1, stopPts[i].$1.$2),
+                  ),
                 ),
               ),
           ],
@@ -1207,21 +1302,26 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _StepIndicator(
-                  step: _step,
-                  labels: [
-                    l10n.flowStepChoose,
-                    l10n.flowStepOrder,
-                    l10n.flowStepPlan,
-                  ],
-                  onTap: _goStep,
+                child: Material(
+                  color: context.scheme.surfaceContainerLow,
+                  elevation: 2,
+                  shape: const StadiumBorder(),
+                  child: PillSelector<int>(
+                    items: {
+                      0: l10n.flowStepChoose,
+                      1: l10n.flowStepOrder,
+                      2: l10n.flowStepPlan,
+                    },
+                    selected: _step,
+                    onChanged: _goStep,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               _RoundMenuButton(
                 items: [
-                  (Icons.edit_outlined, l10n.routeRename, () => _rename(route)),
-                  (Icons.delete_outline, l10n.routeDelete, _delete),
+                  (Icons.edit, 'Rinomina', false, () => _rename(route)),
+                  (Icons.delete, l10n.commonDelete, true, _delete),
                 ],
               ),
             ],
@@ -1231,16 +1331,36 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     );
   }
 
+  /// "Cerca qui" sta appena sopra il vassoio e lo segue quando si muove; se
+  /// sopra non c'è posto (vassoio tirato su) sparisce.
   Widget _searchHereButton(AppLocalizations l10n) {
-    return Positioned(
-      top: MediaQuery.paddingOf(context).top + 70,
-      left: 0,
-      right: 0,
-      child: Center(
-        child: FilledButton.icon(
-          onPressed: () => _discover(force: true),
-          icon: const Icon(Icons.search, size: 18),
-          label: Text(l10n.flowSearchHere),
+    final top = MediaQuery.paddingOf(context).top + 64;
+    final button = FilledButton.icon(
+      onPressed: () => _discover(force: true),
+      style: FilledButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        minimumSize: const Size(0, 40),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+      ),
+      icon: const Icon(Icons.search, size: 18),
+      label: Text(l10n.flowSearchHere),
+    );
+    return Positioned.fill(
+      child: LayoutBuilder(
+        builder: (context, box) => AnimatedBuilder(
+          animation: _sheet,
+          child: button,
+          builder: (context, child) {
+            final size = _sheet.isAttached ? _sheet.size : _trayInitial;
+            final above = box.maxHeight * size + 12;
+            if (box.maxHeight - above < top + 40) {
+              return const SizedBox.shrink();
+            }
+            return Padding(
+              padding: EdgeInsets.only(bottom: above),
+              child: Align(alignment: Alignment.bottomCenter, child: child),
+            );
+          },
         ),
       ),
     );
@@ -1252,20 +1372,11 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     SightseeingRoute route,
     List<SightseeingRouteStop> stops,
   ) {
-    final (label, icon, onPressed) = switch (_step) {
-      0 => (
-        l10n.flowNextOrder,
-        Icons.arrow_forward,
-        stops.isEmpty ? null : () => _goStep(1),
-      ),
-      1 => (
-        l10n.flowNextPlan,
-        Icons.arrow_forward,
-        stops.isEmpty ? null : () => _goStep(2),
-      ),
+    final (label, onPressed) = switch (_step) {
+      0 => (l10n.flowNextOrder, stops.isEmpty ? null : () => _goStep(1)),
+      1 => (l10n.flowNextPlan, stops.isEmpty ? null : () => _goStep(2)),
       _ => (
         l10n.routeAddToItinerary,
-        Icons.playlist_add,
         stops.isEmpty
             ? null
             : () {
@@ -1281,14 +1392,10 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     return Material(
       color: context.scheme.surface,
       child: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        minimum: const EdgeInsets.fromLTRB(20, 8, 20, 12),
         child: SizedBox(
           height: 56,
-          child: FilledButton.icon(
-            onPressed: onPressed,
-            icon: Icon(icon),
-            label: Text(label),
-          ),
+          child: FilledButton(onPressed: onPressed, child: Text(label)),
         ),
       ),
     );
@@ -1302,29 +1409,28 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     List<(SightseeingRouteStop, Location)> refs,
     Map<String, Location> locById,
   ) {
-    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     return DraggableScrollableSheet(
       controller: _sheet,
-      initialChildSize: 0.45,
+      initialChildSize: _trayInitial,
       minChildSize: 0.14,
-      maxChildSize: 0.92,
+      maxChildSize: _trayFull,
       snap: true,
-      snapSizes: const [0.14, 0.45],
+      snapSizes: _traySnaps[_step],
       builder: (context, scroll) => Material(
         color: context.scheme.surface,
         elevation: 8,
         shadowColor: Colors.black54,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         clipBehavior: Clip.antiAlias,
         child: ListView(
           controller: scroll,
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
           children: [
             Center(
               child: Container(
                 width: 40,
                 height: 4,
-                margin: const EdgeInsets.only(bottom: 12),
+                margin: const EdgeInsets.only(bottom: 14),
                 decoration: BoxDecoration(
                   color: context.tokens.hairline,
                   borderRadius: BorderRadius.circular(2),
@@ -1332,9 +1438,12 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
               ),
             ),
             AnimatedSwitcher(
-              duration: reduceMotion
-                  ? Duration.zero
-                  : const Duration(milliseconds: 220),
+              duration: Motion.of(context, Motion.standard),
+              // In alto: i passi hanno altezze diverse e non devono ballare.
+              layoutBuilder: (current, previous) => Stack(
+                alignment: Alignment.topCenter,
+                children: [...previous, ?current],
+              ),
               child: KeyedSubtree(
                 key: ValueKey(_step),
                 child: switch (_step) {
@@ -1359,6 +1468,11 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     Map<String, Location> locById,
   ) {
     final scheme = context.scheme;
+    OutlineInputBorder pill(Color color, {double width = 1}) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(26),
+          borderSide: BorderSide(color: color, width: width),
+        );
     final stopByKey = {
       for (final r in refs)
         if (r.$2.externalId != null)
@@ -1379,10 +1493,19 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
                 style: context.texts.titleLarge,
               ),
             ),
-            Text(
-              l10n.flowInRoute(refs.length),
-              style: context.texts.labelLarge?.copyWith(
-                color: context.tokens.accent,
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: Cartolina.cobalto,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                l10n.flowInRoute(refs.length),
+                style: context.texts.labelSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -1396,6 +1519,9 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
           decoration: InputDecoration(
             hintText: l10n.flowSearchHint,
             prefixIcon: const Icon(Icons.search),
+            border: pill(context.tokens.hairline),
+            enabledBorder: pill(context.tokens.hairline),
+            focusedBorder: pill(context.tokens.accent, width: 2),
             suffixIcon: _searchCtrl.text.isEmpty
                 ? null
                 : IconButton(
@@ -1404,49 +1530,45 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
                   ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         if (_nameResults != null)
           ..._nameResultsList(context, l10n)
         else ...[
-          SizedBox(
-            height: 48,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(l10n.exploreCategoryAll),
-                    selected: _filters.isEmpty,
-                    onSelected: (_) => setState(() {
-                      _filters.clear();
-                      _visible = _pageSize;
-                    }),
-                  ),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _FilterPill(
+                label: l10n.exploreCategoryAll,
+                selected: _filters.isEmpty,
+                onSelected: (_) => setState(() {
+                  _filters.clear();
+                  _visible = _pageSize;
+                }),
+              ),
+              for (final c in exploreFilterCategories)
+                _FilterPill(
+                  label: poiCategoryLabel(l10n, c),
+                  selected: _filters.contains(c),
+                  onSelected: (on) => setState(() {
+                    on ? _filters.add(c) : _filters.remove(c);
+                    _visible = _pageSize;
+                  }),
                 ),
-                for (final c in exploreFilterCategories)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      avatar: Icon(poiCategoryIcon(c), size: 18),
-                      label: Text(poiCategoryLabel(l10n, c)),
-                      selected: _filters.contains(c),
-                      onSelected: (on) => setState(() {
-                        on ? _filters.add(c) : _filters.remove(c);
-                        _visible = _pageSize;
-                      }),
-                    ),
-                  ),
-              ],
-            ),
+            ],
           ),
+          const SizedBox(height: 12),
           ..._discoveryStatus(context, l10n),
-          for (final p in pois.take(_visible))
-            _poiRow(
-              context,
-              l10n,
-              p,
-              stopByKey['${p.provider}/${p.externalId}'],
+          for (final (i, p) in pois.take(_visible).indexed)
+            StaggerIn(
+              key: ValueKey('${p.provider}/${p.externalId}'),
+              index: i,
+              child: _poiRow(
+                context,
+                l10n,
+                p,
+                stopByKey['${p.provider}/${p.externalId}'],
+              ),
             ),
           if (pois.length > _visible)
             Padding(
@@ -1493,10 +1615,10 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
           padding: const EdgeInsets.symmetric(vertical: 16),
           child: Column(
             children: [
-              Icon(
+              const IconTile(
                 Icons.travel_explore,
-                size: 40,
-                color: context.tokens.accent,
+                color: Cartolina.corallo,
+                round: true,
               ),
               const SizedBox(height: 8),
               Text(l10n.flowWhereTitle, style: context.texts.titleMedium),
@@ -1514,22 +1636,11 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     if (_loading) {
       return [
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: context.tokens.accent,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(l10n.exploreLoading, style: muted),
-            ],
-          ),
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Text(l10n.exploreLoading, style: muted),
         ),
+        const _PoiSkeleton(),
+        const _PoiSkeleton(),
       ];
     }
     final outcome = _outcome;
@@ -1589,14 +1700,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
 
   List<Widget> _nameResultsList(BuildContext context, AppLocalizations l10n) {
     if (_searchingName) {
-      return [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Center(
-            child: CircularProgressIndicator(color: context.tokens.accent),
-          ),
-        ),
-      ];
+      return const [_PoiSkeleton(), _PoiSkeleton()];
     }
     final results = _nameResults ?? const <PlaceResult>[];
     if (results.isEmpty) {
@@ -1613,15 +1717,24 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
       ];
     }
     return [
-      for (final r in results)
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          minTileHeight: 56,
-          leading: Icon(Icons.place_outlined, color: context.tokens.accent),
-          title: Text(r.label, maxLines: 2, overflow: TextOverflow.ellipsis),
-          subtitle: r.country != null ? Text(r.country!) : null,
-          onTap: () => _openNameResult(r),
+      ItineraCard(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (i, r) in results.indexed)
+              StaggerIn(
+                key: ValueKey('${r.label}/${r.latitude}/${r.longitude}'),
+                index: i,
+                offset: 12,
+                child: PlaceResultRow(
+                  place: r,
+                  onTap: () => _openNameResult(r),
+                ),
+              ),
+          ],
         ),
+      ),
     ];
   }
 
@@ -1632,35 +1745,47 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     (SightseeingRouteStop, Location)? inRoute,
   ) {
     final dist = _distanceLabel(p.lat, p.lng);
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      minTileHeight: 60,
-      onTap: () => _openPoi(p, inRoute?.$1, inRoute?.$2),
-      leading: CircleAvatar(
-        backgroundColor: poiCategoryColor(p.category).withValues(alpha: 0.15),
-        child: Icon(
-          poiCategoryIcon(p.category),
-          color: poiCategoryColor(p.category),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: ItineraCard(
+        onTap: () => _openPoi(p, inRoute?.$1, inRoute?.$2),
+        padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+        child: Row(
+          children: [
+            PoiTile(p.category),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    p.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.texts.titleMedium,
+                  ),
+                  Text(
+                    [poiCategoryLabel(l10n, p.category), ?dist].join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.texts.bodySmall?.copyWith(
+                      color: context.scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: inRoute != null
+                  ? l10n.placeRemoveFromRoute
+                  : l10n.placeAddToRoute,
+              icon: _PickDot(picked: inRoute != null),
+              onPressed: () => inRoute != null
+                  ? _removeStop(inRoute.$1, inRoute.$2.label)
+                  : _addPoi(p),
+            ),
+          ],
         ),
-      ),
-      title: Text(p.name, maxLines: 2, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        [poiCategoryLabel(l10n, p.category), ?dist].join(' · '),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: IconButton(
-        iconSize: 30,
-        tooltip: inRoute != null
-            ? l10n.placeRemoveFromRoute
-            : l10n.placeAddToRoute,
-        icon: Icon(
-          inRoute != null ? Icons.check_circle : Icons.add_circle_outline,
-          color: context.tokens.accent,
-        ),
-        onPressed: () => inRoute != null
-            ? _removeStop(inRoute.$1, inRoute.$2.label)
-            : _addPoi(p),
       ),
     );
   }
@@ -1682,10 +1807,10 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
         if (r.$2.latitude != null && r.$2.longitude != null) r.$1.id,
     ];
     final legs = _currentLegs(route, coordIds.length);
-    // Tratto che arriva a ciascuna tappa (dalla tappa con coordinate prima).
-    final legTo = <String, RouteLeg>{
+    // Tratto che parte da ciascuna tappa (verso la tappa con coordinate dopo).
+    final legFrom = <String, RouteLeg>{
       if (legs != null)
-        for (var c = 1; c < coordIds.length; c++) coordIds[c]: legs[c - 1],
+        for (var c = 1; c < coordIds.length; c++) coordIds[c - 1]: legs[c - 1],
     };
     final candidate = refs.length >= 3 ? _fasterOrder(route, refs) : null;
     final suggestion = candidate == null
@@ -1716,35 +1841,142 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
         if (suggestion != null) ...[
           const SizedBox(height: 10),
           ItineraCard(
-            padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+            color: Cartolina.sole,
+            borderColor: Colors.transparent,
+            padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
             child: Row(
               children: [
-                Icon(Icons.lightbulb_outline, color: context.tokens.accent),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     l10n.flowSuggestion(formatDuration(l10n, suggestion.saved)),
-                    style: context.texts.bodyMedium,
+                    style: context.texts.bodyMedium?.copyWith(
+                      color: Cartolina.inchiostro,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-                TextButton(
+                const SizedBox(width: 8),
+                FilledButton(
                   onPressed: () => _applyFasterOrder(suggestion.ids, [
                     for (final r in refs) r.$1.id,
                   ]),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Cartolina.inchiostro,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    minimumSize: const Size(0, 40),
+                    textStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   child: Text(l10n.flowApply),
                 ),
               ],
             ),
           ),
         ],
+        const SizedBox(height: 12),
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
+          // La riga trascinata resta una card, senza ombra quadrata attorno.
+          proxyDecorator: (child, _, _) =>
+              Material(type: MaterialType.transparency, child: child),
+          itemCount: refs.length,
+          onReorder: (oldIndex, newIndex) async {
+            if (newIndex > oldIndex) newIndex -= 1;
+            final ids = refs.map((r) => r.$1.id).toList();
+            ids.insert(newIndex, ids.removeAt(oldIndex));
+            _scheduleRecompute();
+            await _routes.reorder(widget.routeId, ids);
+          },
+          itemBuilder: (context, i) {
+            final (stop, loc) = refs[i];
+            final hasCoords = loc.latitude != null && loc.longitude != null;
+            final leg = legFrom[stop.id];
+            return _RowIn(
+              key: ValueKey(stop.id),
+              id: stop.id,
+              seen: _seenRows,
+              index: i,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: ItineraCard(
+                  onTap: () => _openStop(stop, loc),
+                  padding: const EdgeInsets.fromLTRB(12, 6, 2, 6),
+                  child: Row(
+                    children: [
+                      StopNumber(i + 1),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              loc.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.texts.titleMedium,
+                            ),
+                            if (!hasCoords)
+                              Text(
+                                l10n.placeNoCoords,
+                                style: context.texts.bodySmall?.copyWith(
+                                  color: context.scheme.error,
+                                ),
+                              )
+                            else if (stop.visitMinutes == 0)
+                              Text(
+                                i == 0 ? l10n.flowStartOnly : l10n.planPassOnly,
+                                style: muted,
+                              ),
+                            if (leg != null)
+                              Text(
+                                _legText(l10n, route, leg),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: muted,
+                              ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: l10n.placeRemoveFromRoute,
+                        icon: const Icon(Icons.close, size: 20),
+                        onPressed: () => _removeStop(stop, loc.label),
+                      ),
+                      ReorderableDragStartListener(
+                        index: i,
+                        child: const SizedBox(
+                          width: 40,
+                          height: 48,
+                          child: Icon(Icons.drag_handle, size: 22),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        if (legs != null && route.returnToStart && first != null)
+          RouteLegRow(
+            leg: legs.last,
+            mode: route.travelMode,
+            estimate: route.calcSource != DistanceSource.onlineRouting,
+            label: l10n.flowLegBack(first.$2.label),
+          ),
         if (first != null) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: 2),
           ItineraCard(
             onTap: _pickStart,
             padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
             child: Row(
               children: [
-                Icon(Icons.flag_outlined, color: context.tokens.accent),
+                Icon(Icons.flag, color: context.scheme.onSurfaceVariant),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -1765,133 +1997,26 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
             ),
           ),
         ],
-        const SizedBox(height: 12),
-        ReorderableListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          buildDefaultDragHandles: false,
-          itemCount: refs.length,
-          onReorder: (oldIndex, newIndex) async {
-            if (newIndex > oldIndex) newIndex -= 1;
-            final ids = refs.map((r) => r.$1.id).toList();
-            ids.insert(newIndex, ids.removeAt(oldIndex));
-            _scheduleRecompute();
-            await _routes.reorder(widget.routeId, ids);
-          },
-          itemBuilder: (context, i) {
-            final (stop, loc) = refs[i];
-            final hasCoords = loc.latitude != null && loc.longitude != null;
-            final leg = legTo[stop.id];
-            return Column(
-              key: ValueKey(stop.id),
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (leg != null)
-                  RouteLegRow(
-                    leg: leg,
-                    mode: route.travelMode,
-                    estimate: route.calcSource != DistanceSource.onlineRouting,
-                  ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: ItineraCard(
-                    onTap: () => _openStop(stop, loc),
-                    padding: const EdgeInsets.fromLTRB(10, 4, 4, 4),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 16,
-                          backgroundColor: context.tokens.accentSoft,
-                          child: Text(
-                            '${i + 1}',
-                            style: TextStyle(
-                              color: context.tokens.accent,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                loc.label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: context.texts.titleSmall,
-                              ),
-                              if (!hasCoords)
-                                Text(
-                                  l10n.placeNoCoords,
-                                  style: context.texts.bodySmall?.copyWith(
-                                    color: context.scheme.error,
-                                  ),
-                                )
-                              else if (stop.visitMinutes == 0)
-                                Text(
-                                  i == 0
-                                      ? l10n.flowStartOnly
-                                      : l10n.planPassOnly,
-                                  style: muted,
-                                ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: l10n.placeRemoveFromRoute,
-                          icon: const Icon(Icons.remove_circle_outline),
-                          onPressed: () => _removeStop(stop, loc.label),
-                        ),
-                        ReorderableDragStartListener(
-                          index: i,
-                          child: const SizedBox(
-                            width: 48,
-                            height: 48,
-                            child: Icon(Icons.drag_handle),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-        if (legs != null && route.returnToStart && first != null)
-          RouteLegRow(
-            leg: legs.last,
-            mode: route.travelMode,
-            estimate: route.calcSource != DistanceSource.onlineRouting,
-            label: l10n.flowLegBack(first.$2.label),
-          ),
         const SizedBox(height: 16),
-        Text(l10n.flowHowTitle, style: context.texts.titleSmall),
+        Text(l10n.flowHowTitle, style: context.texts.titleMedium),
         const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: SegmentedButton<RouteTravelMode>(
-            segments: [
-              for (final m in RouteTravelMode.values)
-                ButtonSegment(
-                  value: m,
-                  icon: Icon(routeModeIcon(m)),
-                  label: Text(routeModeLabel(l10n, m)),
-                ),
-            ],
-            selected: {route.travelMode},
-            showSelectedIcon: false,
-            onSelectionChanged: (s) async {
-              _scheduleRecompute();
-              await _routes.setMode(widget.routeId, s.first);
-            },
-          ),
+        PillSelector<RouteTravelMode>(
+          items: {
+            for (final m in RouteTravelMode.values) m: routeModeLabel(l10n, m),
+          },
+          selected: route.travelMode,
+          onChanged: (m) async {
+            _scheduleRecompute();
+            await _routes.setMode(widget.routeId, m);
+          },
         ),
         if (first != null && refs.length >= 2)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text(l10n.flowReturnTo(first.$2.label)),
+            title: Text(
+              l10n.flowReturnTo(first.$2.label),
+              style: context.texts.bodyMedium,
+            ),
             value: route.returnToStart,
             onChanged: (v) async {
               _scheduleRecompute();
@@ -1900,6 +2025,18 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
           ),
       ],
     );
+  }
+
+  /// "8 min a piedi · 650 m" (con "circa" se i tempi sono stimati).
+  String _legText(AppLocalizations l10n, SightseeingRoute route, RouteLeg leg) {
+    final seconds = leg.durationSeconds < 60 ? 60 : leg.durationSeconds;
+    final value =
+        '${formatDuration(l10n, seconds)} '
+        '${routeModePhrase(route.travelMode)} · '
+        '${formatDistance(l10n, leg.distanceMeters)}';
+    return route.calcSource == DistanceSource.onlineRouting
+        ? value
+        : l10n.flowAbout(value);
   }
 
   Widget _stats(
@@ -1914,27 +2051,20 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
       color: context.scheme.onSurfaceVariant,
     );
     return ItineraCard(
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(routeModeIcon(route.travelMode), color: context.tokens.accent),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  [
-                    if (route.distanceMeters != null)
-                      formatDistance(l10n, route.distanceMeters!),
-                    if (route.durationSeconds != null)
-                      formatDuration(l10n, route.durationSeconds!),
-                  ].join(' · '),
-                  style: context.texts.titleMedium,
-                ),
-                Text(_computing ? l10n.routeComputing : source, style: muted),
-              ],
-            ),
+          Text(
+            [
+              if (route.distanceMeters != null)
+                formatDistance(l10n, route.distanceMeters!),
+              if (route.durationSeconds != null)
+                formatDuration(l10n, route.durationSeconds!),
+            ].join(' · '),
+            style: context.texts.titleLarge?.copyWith(fontSize: 20),
           ),
+          Text(_computing ? l10n.routeComputing : source, style: muted),
         ],
       ),
     );
@@ -1962,58 +2092,26 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
     Location loc,
     bool first,
   ) async {
-    final theme = Theme.of(_themed);
     final l10n = AppLocalizations.of(context);
     const options = <int?>[null, 0, 15, 30, 45, 60, 90, 120, 180];
-    final picked = await showModalBottomSheet<({int? minutes})>(
-      context: _themed,
-      showDragHandle: true,
-      useSafeArea: true,
-      isScrollControlled: true,
-      builder: (context) => Theme(
-        data: theme,
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.only(bottom: 16),
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l10n.planVisitTitle, style: context.texts.titleLarge),
-                  Text(
-                    loc.label,
-                    style: context.texts.bodyMedium?.copyWith(
-                      color: context.scheme.onSurfaceVariant,
+    final picked = await _showTraySheet<({int? minutes})>(
+      title: l10n.planVisitTitle,
+      subtitle: loc.label,
+      builder: (context) => [
+        for (final m in options)
+          _RadioRow(
+            selected: m == stop.visitMinutes,
+            title: m == null
+                ? l10n.planVisitDefault(
+                    formatDuration(
+                      l10n,
+                      defaultVisitMinutes(loc.poiCategory) * 60,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            for (final m in options)
-              ListTile(
-                leading: Icon(
-                  m == stop.visitMinutes
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_off,
-                  color: m == stop.visitMinutes ? context.tokens.accent : null,
-                ),
-                title: Text(
-                  m == null
-                      ? l10n.planVisitDefault(
-                          formatDuration(
-                            l10n,
-                            defaultVisitMinutes(loc.poiCategory) * 60,
-                          ),
-                        )
-                      : visitLabel(l10n, m, first: first),
-                ),
-                onTap: () => Navigator.pop(context, (minutes: m)),
-              ),
-          ],
-        ),
-      ),
+                  )
+                : visitLabel(l10n, m, first: first),
+            onTap: () => Navigator.pop(context, (minutes: m)),
+          ),
+      ],
     );
     if (picked == null) return;
     await _routes.setVisitMinutes(stop.id, picked.minutes);
@@ -2021,37 +2119,17 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
 
   /// "In quale giorno?": elenco dei giorni (con data prima, poi gli altri).
   Future<void> _pickDay(List<ItineraryDay> days, String? selected) async {
-    final theme = Theme.of(_themed);
     final l10n = AppLocalizations.of(context);
-    final picked = await showModalBottomSheet<String>(
-      context: _themed,
-      showDragHandle: true,
-      useSafeArea: true,
-      isScrollControlled: true,
-      builder: (context) => Theme(
-        data: theme,
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.only(bottom: 16),
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: Text(l10n.flowWhichDay, style: context.texts.titleLarge),
-            ),
-            for (final d in days)
-              ListTile(
-                leading: Icon(
-                  d.id == selected
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_off,
-                  color: d.id == selected ? context.tokens.accent : null,
-                ),
-                title: Text(_dayLabel(l10n, d)),
-                onTap: () => Navigator.pop(context, d.id),
-              ),
-          ],
-        ),
-      ),
+    final picked = await _showTraySheet<String>(
+      title: l10n.flowWhichDay,
+      builder: (context) => [
+        for (final d in days)
+          _RadioRow(
+            selected: d.id == selected,
+            title: _dayLabel(l10n, d),
+            onTap: () => Navigator.pop(context, d.id),
+          ),
+      ],
     );
     if (picked != null && mounted) setState(() => _pickedDayId = picked);
   }
@@ -2094,14 +2172,12 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
       required String label,
       required String value,
       required VoidCallback onTap,
-      Widget? trailing,
+      Widget? clear,
     }) => ItineraCard(
       onTap: onTap,
-      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+      padding: const EdgeInsets.fromLTRB(14, 8, 12, 8),
       child: Row(
         children: [
-          Icon(icon, color: context.tokens.accent, size: 20),
-          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2111,18 +2187,14 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: context.texts.titleSmall,
+                  style: context.texts.bodyLarge,
                 ),
               ],
             ),
           ),
+          ?clear,
           // Alto come un IconButton: i due riquadri restano allineati.
-          trailing ??
-              const SizedBox(
-                width: 40,
-                height: 48,
-                child: Icon(Icons.expand_more, size: 20),
-              ),
+          SizedBox(height: 40, child: Icon(icon, size: 22)),
         ],
       ),
     );
@@ -2137,7 +2209,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
           children: [
             Expanded(
               child: field(
-                icon: Icons.event_outlined,
+                icon: Icons.calendar_today,
                 label: l10n.planDay,
                 value: selectedDay == null
                     ? l10n.planDayPick
@@ -2154,11 +2226,12 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
                     ? l10n.planStartNone
                     : Fmt.timeOfDayMinutes(start),
                 onTap: () => _pickStartTime(route),
-                trailing: start == null
+                clear: start == null
                     ? null
                     : IconButton(
                         tooltip: l10n.planStartClear,
-                        icon: const Icon(Icons.close, size: 20),
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.close, size: 18),
                         onPressed: () =>
                             _routes.setStartMinutes(widget.routeId, null),
                       ),
@@ -2167,40 +2240,31 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
           ],
         ),
         if (currentDay != null) ...[
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Icon(
-                Icons.event_available,
-                size: 18,
-                color: context.tokens.accent,
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  l10n.flowInItinerary(_dayLabel(l10n, currentDay)),
-                  style: context.texts.bodyMedium,
-                ),
-              ),
-            ],
-          ),
+          const SizedBox(height: 8),
+          Text(l10n.flowInItinerary(_dayLabel(l10n, currentDay)), style: muted),
         ],
         if (refs.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text(l10n.planScheduleTitle, style: context.texts.titleSmall),
-          const SizedBox(height: 8),
+          SectionHeader(
+            l10n.planScheduleTitle,
+            padding: const EdgeInsets.fromLTRB(0, 16, 0, 10),
+          ),
           if (schedule == null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                  Text(l10n.planCalculating, style: muted),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: LinearProgressIndicator(
+                      value: Motion.off(context) ? 0.5 : null,
+                      minHeight: 4,
+                      color: Cartolina.corallo,
+                      backgroundColor: context.tokens.hairline,
+                    ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(l10n.planCalculating, style: muted)),
                 ],
               ),
             ),
@@ -2213,7 +2277,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
             warnings: warnings,
           ),
           if (dayWarnings.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             RouteWarningsCard(
               warnings: dayWarnings,
               onSplit: schedule == null
@@ -2223,7 +2287,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
             const SizedBox(height: 8),
           ],
           if (schedule != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             RouteScheduleFooter(route: route, schedule: schedule),
             if (start == null) ...[
               const SizedBox(height: 8),
@@ -2231,21 +2295,15 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
             ],
           ],
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         ItineraCard(
           onTap: () => _rename(route),
-          child: Row(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l10n.flowRouteName, style: muted),
-                    Text(route.name, style: context.texts.titleMedium),
-                  ],
-                ),
-              ),
-              const Icon(Icons.edit_outlined),
+              Text(l10n.flowRouteName, style: muted),
+              Text(route.name, style: context.texts.bodyLarge),
             ],
           ),
         ),
@@ -2257,7 +2315,7 @@ class _RouteFlowScreenState extends ConsumerState<RouteFlowScreen> {
 
   String _dayLabel(AppLocalizations l10n, ItineraryDay d) {
     if (d.title?.trim().isNotEmpty == true) return d.title!;
-    if (d.date != null) return Fmt.dateShort(d.date!);
+    if (d.date != null) return routeDayShort(d.date!);
     return l10n.routeDayUnplanned;
   }
 }
@@ -2276,11 +2334,11 @@ class _RoundIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: context.scheme.surface,
+      color: context.scheme.surfaceContainerLow,
       shape: const CircleBorder(),
-      elevation: 3,
+      elevation: 2,
       child: IconButton(
-        icon: Icon(icon),
+        icon: Icon(icon, color: context.scheme.onSurface),
         tooltip: tooltip,
         onPressed: onPressed,
       ),
@@ -2290,26 +2348,36 @@ class _RoundIconButton extends StatelessWidget {
 
 class _RoundMenuButton extends StatelessWidget {
   const _RoundMenuButton({required this.items});
-  final List<(IconData, String, VoidCallback)> items;
+
+  /// Icona, etichetta, se è un'azione distruttiva, azione.
+  final List<(IconData, String, bool, VoidCallback)> items;
 
   @override
   Widget build(BuildContext context) {
+    final warning = context.tokens.warning;
     return Material(
-      color: context.scheme.surface,
+      color: context.scheme.surfaceContainerLow,
       shape: const CircleBorder(),
-      elevation: 3,
+      elevation: 2,
       child: PopupMenuButton<int>(
-        icon: const Icon(Icons.more_vert),
-        onSelected: (i) => items[i].$3(),
+        icon: Icon(Icons.more_vert, color: context.scheme.onSurface),
+        onSelected: (i) => items[i].$4(),
         itemBuilder: (_) => [
           for (var i = 0; i < items.length; i++)
             PopupMenuItem(
               value: i,
               child: Row(
                 children: [
-                  Icon(items[i].$1, size: 20),
+                  Icon(
+                    items[i].$1,
+                    size: 20,
+                    color: items[i].$3 ? warning : null,
+                  ),
                   const SizedBox(width: 12),
-                  Text(items[i].$2),
+                  Text(
+                    items[i].$2,
+                    style: items[i].$3 ? TextStyle(color: warning) : null,
+                  ),
                 ],
               ),
             ),
@@ -2319,88 +2387,156 @@ class _RoundMenuButton extends StatelessWidget {
   }
 }
 
-/// Indicatore dei tre passi (tappabile: i passi si possono saltare).
-class _StepIndicator extends StatelessWidget {
-  const _StepIndicator({
-    required this.step,
-    required this.labels,
-    required this.onTap,
-  });
-  final int step;
-  final List<String> labels;
-  final ValueChanged<int> onTap;
+/// "Annulla" dei dialoghi: nel colore del testo, non dell'accento.
+class _DialogCancel extends StatelessWidget {
+  const _DialogCancel(this.label, {this.result});
+
+  final String label;
+  final Object? result;
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final scheme = context.scheme;
-    return Material(
-      color: scheme.surface,
-      elevation: 3,
-      borderRadius: BorderRadius.circular(28),
-      clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        height: 48,
-        child: Row(
-          children: [
-            for (var i = 0; i < labels.length; i++)
-              Expanded(
-                child: Semantics(
-                  button: true,
-                  selected: i == step,
-                  label: '${i + 1}. ${labels[i]}',
-                  excludeSemantics: true,
-                  child: InkWell(
-                    onTap: () => onTap(i),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircleAvatar(
-                          radius: 11,
-                          backgroundColor: i <= step
-                              ? tokens.accent
-                              : scheme.surfaceContainerHighest,
-                          child: i < step
-                              ? Icon(
-                                  Icons.check,
-                                  size: 14,
-                                  color: tokens.onAccent,
-                                )
-                              : Text(
-                                  '${i + 1}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: i == step
-                                        ? tokens.onAccent
-                                        : scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            labels[i],
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: context.texts.labelLarge?.copyWith(
-                              fontWeight: i == step
-                                  ? FontWeight.w800
-                                  : FontWeight.w500,
-                              color: i == step
-                                  ? scheme.onSurface
-                                  : scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-          ],
+    return TextButton(
+      onPressed: () => Navigator.pop(context, result),
+      style: TextButton.styleFrom(foregroundColor: context.scheme.onSurface),
+      child: Text(label),
+    );
+  }
+}
+
+/// Riga con pallino di scelta, nei fogli del flusso.
+class _RadioRow extends StatelessWidget {
+  const _RadioRow({
+    required this.selected,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+  });
+
+  final bool selected;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        selected ? Icons.radio_button_checked : Icons.radio_button_off,
+        color: selected ? context.tokens.accent : null,
+      ),
+      title: Text(title),
+      subtitle: subtitle == null ? null : Text(subtitle!),
+      onTap: onTap,
+    );
+  }
+}
+
+/// Filtro per categoria: corallo quando è scelto.
+class _FilterPill extends StatelessWidget {
+  const _FilterPill({
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String label;
+  final bool selected;
+  final ValueChanged<bool> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilterChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: onSelected,
+      showCheckmark: false,
+      selectedColor: Cartolina.corallo,
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      side: BorderSide(
+        color: selected ? Cartolina.corallo : context.tokens.hairline,
+      ),
+      labelStyle: context.texts.labelLarge?.copyWith(
+        color: selected ? Cartolina.inchiostro : context.scheme.onSurface,
+      ),
+    );
+  }
+}
+
+/// Cerchio del luogo nell'elenco: "+" da aggiungere, spunta se è nel percorso.
+class _PickDot extends StatelessWidget {
+  const _PickDot({required this.picked});
+
+  final bool picked;
+
+  @override
+  Widget build(BuildContext context) {
+    final on = context.scheme.onSurface;
+    return AnimatedScale(
+      scale: picked ? 1 : 0.94,
+      duration: Motion.of(context, Motion.standard),
+      curve: Motion.pop,
+      child: AnimatedContainer(
+        duration: Motion.of(context, Motion.fast),
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: picked ? Cartolina.cobalto : Colors.transparent,
+          border: picked ? null : Border.all(color: on, width: 1.5),
+        ),
+        child: Icon(
+          picked ? Icons.check : Icons.add,
+          size: 20,
+          color: picked ? Colors.white : on,
         ),
       ),
     );
+  }
+}
+
+/// Segnaposto di una riga dell'elenco mentre si cerca.
+class _PoiSkeleton extends StatelessWidget {
+  const _PoiSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 10),
+      child: Skeleton(height: 66, radius: 20),
+    );
+  }
+}
+
+/// Ingresso in cascata che scatta una volta sola per [id]: trascinando una
+/// riga la lista ne crea una copia, e la copia non deve rifare l'ingresso.
+class _RowIn extends StatefulWidget {
+  const _RowIn({
+    super.key,
+    required this.id,
+    required this.seen,
+    required this.index,
+    required this.child,
+  });
+
+  final String id;
+  final Set<String> seen;
+  final int index;
+  final Widget child;
+
+  @override
+  State<_RowIn> createState() => _RowInState();
+}
+
+class _RowInState extends State<_RowIn> {
+  late final bool _enter = widget.seen.add(widget.id);
+
+  @override
+  Widget build(BuildContext context) {
+    return _enter
+        ? StaggerIn(index: widget.index, child: widget.child)
+        : widget.child;
   }
 }

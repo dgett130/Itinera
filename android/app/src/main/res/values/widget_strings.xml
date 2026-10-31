@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Il conto alla rovescia e il programma del tuo viaggio</string>
+    <string name="widget_empty_title">Itinera</string>
+    <string name="widget_open_packing">Apri la valigia</string>
+    <string name="widget_empty_headline">Nessun viaggio in programma</string>
+    <string name="widget_agenda_empty">Niente in programma</string>
+    <string name="widget_sample_name">Il mio viaggio</string>
+    <string name="widget_sample_headline">tra 9 giorni</string>
+    <string name="widget_sample_lower">valigia 23/40</string>
+    <string name="widget_sample_agenda">Oggi</string>
+</resources>

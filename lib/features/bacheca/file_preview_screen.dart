@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +13,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/format.dart';
 import '../../data/database.dart';
 import '../../l10n/app_localizations.dart';
+import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
 import '../../ui/widgets.dart';
 import 'bacheca_providers.dart';
 
@@ -29,7 +31,8 @@ class FilePreviewScreen extends ConsumerStatefulWidget {
 
 class _FilePreviewScreenState extends ConsumerState<FilePreviewScreen> {
   String? _url;
-  Uint8List? _bytes; // scaricati per l'anteprima PDF e per download/condivisione
+  Uint8List?
+  _bytes; // scaricati per l'anteprima PDF e per download/condivisione
   Object? _error;
   bool _busy = false;
 
@@ -130,96 +133,184 @@ class _FilePreviewScreenState extends ConsumerState<FilePreviewScreen> {
       ..showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  /// Scarica e condividi, nel colore della barra in cui stanno.
+  List<Widget> _actions(AppLocalizations l10n, {Color? color}) {
+    final ready = _url != null && !_busy;
+    return [
+      IconButton(
+        icon: _busy
+            ? SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: color),
+              )
+            : const Icon(Icons.download),
+        color: color,
+        disabledColor: color?.withValues(alpha: 0.4),
+        tooltip: l10n.bachecaDownload,
+        onPressed: ready ? _download : null,
+      ),
+      IconButton(
+        icon: const Icon(Icons.share),
+        color: color,
+        disabledColor: color?.withValues(alpha: 0.4),
+        tooltip: l10n.bachecaShare,
+        onPressed: ready ? _share : null,
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final ready = _url != null && !_busy;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.file.name, overflow: TextOverflow.ellipsis),
-        actions: [
-          IconButton(
-            icon: _busy
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.download_outlined),
-            tooltip: l10n.bachecaDownload,
-            onPressed: ready ? _download : null,
-          ),
-          IconButton(
-            icon: const Icon(Icons.ios_share),
-            tooltip: l10n.bachecaShare,
-            onPressed: ready ? _share : null,
-          ),
-        ],
-      ),
-      body: _buildBody(l10n),
-    );
-  }
-
-  Widget _buildBody(AppLocalizations l10n) {
-    if (_error != null) return ErrorView(_error!);
-    if (_url == null) return const LoadingView();
-
-    if (_isImage) {
-      return Container(
-        color: Colors.black,
-        alignment: Alignment.center,
-        child: InteractiveViewer(
-          minScale: 1,
-          maxScale: 5,
-          child: Image.network(
-            _url!,
-            fit: BoxFit.contain,
-            loadingBuilder: (context, child, progress) =>
-                progress == null ? child : const LoadingView(),
-            errorBuilder: (context, error, _) => ErrorView(error),
-          ),
-        ),
-      );
-    }
-
-    if (_isPdf) {
-      final bytes = _bytes;
-      if (bytes == null) return const LoadingView();
-      return PDFView(
-        pdfData: bytes,
-        swipeHorizontal: false,
-        fitPolicy: FitPolicy.WIDTH,
-      );
-    }
-
-    // Tipo non visualizzabile: scarica o apri esternamente.
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    final viewer = _error == null && (_isImage || _isPdf);
+    if (!viewer) {
+      return Scaffold(
+        body: Column(
           children: [
-            EmptyState(
-              icon: Icons.insert_drive_file_outlined,
+            PlainHeader(
               title: widget.file.name,
-              message: widget.file.sizeBytes != null
-                  ? Fmt.fileSize(widget.file.sizeBytes!)
-                  : null,
+              size: 28,
+              actions: _actions(l10n),
             ),
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              onPressed: _busy ? null : _download,
-              icon: const Icon(Icons.download_outlined),
-              label: Text(l10n.bachecaDownload),
-            ),
-            const SizedBox(height: 8),
-            TextButton.icon(
-              onPressed: _openExternal,
-              icon: const Icon(Icons.open_in_new),
-              label: Text(l10n.bachecaOpenExternal),
+            Expanded(
+              child: _error != null ? ErrorView(_error!) : _buildOther(l10n),
             ),
           ],
         ),
+      );
+    }
+
+    // Immagini e PDF stanno su un fondo scuro, in entrambi i temi.
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final Color background = _isImage || dark
+        ? Colors.black
+        : const Color(0xFF20255A);
+    return Scaffold(
+      backgroundColor: background,
+      appBar: AppBar(
+        backgroundColor: background,
+        foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light.copyWith(
+          statusBarColor: Colors.transparent,
+        ),
+        titleTextStyle: context.texts.titleMedium?.copyWith(
+          color: Colors.white,
+        ),
+        title: Text(widget.file.name, overflow: TextOverflow.ellipsis),
+        actions: _actions(l10n, color: Colors.white),
+      ),
+      body: _isImage ? _buildImage() : _buildPdf(),
+    );
+  }
+
+  Widget _buildImage() {
+    if (_url == null) return const _ImageSkeleton();
+    return Center(
+      child: InteractiveViewer(
+        minScale: 1,
+        maxScale: 5,
+        child: Image.network(
+          _url!,
+          fit: BoxFit.contain,
+          loadingBuilder: (context, child, progress) =>
+              progress == null ? child : const _ImageSkeleton(),
+          // Sul nero i testi dell'errore restano chiari anche in tema chiaro.
+          errorBuilder: (context, error, _) => Theme(
+            data: ItineraTheme.brand(Brightness.dark),
+            child: ErrorView(error),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPdf() {
+    final bytes = _bytes;
+    if (_url == null || bytes == null) return const _PdfSkeleton();
+    return PDFView(
+      pdfData: bytes,
+      swipeHorizontal: false,
+      fitPolicy: FitPolicy.WIDTH,
+    );
+  }
+
+  /// Tipo non visualizzabile: scarica o apri esternamente.
+  Widget _buildOther(AppLocalizations l10n) {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: EmptyState(
+            icon: Icons.description,
+            color: Cartolina.sole,
+            iconColor: Cartolina.inchiostro,
+            title: widget.file.name,
+            message: widget.file.sizeBytes != null
+                ? Fmt.fileSize(widget.file.sizeBytes!)
+                : null,
+            action: Column(
+              children: [
+                FilledButton.icon(
+                  onPressed: _busy || _url == null ? null : _download,
+                  icon: const Icon(Icons.download),
+                  label: Text(l10n.bachecaDownload),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _url == null ? null : _openExternal,
+                  icon: const Icon(Icons.open_in_new),
+                  label: Text(l10n.bachecaOpenExternal),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Segnaposto dell'immagine sul fondo nero.
+class _ImageSkeleton extends StatelessWidget {
+  const _ImageSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Opacity(
+        opacity: 0.3,
+        child: Skeleton(width: 260, height: 200, radius: 20),
+      ),
+    );
+  }
+}
+
+/// Segnaposto del PDF: un foglio con le righe di testo che respirano.
+class _PdfSkeleton extends StatelessWidget {
+  const _PdfSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+      padding: const EdgeInsets.all(24),
+      color: Colors.white,
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Skeleton(width: 150, height: 20),
+          SizedBox(height: 20),
+          Skeleton(height: 8),
+          SizedBox(height: 12),
+          Skeleton(width: 200, height: 8),
+          SizedBox(height: 12),
+          Skeleton(height: 8),
+          SizedBox(height: 12),
+          Skeleton(width: 160, height: 8),
+          SizedBox(height: 12),
+          Skeleton(width: 220, height: 8),
+        ],
       ),
     );
   }

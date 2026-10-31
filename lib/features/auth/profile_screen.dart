@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../providers.dart';
 import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
 import '../../ui/widgets.dart';
 import 'auth_providers.dart';
 
@@ -44,8 +46,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ref.invalidate(profileProvider);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Errore caricamento: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Errore caricamento: $e')));
       }
     } finally {
       if (mounted) setState(() => _uploadingAvatar = false);
@@ -58,14 +61,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       await ref.read(authServiceProvider).updateDisplayName(_nameCtrl.text);
       ref.invalidate(profileProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profilo aggiornato')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Profilo aggiornato')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -83,12 +87,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Elimina account'),
-        content: const Text(
+        content: Text(
           'Questa azione è irreversibile: tutti i tuoi viaggi, i dati e la '
           'condivisione verranno cancellati definitivamente. Continuare?',
+          style: ctx.texts.bodyMedium?.copyWith(
+            color: ctx.scheme.onSurfaceVariant,
+          ),
         ),
         actions: [
           TextButton(
+            style: TextButton.styleFrom(foregroundColor: ctx.scheme.onSurface),
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Annulla'),
           ),
@@ -123,9 +131,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     if (user == null) {
       return const Scaffold(
-        body: EmptyState(
-          icon: Icons.lock_outline,
-          title: 'Non hai eseguito l\'accesso',
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            PlainHeader(title: 'Profilo'),
+            Expanded(
+              child: EmptyState(
+                icon: Icons.lock_outline,
+                title: 'Non hai eseguito l\'accesso',
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -135,149 +151,287 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       _nameCtrl.text = profile!.displayName!;
       _prefilled = true;
     }
-    final initial = (profile?.displayName?.isNotEmpty == true
-            ? profile!.displayName!
-            : (user.email ?? '?'))
-        .characters
-        .first
-        .toUpperCase();
+    final email = user.email ?? '';
+    final name = profile?.displayName?.isNotEmpty == true
+        ? profile!.displayName!
+        : email;
+    const tall = Size.fromHeight(56);
+    const sectionPadding = EdgeInsets.fromLTRB(0, 18, 0, 10);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profilo')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Center(
-            child: Column(
-              children: [
-                GestureDetector(
-                  onTap: _uploadingAvatar ? null : _pickAvatar,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: 88,
-                        height: 88,
-                        alignment: Alignment.center,
-                        clipBehavior: Clip.antiAlias,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [tokens.accent, tokens.heroGradient.last],
+          _ProfileHeader(
+            name: name,
+            email: email == name ? null : email,
+            avatarUrl: profile?.avatarUrl,
+            uploading: _uploadingAvatar,
+            onPick: _uploadingAvatar ? null : _pickAvatar,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  StaggerIn(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SectionHeader(
+                          'Dati profilo',
+                          padding: sectionPadding,
+                        ),
+                        TextField(
+                          controller: _nameCtrl,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Nome visualizzato',
                           ),
                         ),
-                        child: profile?.avatarUrl != null
-                            ? Image.network(
-                                profile!.avatarUrl!,
-                                width: 88,
-                                height: 88,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Text(
-                                  initial,
-                                  style: TextStyle(
-                                    fontFamily: tokens.displayFont,
-                                    fontSize: 36,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
+                        const SizedBox(height: 12),
+                        FilledButton(
+                          style: FilledButton.styleFrom(minimumSize: tall),
+                          onPressed: _saving ? null : _save,
+                          child: _saving
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
                                   ),
-                                ),
-                              )
-                            : Text(
-                                initial,
-                                style: TextStyle(
-                                  fontFamily: tokens.displayFont,
-                                  fontSize: 36,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                      ),
-                      if (_uploadingAvatar)
-                        Container(
-                          width: 88,
-                          height: 88,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.black54,
+                                )
+                              : const Text('Salva'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  StaggerIn(
+                    index: 1,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SectionHeader(
+                          'Sessione',
+                          padding: sectionPadding,
+                        ),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: tall,
+                            textStyle: TextStyle(
+                              fontFamily: tokens.displayFont,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
                           ),
-                          child: const Center(
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2.5, color: Colors.white),
+                          onPressed: _logout,
+                          icon: const Icon(Icons.logout),
+                          label: const Text('Esci'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  StaggerIn(
+                    index: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: sectionPadding,
+                          child: Text(
+                            'Zona pericolosa',
+                            style: context.texts.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                              color: tokens.warning,
                             ),
                           ),
                         ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: tokens.accent,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                                color: context.scheme.surface, width: 2),
+                        ItineraCard(
+                          borderColor: tokens.warning,
+                          padding: const EdgeInsets.all(14),
+                          onTap: _deleteAccount,
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, color: tokens.warning),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Elimina account',
+                                      style: context.texts.titleMedium
+                                          ?.copyWith(color: tokens.warning),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Cancella definitivamente account e dati',
+                                      style: context.texts.bodySmall?.copyWith(
+                                        color: context.scheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          child: Icon(Icons.photo_camera,
-                              size: 15, color: tokens.onAccent),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(user.email ?? '',
-                    style: context.texts.bodyMedium
-                        ?.copyWith(color: context.scheme.onSurfaceVariant)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          SectionHeader('Dati profilo'),
-          TextField(
-            controller: _nameCtrl,
-            textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
-              labelText: 'Nome visualizzato',
-              prefixIcon: Icon(Icons.badge_outlined),
-            ),
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _saving ? null : _save,
-            icon: _saving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.check),
-            label: const Text('Salva'),
-          ),
-          SectionHeader('Sessione'),
-          ItineraCard(
-            padding: EdgeInsets.zero,
-            child: ListTile(
-              leading: Icon(Icons.logout, color: tokens.warning),
-              title: const Text('Esci'),
-              subtitle: const Text('Termina la sessione su questo dispositivo'),
-              onTap: _logout,
-            ),
-          ),
-          SectionHeader('Zona pericolosa'),
-          ItineraCard(
-            padding: EdgeInsets.zero,
-            child: ListTile(
-              leading:
-                  Icon(Icons.delete_forever_outlined, color: tokens.warning),
-              title: const Text('Elimina account'),
-              subtitle:
-                  const Text('Cancella definitivamente account e dati'),
-              onTap: _deleteAccount,
+                ],
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Testata sole del profilo: avatar con il badge per cambiare foto, nome, email.
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({
+    required this.name,
+    required this.email,
+    required this.avatarUrl,
+    required this.uploading,
+    required this.onPick,
+  });
+
+  final String name;
+  final String? email;
+  final String? avatarUrl;
+  final bool uploading;
+  final VoidCallback? onPick;
+
+  static const double _avatar = 96;
+
+  @override
+  Widget build(BuildContext context) {
+    final top = MediaQuery.paddingOf(context).top;
+    final initialAvatar = InitialAvatar(
+      name,
+      size: _avatar,
+      color: Cartolina.inchiostro,
+      foreground: Colors.white,
+    );
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlayStyleOn(Cartolina.sole),
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: Cartolina.sole,
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+        ),
+        child: Stack(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(20, top + 32, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Semantics(
+                      button: true,
+                      label: 'Cambia foto',
+                      child: GestureDetector(
+                        onTap: onPick,
+                        child: SizedBox.square(
+                          dimension: _avatar,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              if (avatarUrl != null)
+                                ClipOval(
+                                  child: Image.network(
+                                    avatarUrl!,
+                                    width: _avatar,
+                                    height: _avatar,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => initialAvatar,
+                                  ),
+                                )
+                              else
+                                initialAvatar,
+                              if (uploading)
+                                Container(
+                                  width: _avatar,
+                                  height: _avatar,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.black54,
+                                  ),
+                                  child: const Center(
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              Positioned(
+                                right: -2,
+                                bottom: -2,
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.photo_camera,
+                                    size: 17,
+                                    color: Cartolina.inchiostro,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    name,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.texts.displaySmall?.copyWith(
+                      fontSize: 28,
+                      height: 1.1,
+                      color: Cartolina.inchiostro,
+                    ),
+                  ),
+                  if (email != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      email!,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.texts.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: Cartolina.inchiostro,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Positioned(
+              top: top + 4,
+              left: 8,
+              child: const BackButton(color: Cartolina.inchiostro),
+            ),
+          ],
+        ),
       ),
     );
   }

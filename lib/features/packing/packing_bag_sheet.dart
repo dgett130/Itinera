@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/enum_labels.dart';
 import '../../core/enums.dart';
 import '../../core/format.dart';
 import '../../data/database.dart';
+import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
 import '../../ui/widgets.dart';
 import 'packing_providers.dart';
 
@@ -14,11 +17,12 @@ Future<void> showPackingBagSheet(
   required String tripId,
   Bag? existing,
 }) {
-  return showModalBottomSheet<void>(
+  return showCartolinaSheet<void>(
     context: context,
-    isScrollControlled: true,
     builder: (context) => Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: _BagForm(tripId: tripId, existing: existing),
     ),
   );
@@ -46,9 +50,7 @@ class _BagFormState extends ConsumerState<_BagForm> {
     final e = widget.existing;
     _nameCtrl = TextEditingController(text: e?.name ?? '');
     _tareCtrl = TextEditingController(
-      text: e != null && e.tareWeightGrams > 0
-          ? _kg(e.tareWeightGrams)
-          : '',
+      text: e != null && e.tareWeightGrams > 0 ? _kg(e.tareWeightGrams) : '',
     );
     _maxCtrl = TextEditingController(
       text: e?.maxWeightGrams != null ? _kg(e!.maxWeightGrams!) : '',
@@ -56,7 +58,8 @@ class _BagFormState extends ConsumerState<_BagForm> {
     _type = e?.type ?? BagType.hold;
   }
 
-  String _kg(int grams) => (grams / 1000).toStringAsFixed(1).replaceAll('.', ',');
+  String _kg(int grams) =>
+      (grams / 1000).toStringAsFixed(1).replaceAll('.', ',');
 
   @override
   void dispose() {
@@ -106,88 +109,121 @@ class _BagFormState extends ConsumerState<_BagForm> {
     if (mounted) Navigator.pop(context);
   }
 
+  /// Elimina senza conferma: l'avviso permette di annullare, oggetti compresi.
+  Future<void> _delete() async {
+    final repo = ref.read(packingRepositoryProvider);
+    final deleted = await repo.deleteBag(widget.existing!.id);
+    if (!mounted) return;
+    if (deleted != null) {
+      showUndoSnackBar(
+        context,
+        message: 'Bagaglio eliminato',
+        onUndo: () => repo.restoreBag(deleted),
+      );
+    }
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.existing != null;
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SheetHeader(isEdit ? 'Modifica bagaglio' : 'Nuovo bagaglio'),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _nameCtrl,
-              autofocus: !isEdit,
-              decoration: const InputDecoration(labelText: 'Nome'),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Campo obbligatorio' : null,
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<BagType>(
-              initialValue: _type,
-              decoration: const InputDecoration(labelText: 'Tipo'),
-              items: [
-                for (final t in BagType.values)
-                  DropdownMenuItem(
-                    value: t,
-                    child: Row(
-                      children: [
-                        Icon(t.icon, size: 20),
-                        const SizedBox(width: 8),
-                        Text(t.label),
-                      ],
+    final tokens = context.tokens;
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SheetHeader(isEdit ? 'Modifica bagaglio' : 'Nuovo bagaglio'),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _nameCtrl,
+                autofocus: !isEdit,
+                decoration: const InputDecoration(labelText: 'Nome'),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Campo obbligatorio'
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              Text('Tipo', style: context.texts.titleMedium),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final t in BagType.values)
+                    ChoiceChip(
+                      label: Text(t.label),
+                      selected: t == _type,
+                      showCheckmark: false,
+                      onSelected: (_) {
+                        HapticFeedback.selectionClick();
+                        setState(() => _type = t);
+                      },
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _tareCtrl,
+                      decoration: const InputDecoration(labelText: 'Tara (kg)'),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                     ),
                   ),
-              ],
-              onChanged: (v) => setState(() => _type = v ?? _type),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _tareCtrl,
-                    decoration:
-                        const InputDecoration(labelText: 'Tara (kg)'),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _maxCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Limite (kg)',
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    controller: _maxCtrl,
-                    decoration:
-                        const InputDecoration(labelText: 'Limite (kg)'),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  if (isEdit) ...[
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: tokens.warning,
+                          textStyle: TextStyle(
+                            fontFamily: tokens.displayFont,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
+                          side: BorderSide(color: tokens.warning, width: 1.5),
+                        ),
+                        onPressed: _delete,
+                        child: const Text('Elimina'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _save,
+                      child: const Text('Salva'),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                if (isEdit)
-                  TextButton.icon(
-                    onPressed: () async {
-                      await ref
-                          .read(packingRepositoryProvider)
-                          .deleteBag(widget.existing!.id);
-                      if (context.mounted) Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.delete_outline),
-                    label: const Text('Elimina'),
-                  ),
-                const Spacer(),
-                FilledButton(onPressed: _save, child: const Text('Salva')),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

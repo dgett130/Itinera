@@ -325,7 +325,7 @@ abstract class AppLocalizations {
   /// No description provided for @tripTypeCity.
   ///
   /// In it, this message translates to:
-  /// **'Citta'**
+  /// **'Città'**
   String get tripTypeCity;
 
   /// No description provided for @tripTypeBusiness.

@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../../core/enum_labels.dart';
 import '../../data/reference_data.dart';
+import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
 import '../../ui/widgets.dart';
 
 /// Selettore auto dal catalogo offline: cerca marca/modello e ritorna la
 /// [CarSpec] scelta (con consumo e tipo carburante).
 Future<CarSpec?> showCarPicker(BuildContext context) {
-  return showModalBottomSheet<CarSpec>(
+  return showCartolinaSheet<CarSpec>(
     context: context,
-    isScrollControlled: true,
     builder: (context) => const _CarPicker(),
   );
 }
@@ -35,12 +36,13 @@ class _CarPickerState extends State<_CarPicker> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = context.scheme;
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 16,
-        right: 16,
-        top: 16,
+        left: 20,
+        right: 20,
+        top: 10,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -52,36 +54,69 @@ class _CarPickerState extends State<_CarPicker> {
             autofocus: true,
             decoration: const InputDecoration(
               prefixIcon: Icon(Icons.search),
-              hintText: 'Es. Golf, Panda, 500...',
+              hintText: 'Es. Golf, Panda, 500…',
             ),
             onChanged: (v) =>
                 setState(() => _results = ReferenceData.filterCars(_all, v)),
           ),
-          const SizedBox(height: 8),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 320),
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: _results.length,
-              itemBuilder: (context, i) {
-                final c = _results[i];
-                return ListTile(
-                  leading: const Icon(Icons.directions_car),
-                  title: Text(c.label),
-                  subtitle: Text(
-                    '${c.fuel.label} · ${c.consumption.toString().replaceAll('.', ',')} ${c.unit.label}',
-                  ),
-                  onTap: () => Navigator.pop(context, c),
-                );
-              },
+          const SizedBox(height: 10),
+          Flexible(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 320),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: _results.length,
+                separatorBuilder: (context, _) => const SizedBox(height: 10),
+                itemBuilder: (context, i) {
+                  final c = _results[i];
+                  return ItineraCard(
+                    padding: const EdgeInsets.all(12),
+                    onTap: () => Navigator.pop(context, c),
+                    child: Row(
+                      children: [
+                        const IconTile(
+                          Icons.directions_car,
+                          color: Cartolina.laguna,
+                          size: 40,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                c.label,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: context.texts.titleSmall?.copyWith(
+                                  fontSize: 15.5,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${c.fuel.label} · ${c.consumption.toString().replaceAll('.', ',')} ${c.unit.label}',
+                                style: context.texts.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             'Consumi indicativi (WLTP), modificabili dopo la selezione.',
-            style: Theme.of(context).textTheme.bodySmall,
+            style: context.texts.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
         ],
       ),
     );

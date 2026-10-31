@@ -4,7 +4,7 @@
     <!-- Notifiche push (Android 13+ richiede il permesso a runtime). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
-        android:label="itinera"
+        android:label="Itinera"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
@@ -29,6 +29,11 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- I collegamenti li gestiscono Supabase (accesso) e il widget:
+                 Flutter non deve trattarli come rotte, darebbero pagina non trovata. -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="false"/>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -42,6 +47,26 @@
                 <data android:scheme="org.itinera" android:host="login-callback"/>
             </intent-filter>
         </activity>
+        <!-- Tocco sul widget della Home: annota dove andare e apre l'app. -->
+        <activity
+            android:name=".WidgetLinkActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay"/>
+        <!-- Widget "Il mio viaggio". -->
+        <receiver
+            android:name=".ItineraWidgetProvider"
+            android:exported="true"
+            android:label="Il mio viaggio">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/itinera_widget_info"/>
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

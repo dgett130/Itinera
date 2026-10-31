@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
 import '../../ui/widgets.dart';
 import '../auth/auth_providers.dart';
 import '../friends/friends_providers.dart';
@@ -19,71 +20,87 @@ class MembersScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final membersAsync = ref.watch(tripMembersProvider(tripId));
     final uid = ref.watch(currentUserProvider)?.id;
+    final members = membersAsync.value;
+    final isOwner =
+        !membersAsync.hasError &&
+        (members?.any((m) => m.userId == uid && m.isOwner) ?? false);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Persone')),
-      body: membersAsync.when(
-        loading: () => const LoadingView(),
-        error: (e, _) => const EmptyState(
-          icon: Icons.cloud_off_outlined,
-          title: 'Elenco non disponibile',
-          message: 'Serve la connessione per gestire le persone del viaggio.',
-        ),
-        data: (members) {
-          final isOwner =
-              members.any((m) => m.userId == uid && m.isOwner);
-          final memberIds = {
-            for (final m in members)
-              if (m.userId != null) m.userId!
-          };
-          return Scaffold(
-            floatingActionButton: isOwner
-                ? FloatingActionButton.extended(
-                    onPressed: () => _invite(context, ref, memberIds),
-                    icon: const Icon(Icons.person_add_alt),
-                    label: const Text('Aggiungi'),
-                  )
-                : null,
-            body: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-              children: [
-                for (final m in members) ...[
-                  _MemberTile(
-                    member: m,
-                    canRemove: isOwner && !m.isOwner,
-                    onRemove: () async {
-                      await ref
-                          .read(membersServiceProvider)
-                          .remove(m.id);
-                      ref.invalidate(tripMembersProvider(tripId));
-                    },
+      floatingActionButton: isOwner
+          ? CartolinaFab(
+              label: 'Aggiungi',
+              tint: Cartolina.corallo,
+              onPressed: () => _invite(context, ref, {
+                for (final m in members!)
+                  if (m.userId != null) m.userId!,
+              }),
+            )
+          : null,
+      body: Column(
+        children: [
+          const PlainHeader(title: 'Persone'),
+          Expanded(
+            child: membersAsync.when(
+              loading: () => const _MembersSkeleton(),
+              error: (e, _) => EmptyState(
+                icon: Icons.warning_rounded,
+                color: Cartolina.sole.withValues(alpha: 0.22),
+                iconColor: context.tokens.warning,
+                title: 'Elenco non disponibile',
+                message:
+                    'Serve la connessione per gestire le persone del viaggio.',
+                action: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () =>
+                        ref.invalidate(tripMembersProvider(tripId)),
+                    child: const Text('Riprova'),
                   ),
-                  const SizedBox(height: 10),
-                ],
-                if (!isOwner)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Solo il proprietario del viaggio puo\' invitare persone.',
-                      style: context.texts.bodySmall
-                          ?.copyWith(color: context.scheme.onSurfaceVariant),
-                    ),
-                  ),
-              ],
+                ),
+              ),
+              data: (members) => SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < members.length; i++) ...[
+                      StaggerIn(
+                        key: ValueKey(members[i].id),
+                        index: i,
+                        child: _MemberTile(
+                          member: members[i],
+                          canRemove: isOwner && !members[i].isOwner,
+                          onRemove: () async {
+                            await ref
+                                .read(membersServiceProvider)
+                                .remove(members[i].id);
+                            ref.invalidate(tripMembersProvider(tripId));
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (!isOwner) const _OwnerOnlyNote(),
+                  ],
+                ),
+              ),
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
 
   Future<void> _invite(
-      BuildContext context, WidgetRef ref, Set<String> memberIds) async {
+    BuildContext context,
+    WidgetRef ref,
+    Set<String> memberIds,
+  ) async {
     final members = ref.read(membersServiceProvider);
     final friends = ref.read(friendsServiceProvider);
-    await showModalBottomSheet<void>(
+    await showCartolinaSheet<void>(
       context: context,
-      isScrollControlled: true,
+      fromFab: true,
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
         child: UserSearchSheet(
@@ -120,48 +137,105 @@ class _MemberTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final label = member.label;
-    final initial = label.characters.first.toUpperCase();
+    final scheme = context.scheme;
+    final texts = context.texts;
+    final (role, roleColor, roleWeight) = member.isPending
+        ? ('In attesa', tokens.warning, FontWeight.w600)
+        : member.isOwner
+        ? ('Proprietario', tokens.accent, FontWeight.w500)
+        : ('Può modificare', scheme.onSurfaceVariant, FontWeight.w400);
     return ItineraCard(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: tokens.accentSoft,
-            foregroundColor: tokens.accent,
-            child: Text(initial,
-                style: const TextStyle(fontWeight: FontWeight.w700)),
-          ),
-          const SizedBox(width: 14),
+          // Il proprietario è sempre cobalto.
+          member.isOwner
+              ? InitialAvatar(
+                  member.label,
+                  color: Cartolina.cobalto,
+                  foreground: Colors.white,
+                )
+              : InitialAvatar(member.label),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.texts.titleSmall),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    MonoTag(member.isOwner ? 'PROPRIETARIO' : 'EDITOR'),
-                    if (member.isPending) ...[
-                      const SizedBox(width: 6),
-                      MonoTag('IN ATTESA',
-                          color: tokens.warning,
-                          background: tokens.warning.withValues(alpha: 0.12)),
-                    ],
-                  ],
+                Text(
+                  member.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: texts.titleMedium,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  role,
+                  style: texts.bodySmall?.copyWith(
+                    fontWeight: roleWeight,
+                    color: roleColor,
+                  ),
                 ),
               ],
             ),
           ),
           if (canRemove)
             IconButton(
-              icon: const Icon(Icons.remove_circle_outline),
+              icon: const Icon(Icons.close),
+              color: scheme.onSurfaceVariant,
               tooltip: 'Rimuovi',
               onPressed: onRemove,
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Avviso per chi non e' proprietario del viaggio.
+class _OwnerOnlyNote extends StatelessWidget {
+  const _OwnerOnlyNote();
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final scheme = context.scheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: tokens.accentSoft,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 20, color: tokens.accent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Solo il proprietario del viaggio può invitare persone.',
+              style: context.texts.bodySmall?.copyWith(color: scheme.onSurface),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Segnaposto mentre arriva l'elenco.
+class _MembersSkeleton extends StatelessWidget {
+  const _MembersSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(20, 4, 20, 0),
+      child: Column(
+        children: [
+          Skeleton(height: 78, radius: 20),
+          SizedBox(height: 12),
+          Skeleton(height: 78, radius: 20),
+          SizedBox(height: 12),
+          Skeleton(height: 78, radius: 20),
         ],
       ),
     );

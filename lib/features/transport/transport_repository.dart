@@ -26,6 +26,22 @@ class SettlementResult {
   final List<Settlement> settlements;
 }
 
+/// Tratta appena eliminata, con quanto serve per annullare.
+class DeletedSegment {
+  const DeletedSegment({required this.segment, required this.linkedExpenseIds});
+  final TransportSegment segment;
+
+  /// Spese collegate: la cancellazione azzera il loro `segmentId` (SET NULL).
+  final List<String> linkedExpenseIds;
+}
+
+/// Spesa appena eliminata, con le quote che se ne vanno in cascata.
+class DeletedExpense {
+  const DeletedExpense({required this.expense, required this.splits});
+  final CostItem expense;
+  final List<CostSplit> splits;
+}
+
 /// Accesso ai dati del modulo Trasporto/Viaggio.
 class TransportRepository {
   TransportRepository(this._db);
@@ -168,10 +184,59 @@ class TransportRepository {
     );
   }
 
-  Future<void> deleteSegment(String id) async {
-    await (_db.delete(_db.transportSegments)..where((s) => s.id.equals(id)))
-        .go();
+  /// Elimina una tratta. Ritorna ciò che serve per [restoreSegment] (null se
+  /// la tratta non esiste).
+  Future<DeletedSegment?> deleteSegment(String id) {
+    return _db.transaction(() async {
+      final segment = await (_db.select(_db.transportSegments)
+            ..where((s) => s.id.equals(id)))
+          .getSingleOrNull();
+      if (segment == null) return null;
+      final linked = await (_db.select(_db.costItems)
+            ..where((c) => c.segmentId.equals(id)))
+          .get();
+      await (_db.delete(_db.transportSegments)..where((s) => s.id.equals(id)))
+          .go();
+      return DeletedSegment(
+        segment: segment,
+        linkedExpenseIds: [for (final c in linked) c.id],
+      );
+    });
   }
+
+  /// Annulla [deleteSegment]: stessa riga e stesso id. L'inserimento porta la
+  /// riga in `_outbox` come upsert, che sostituisce la delete in coda o, se
+  /// già spinta, azzera `deleted_at` sul server. Se nel frattempo il viaggio
+  /// è sparito non fa nulla.
+  Future<void> restoreSegment(DeletedSegment deleted) async {
+    final s = deleted.segment;
+    await _db.transaction(() async {
+      if (!await _tripExists(s.tripId)) return;
+      var vehicleId = s.vehicleId;
+      if (vehicleId != null &&
+          await (_db.select(_db.vehicles)
+                    ..where((v) => v.id.equals(vehicleId!)))
+                  .getSingleOrNull() ==
+              null) {
+        vehicleId = null;
+      }
+      await _db
+          .into(_db.transportSegments)
+          .insertOnConflictUpdate(s.copyWith(vehicleId: Value(vehicleId)));
+      if (deleted.linkedExpenseIds.isEmpty) return;
+      await (_db.update(_db.costItems)
+            ..where(
+              (c) =>
+                  c.id.isIn(deleted.linkedExpenseIds) & c.segmentId.isNull(),
+            ))
+          .write(CostItemsCompanion(segmentId: Value(s.id)));
+    });
+  }
+
+  Future<bool> _tripExists(String tripId) async =>
+      await (_db.select(_db.trips)..where((t) => t.id.equals(tripId)))
+          .getSingleOrNull() !=
+      null;
 
   // --- Viaggiatori ---
 
@@ -310,8 +375,52 @@ class TransportRepository {
     });
   }
 
-  Future<void> deleteExpense(String costId) async {
-    await (_db.delete(_db.costItems)..where((c) => c.id.equals(costId))).go();
+  /// Elimina una spesa (le quote vanno via in cascata). Ritorna ciò che serve
+  /// per [restoreExpense] (null se la spesa non esiste).
+  Future<DeletedExpense?> deleteExpense(String costId) {
+    return _db.transaction(() async {
+      final expense = await (_db.select(_db.costItems)
+            ..where((c) => c.id.equals(costId)))
+          .getSingleOrNull();
+      if (expense == null) return null;
+      final splits = await getSplits(costId);
+      await (_db.delete(_db.costItems)..where((c) => c.id.equals(costId))).go();
+      return DeletedExpense(expense: expense, splits: splits);
+    });
+  }
+
+  /// Annulla [deleteExpense]: spesa e quote tornano con gli stessi id, data di
+  /// creazione e rimborsi (vedi [restoreSegment] per il sync). Se nel frattempo
+  /// è sparito un viaggiatore, la sua quota non torna e la spesa resta senza
+  /// pagante; se è sparita la tratta collegata, resta senza tratta.
+  Future<void> restoreExpense(DeletedExpense deleted) async {
+    final e = deleted.expense;
+    await _db.transaction(() async {
+      if (!await _tripExists(e.tripId)) return;
+      final travelerIds = {
+        for (final t in await watchTravelers(e.tripId).first) t.id,
+      };
+      final segmentId = e.segmentId;
+      final segmentAlive = segmentId != null &&
+          await (_db.select(_db.transportSegments)
+                    ..where((s) => s.id.equals(segmentId)))
+                  .getSingleOrNull() !=
+              null;
+      await _db.into(_db.costItems).insertOnConflictUpdate(
+            e.copyWith(
+              paidByTravelerId: Value(
+                travelerIds.contains(e.paidByTravelerId)
+                    ? e.paidByTravelerId
+                    : null,
+              ),
+              segmentId: Value(segmentAlive ? segmentId : null),
+            ),
+          );
+      for (final split in deleted.splits) {
+        if (!travelerIds.contains(split.travelerId)) continue;
+        await _db.into(_db.costSplits).insertOnConflictUpdate(split);
+      }
+    });
   }
 
   // --- Rimborsi ---

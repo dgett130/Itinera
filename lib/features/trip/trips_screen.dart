@@ -4,17 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/enum_labels.dart';
-import '../../core/format.dart';
 import '../../data/database.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
+import '../../ui/posters.dart';
 import '../../ui/widgets.dart';
 import '../notifications/notifications_providers.dart';
+import '../packing/packing_providers.dart';
 import '../sync/sync_status_button.dart';
 import 'trip_providers.dart';
+import 'trip_status.dart';
 
-/// Home: elenco dei viaggi, raggruppati in "In arrivo" e "Passati".
+/// Home: i viaggi in arrivo come grandi poster, i passati in piccolo.
 class TripsScreen extends ConsumerWidget {
   const TripsScreen({super.key});
 
@@ -31,24 +33,20 @@ class TripsScreen extends ConsumerWidget {
       ),
       body: SafeArea(
         child: tripsAsync.when(
-          loading: () => const LoadingView(),
+          loading: () => const _HomeSkeleton(),
           error: (e, _) => ErrorView(e),
           data: (trips) {
-            final today = DateTime.now();
-            final todayDate = DateTime(today.year, today.month, today.day);
-            final upcoming = <Trip>[];
-            final past = <Trip>[];
-            for (final t in trips) {
-              final end = t.endDate;
-              if (end != null && end.isBefore(todayDate)) {
-                past.add(t);
-              } else {
-                upcoming.add(t);
-              }
-            }
+            final upcoming = [
+              for (final t in trips)
+                if (!tripIsPast(t)) t,
+            ];
+            final past = [
+              for (final t in trips)
+                if (tripIsPast(t)) t,
+            ];
             return CustomScrollView(
               slivers: [
-                _HomeHeader(count: trips.length),
+                const _HomeHeader(),
                 if (trips.isEmpty)
                   SliverFillRemaining(
                     hasScrollBody: false,
@@ -65,26 +63,43 @@ class TripsScreen extends ConsumerWidget {
                   )
                 else
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 110),
                     sliver: SliverList.list(
                       children: [
-                        if (upcoming.isNotEmpty) ...[
-                          SectionHeader(l10n.tripsUpcoming),
-                          for (final t in upcoming)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _TripCard(trip: t, l10n: l10n),
+                        for (final (i, t) in upcoming.indexed)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 14),
+                            child: StaggerIn(
+                              index: i,
+                              child: _BigPoster(trip: t, l10n: l10n),
                             ),
-                        ],
+                          ),
                         if (past.isNotEmpty) ...[
-                          SectionHeader(l10n.tripsPast),
-                          for (final t in past)
+                          SectionHeader(
+                            l10n.tripsPast,
+                            padding: const EdgeInsets.fromLTRB(0, 10, 0, 12),
+                          ),
+                          for (var i = 0; i < past.length; i += 2)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: _TripCard(
-                                trip: t,
-                                l10n: l10n,
-                                faded: true,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _SmallPoster(
+                                      trip: past[i],
+                                      l10n: l10n,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: i + 1 < past.length
+                                        ? _SmallPoster(
+                                            trip: past[i + 1],
+                                            l10n: l10n,
+                                          )
+                                        : const SizedBox.shrink(),
+                                  ),
+                                ],
                               ),
                             ),
                         ],
@@ -100,63 +115,85 @@ class TripsScreen extends ConsumerWidget {
   }
 }
 
+/// Segnaposto della home mentre arrivano i viaggi.
+class _HomeSkeleton extends StatelessWidget {
+  const _HomeSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      slivers: [
+        const _HomeHeader(),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+          sliver: SliverList.list(
+            children: const [
+              AspectRatio(
+                aspectRatio: 372 / 340,
+                child: Skeleton(height: double.infinity, radius: 24),
+              ),
+              SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(child: Skeleton(height: 216, radius: 20)),
+                  SizedBox(width: 12),
+                  Expanded(child: Skeleton(height: 216, radius: 20)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.count});
-  final int count;
+  const _HomeHeader();
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final scheme = context.scheme;
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(20, 10, 8, 12),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'ITINERA',
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Itinera',
                     style: TextStyle(
-                      fontFamily: tokens.monoFont,
-                      fontSize: 12,
-                      letterSpacing: 3,
-                      fontWeight: FontWeight.w700,
+                      fontFamily: tokens.displayFont,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
                       color: tokens.accent,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'I miei viaggi',
-                    style: context.texts.displaySmall?.copyWith(fontSize: 32),
-                  ),
-                  if (count > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        count == 1 ? '1 viaggio' : '$count viaggi',
-                        style: context.texts.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                ],
+                ),
+                const SyncStatusButton(),
+                const _NotificationsBell(),
+                IconButton(
+                  icon: const Icon(Icons.people_outline),
+                  tooltip: 'Amici',
+                  onPressed: () => context.push('/friends'),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.settings_outlined),
+                  tooltip: AppLocalizations.of(context).settingsTitle,
+                  onPressed: () => context.push('/settings'),
+                ),
+              ],
+            ),
+            Text(
+              'I miei viaggi',
+              style: context.texts.displaySmall?.copyWith(
+                fontSize: 38,
+                height: 1.1,
               ),
-            ),
-            const SyncStatusButton(),
-            const _NotificationsBell(),
-            IconButton(
-              icon: const Icon(Icons.people_outline),
-              tooltip: 'Amici',
-              onPressed: () => context.push('/friends'),
-            ),
-            IconButton.filledTonal(
-              icon: const Icon(Icons.settings_outlined),
-              tooltip: AppLocalizations.of(context).settingsTitle,
-              onPressed: () => context.push('/settings'),
             ),
           ],
         ),
@@ -187,190 +224,202 @@ class _NotificationsBell extends ConsumerWidget {
   }
 }
 
-class _TripCard extends ConsumerWidget {
-  const _TripCard({required this.trip, required this.l10n, this.faded = false});
+/// Poster grande di un viaggio in arrivo o in corso.
+class _BigPoster extends ConsumerWidget {
+  const _BigPoster({required this.trip, required this.l10n});
 
   final Trip trip;
   final AppLocalizations l10n;
-  final bool faded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final style = ItineraTheme.effectiveStyle(trip);
-    final swatch = ItineraTheme.meta(style).swatch;
-    final scheme = context.scheme;
-
-    return Opacity(
-      opacity: faded ? 0.72 : 1,
-      child: ItineraCard(
-        padding: EdgeInsets.zero,
-        onTap: () => context.push('/trip/${trip.id}'),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
+    final c = trip.tripType.posterColors;
+    final items = ref.watch(packingItemsProvider(trip.id)).value ?? const [];
+    final packed = items
+        .where((i) => i.packedCount >= i.quantity && i.quantity > 0)
+        .length;
+    final place = tripPlaceLine(trip);
+    final titleStyle = context.texts.displaySmall?.copyWith(
+      color: c.foreground,
+      height: 1.02,
+    );
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: Material(
+        color: c.background,
+        child: InkWell(
+          onTap: () => context.push('/trip/${trip.id}'),
+          child: AspectRatio(
+            aspectRatio: 372 / 340,
+            child: LayoutBuilder(
+              builder: (context, box) => Stack(
                 children: [
-                  Hero(
-                    tag: 'trip-hero-${trip.id}',
-                    child: _CoverTile(icon: trip.tripType.icon, colors: swatch),
+                  Positioned.fill(
+                    child: PosterHero(
+                      tripId: trip.id,
+                      child: PosterArt(type: trip.tripType, alive: true),
+                    ),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
+                  Positioned(
+                    left: 22,
+                    top: 18,
+                    right: 44,
+                    child: Text(
+                      trip.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: titleStyle?.copyWith(
+                        fontSize: box.maxWidth * 0.12,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 6,
+                    right: 2,
+                    child: _TripMenu(
+                      trip: trip,
+                      l10n: l10n,
+                      color: c.foreground,
+                    ),
+                  ),
+                  Positioned(
+                    left: 22,
+                    right: 22,
+                    bottom: 20,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          trip.name,
-                          style: context.texts.titleMedium,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          _subtitle(),
-                          style: context.texts.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
+                        if (place.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Text(
+                              place,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.texts.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: c.lowerForeground,
+                              ),
+                            ),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: [
+                            PosterPill(tripStatusLabel(trip), color: c.pill),
+                            if (items.isNotEmpty) ...[
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'valigia $packed/${items.length}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: context.texts.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                    color: c.lowerForeground,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  _TripMenu(trip: trip, l10n: l10n),
                 ],
               ),
             ),
-            Divider(height: 1, color: context.tokens.hairline),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-              child: Row(
-                children: [
-                  _StatusChip(trip: trip),
-                  const Spacer(),
-                  MonoTag(
-                    ItineraTheme.meta(style).name.toUpperCase(),
-                    icon: ItineraTheme.meta(style).icon,
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
-
-  String _subtitle() {
-    final parts = <String>[];
-    if (trip.destination != null && trip.destination!.isNotEmpty) {
-      parts.add(trip.destination!);
-    } else if (trip.country != null && trip.country!.isNotEmpty) {
-      parts.add(trip.country!);
-    }
-    final s = trip.startDate;
-    final e = trip.endDate;
-    if (s != null && e != null) {
-      parts.add('${Fmt.dayMonth(s)} – ${Fmt.dayMonth(e)}');
-    } else if (s != null) {
-      parts.add(Fmt.date(s));
-    }
-    return parts.isEmpty ? trip.tripType.label : parts.join('  ·  ');
-  }
 }
 
-class _CoverTile extends StatelessWidget {
-  const _CoverTile({required this.icon, required this.colors});
-  final IconData icon;
-  final List<Color> colors;
+/// Poster piccolo di un viaggio passato.
+class _SmallPoster extends StatelessWidget {
+  const _SmallPoster({required this.trip, required this.l10n});
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 56,
-      height: 56,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [colors.first, colors.length > 1 ? colors[1] : colors.first],
-        ),
-      ),
-      child: Icon(icon, color: Colors.white, size: 26),
-    );
-  }
-}
-
-/// Chip di stato con conto alla rovescia.
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.trip});
-  final Trip trip;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final (label, color) = _status(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            margin: const EdgeInsets.only(right: 6),
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: tokens.monoFont,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: color,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  (String, Color) _status(BuildContext context) {
-    final tokens = context.tokens;
-    final scheme = context.scheme;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final s = trip.startDate;
-    final e = trip.endDate;
-    if (s == null) return ('DA PIANIFICARE', scheme.onSurfaceVariant);
-    final start = DateTime(s.year, s.month, s.day);
-    final end = e == null ? start : DateTime(e.year, e.month, e.day);
-    if (today.isBefore(start)) {
-      final days = start.difference(today).inDays;
-      if (days == 0) return ('DOMANI', tokens.accent);
-      return ('TRA $days GG', tokens.accent);
-    }
-    if (!today.isAfter(end)) return ('IN CORSO', tokens.positive);
-    return ('CONCLUSO', scheme.onSurfaceVariant);
-  }
-}
-
-class _TripMenu extends ConsumerWidget {
-  const _TripMenu({required this.trip, required this.l10n});
   final Trip trip;
   final AppLocalizations l10n;
 
   @override
+  Widget build(BuildContext context) {
+    final c = trip.tripType.posterColors;
+    final place = trip.destination?.isNotEmpty == true
+        ? trip.destination!
+        : (trip.country ?? '');
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Material(
+        color: c.background,
+        child: InkWell(
+          onTap: () => context.push('/trip/${trip.id}'),
+          child: AspectRatio(
+            aspectRatio: 180 / 216,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: PosterHero(
+                    tripId: trip.id,
+                    child: PosterArt(type: trip.tripType),
+                  ),
+                ),
+                Positioned(
+                  left: 14,
+                  top: 12,
+                  right: 30,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        trip.name,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.texts.titleLarge?.copyWith(
+                          fontSize: 21,
+                          height: 1.08,
+                          color: c.foreground,
+                        ),
+                      ),
+                      if (place.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            place,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.texts.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w500,
+                              color: c.foreground,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  top: 2,
+                  right: -6,
+                  child: _TripMenu(trip: trip, l10n: l10n, color: c.foreground),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TripMenu extends ConsumerWidget {
+  const _TripMenu({required this.trip, required this.l10n, this.color});
+  final Trip trip;
+  final AppLocalizations l10n;
+  final Color? color;
+
+  @override
   Widget build(BuildContext context, WidgetRef ref) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert),
+      icon: Icon(Icons.more_vert, color: color),
       onSelected: (value) async {
         final repo = ref.read(tripRepositoryProvider);
         switch (value) {

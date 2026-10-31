@@ -10,6 +10,64 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ## [Non rilasciato]
 
+### Aggiunto
+- **Nuova identità "Cartolina"**, ispirata ai manifesti turistici italiani
+  degli anni '50: nuovi colori e caratteri, tema chiaro e scuro. Ogni viaggio
+  ha il suo **poster**, deciso dal tipo di viaggio.
+- **Widget "Il mio viaggio"** sulla Home di Android: un solo widget che si
+  adatta alla dimensione, con il viaggio in corso o il prossimo, il conto alla
+  rovescia, la valigia e, se è grande, il programma del giorno. Il tocco apre
+  il viaggio, la valigia o la tabella di marcia. Senza accesso resta vuoto.
+- **Animazioni**: il sole che sorge all'apertura, il poster che diventa la
+  testata del viaggio, il sole che tramonta scorrendo, il mare che deriva, il
+  paesaggio che cambia col tipo di viaggio, il bottone che si apre nel foglio,
+  gli spilli che cadono e il percorso che si traccia, i numeri che contano. Con
+  "Riduci animazioni" di Android si spengono.
+- **Nuova icona**: uno spillo-sole sulle onde, anche nella versione tematizzata
+  di Android.
+- **Valigia pronta**: quando si spunta l'ultimo oggetto il sole sale, partono i
+  coriandoli e il telefono vibra.
+- **"Annulla"** dopo l'eliminazione di oggetti, bagagli, tratte, spese e
+  attività.
+- Segnaposto durante i caricamenti al posto delle rotelline.
+
+### Modificato
+- Pannello **"Novità"** ridisegnato e aggiornato per la 2.0.0.
+- **Tutte le schermate** ridisegnate: testate colorate per modulo, campi con
+  l'etichetta all'interno, selettori a pillola, stati vuoti e fogli nuovi.
+- Lo **stile del viaggio** non si sceglie più: lo decide il tipo di viaggio.
+- Rimuovere un **viaggiatore** ora chiede conferma, perché spariscono anche le
+  sue quote e i suoi rimborsi.
+- Le **mappe** diventano scure in tema scuro.
+- Testi con gli accenti corretti ("Città", "Già presente"...); distanze con la
+  virgola ("3,2 km").
+
+### Corretto
+- Una modifica fatta mentre la precedente era ancora in invio al server poteva
+  andare persa.
+- Nel form del viaggio la tastiera si riapriva dopo il selettore della data, e
+  la data di ritorno partiva dal mese corrente invece che da quello della
+  partenza.
+- Aprendo il link di **reimpostazione password** e tornando indietro si restava
+  dentro senza averla cambiata: ora si salva oppure si esce dall'account, anche
+  se l'app viene chiusa a metà.
+- La lista dei viaggiatori non si aggiornava finché non si riapriva il foglio.
+- Le tratte elettriche mostrano i kWh invece dei litri.
+- Nel riepilogo del percorso la mappa ora si inquadra anche quando le tappe
+  arrivano dopo il percorso.
+
+### Note tecniche
+- Nessuna modifica allo schema né a Supabase: `themeStyle` resta nel database
+  ma viene ignorato, quindi i client precedenti sincronizzano senza problemi.
+- Nuova dipendenza `home_widget`; `android/build.gradle.kts` non le forza il
+  `compileSdk` 34. Rimosse le schermate non raggiungibili `login_screen` e
+  `mode_chooser_screen`. Font Bricolage Grotesque e Figtree (licenza OFL, nella
+  pagina delle licenze).
+- `flutter_deeplinking_enabled` disattivato: i collegamenti li gestiscono
+  Supabase e il widget, Flutter li avrebbe trattati come rotte inesistenti.
+- I tocchi sul widget passano da `WidgetLinkActivity`, che consegna il
+  collegamento una volta sola: altrimenti Android lo riproponeva a ogni avvio.
+
 ## [1.5.0] - 2026-10-15
 
 ### Aggiunto

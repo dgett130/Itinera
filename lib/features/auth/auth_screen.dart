@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
+import '../../ui/widgets.dart';
 import 'auth_providers.dart';
 
 /// Accesso e registrazione a un account Itinera (Supabase).
@@ -49,7 +52,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           password: _passCtrl.text,
           displayName: _nameCtrl.text,
         );
-        // La conferma via email e' disattivata: l'accesso e' immediato. Se per
+        // La conferma via email è disattivata: l'accesso è immediato. Se per
         // qualche motivo non arriva subito una sessione, la completo io.
         if (res.session == null) {
           await auth.signIn(email: _emailCtrl.text, password: _passCtrl.text);
@@ -57,7 +60,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       } else {
         await auth.signIn(email: _emailCtrl.text, password: _passCtrl.text);
       }
-      // Se aperta come pagina (da Impostazioni) torna indietro; se e' la radice
+      // Se aperta come pagina (da Impostazioni) torna indietro; se è la radice
       // (utente non loggato), ci pensa il RootGate a mostrare la home.
       if (mounted && context.canPop()) context.pop();
     } on AuthException catch (e) {
@@ -75,23 +78,36 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Reimposta password'),
-        content: TextField(
-          controller: ctrl,
-          keyboardType: TextInputType.emailAddress,
-          autocorrect: false,
-          decoration: const InputDecoration(
-            labelText: 'Email',
-            prefixIcon: Icon(Icons.alternate_email),
-          ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Ti mandiamo un link via email. Funziona una sola volta.',
+              style: context.texts.bodyMedium?.copyWith(
+                color: context.scheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              keyboardType: TextInputType.emailAddress,
+              autocorrect: false,
+              decoration: const InputDecoration(labelText: 'Email'),
+            ),
+          ],
         ),
         actions: [
           TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: context.scheme.onSurface,
+            ),
             onPressed: () => Navigator.pop(context),
             child: const Text('Annulla'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, ctrl.text.trim()),
-            child: const Text('Invia'),
+            child: const Text('Invia link'),
           ),
         ],
       ),
@@ -103,14 +119,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-                'Se l\'email e\' registrata, ti invieremo le istruzioni.'),
+              'Se l\'email è registrata, ti invieremo le istruzioni.',
+            ),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
     }
   }
@@ -139,166 +157,320 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     final tokens = context.tokens;
     final auth = ref.read(authServiceProvider);
     // Dopo un accesso riuscito (anche social, che torna via deep link) chiudo
-    // la pagina se e' stata aperta da Impostazioni; alla radice ci pensa il gate.
+    // la pagina se è stata aperta da Impostazioni; alla radice ci pensa il gate.
     ref.listen(currentUserProvider, (_, next) {
       if (next != null && mounted && context.canPop()) context.pop();
     });
+    // AnimatedSize non regge la durata zero: con le animazioni ridotte, 1 ms.
+    final resize = Motion.off(context)
+        ? const Duration(milliseconds: 1)
+        : Motion.standard;
+    const tall = Size.fromHeight(56);
+    final label = TextStyle(
+      fontFamily: tokens.displayFont,
+      fontWeight: FontWeight.w700,
+      fontSize: 16,
+    );
     return Scaffold(
-      appBar: AppBar(title: Text(_register ? 'Crea account' : 'Accedi')),
-      body: SafeArea(
+      // Tutto in un'unica colonna: i campi fuori schermo restano nel Form.
+      body: SingleChildScrollView(
         child: Form(
           key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: tokens.accentSoft,
-                  borderRadius: BorderRadius.circular(18),
+              _AuthPoster(register: _register),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  16,
+                  20,
+                  24 + MediaQuery.paddingOf(context).bottom,
                 ),
-                child: Icon(Icons.account_circle_outlined,
-                    size: 34, color: tokens.accent),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                _register ? 'Crea il tuo account' : 'Bentornato',
-                style: context.texts.headlineSmall,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _register
-                    ? 'Un account ti permette di sincronizzare e condividere i viaggi.'
-                    : 'Accedi per ritrovare e condividere i tuoi viaggi.',
-                style: context.texts.bodyMedium
-                    ?.copyWith(color: context.scheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: 24),
-              if (_register) ...[
-                TextFormField(
-                  controller: _nameCtrl,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Nome',
-                    prefixIcon: Icon(Icons.person_outline),
-                  ),
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Inserisci un nome'
-                      : null,
-                ),
-                const SizedBox(height: 12),
-              ],
-              TextFormField(
-                controller: _emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                autocorrect: false,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: Icon(Icons.alternate_email),
-                ),
-                validator: (v) {
-                  final s = (v ?? '').trim();
-                  if (s.isEmpty || !s.contains('@')) return 'Email non valida';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _passCtrl,
-                obscureText: _obscure,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                        _obscure ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => _obscure = !_obscure),
-                  ),
-                ),
-                validator: (v) => (v == null || v.length < 6)
-                    ? 'Almeno 6 caratteri'
-                    : null,
-              ),
-              if (_register) ...[
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _confirmCtrl,
-                  obscureText: _obscure,
-                  decoration: const InputDecoration(
-                    labelText: 'Conferma password',
-                    prefixIcon: Icon(Icons.lock_outline),
-                  ),
-                  validator: (v) =>
-                      (v != _passCtrl.text) ? 'Le password non coincidono' : null,
-                ),
-              ],
-              if (_error != null) ...[
-                const SizedBox(height: 16),
-                _Banner(
-                  icon: Icons.error_outline,
-                  text: _error!,
-                  color: tokens.warning,
-                ),
-              ],
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: _loading ? null : _submit,
-                icon: _loading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(_register ? Icons.person_add : Icons.login),
-                label: Text(_register ? 'Registrati' : 'Accedi'),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(child: Divider(color: tokens.hairline)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('oppure',
-                        style: context.texts.bodySmall
-                            ?.copyWith(color: context.scheme.onSurfaceVariant)),
-                  ),
-                  Expanded(child: Divider(color: tokens.hairline)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed:
-                    _loading ? null : () => _oauth(auth.signInWithGoogle),
-                icon: const Icon(Icons.g_mobiledata, size: 28),
-                label: const Text('Continua con Google'),
-              ),
-              // Login con Apple: pulsante rimosso finche' non e' disponibile un
-              // Apple Developer account. Il metodo AuthService.signInWithApple
-              // resta pronto per riattivarlo.
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: _loading
-                    ? null
-                    : () => setState(() {
-                          _register = !_register;
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    PillSelector<bool>(
+                      items: const {false: 'Accedi', true: 'Crea account'},
+                      selected: _register,
+                      onChanged: (v) {
+                        if (_loading) return;
+                        setState(() {
+                          _register = v;
                           _error = null;
-                        }),
-                child: Text(_register
-                    ? 'Hai gia\' un account? Accedi'
-                    : 'Non hai un account? Registrati'),
-              ),
-              if (!_register)
-                TextButton(
-                  onPressed: _loading ? null : _forgotPassword,
-                  child: const Text('Password dimenticata?'),
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    // Il nome entra sopra l'email, solo per la registrazione.
+                    AnimatedSize(
+                      duration: resize,
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment.topCenter,
+                      child: _register
+                          ? Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: TextFormField(
+                                controller: _nameCtrl,
+                                textCapitalization: TextCapitalization.words,
+                                decoration: const InputDecoration(
+                                  labelText: 'Nome',
+                                ),
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                    ? 'Inserisci un nome'
+                                    : null,
+                              ),
+                            )
+                          : const SizedBox(width: double.infinity),
+                    ),
+                    TextFormField(
+                      controller: _emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      autocorrect: false,
+                      decoration: const InputDecoration(labelText: 'Email'),
+                      validator: (v) {
+                        final s = (v ?? '').trim();
+                        if (s.isEmpty || !s.contains('@')) {
+                          return 'Email non valida';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _passCtrl,
+                      obscureText: _obscure,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscure ? Icons.visibility : Icons.visibility_off,
+                          ),
+                          tooltip: _obscure
+                              ? 'Mostra password'
+                              : 'Nascondi password',
+                          onPressed: () => setState(() => _obscure = !_obscure),
+                        ),
+                      ),
+                      validator: (v) => (v == null || v.length < 6)
+                          ? 'Almeno 6 caratteri'
+                          : null,
+                    ),
+                    // Conferma per chi si registra, link di recupero per chi accede.
+                    AnimatedSize(
+                      duration: resize,
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment.topCenter,
+                      child: _register
+                          ? Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: TextFormField(
+                                controller: _confirmCtrl,
+                                obscureText: _obscure,
+                                decoration: const InputDecoration(
+                                  labelText: 'Conferma password',
+                                ),
+                                validator: (v) => (v != _passCtrl.text)
+                                    ? 'Le password non coincidono'
+                                    : null,
+                              ),
+                            )
+                          : Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: _loading ? null : _forgotPassword,
+                                child: const Text('Password dimenticata?'),
+                              ),
+                            ),
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 12),
+                      _Banner(
+                        icon: Icons.error_outline,
+                        text: _error!,
+                        color: tokens.warning,
+                      ),
+                    ],
+                    SizedBox(height: _register ? 12 : 4),
+                    FilledButton(
+                      style: FilledButton.styleFrom(minimumSize: tall),
+                      onPressed: _loading ? null : _submit,
+                      child: _loading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(_register ? 'Crea account' : 'Accedi'),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: tokens.hairline)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'oppure',
+                            style: context.texts.bodySmall?.copyWith(
+                              color: context.scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: tokens.hairline)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: tall,
+                        textStyle: label,
+                      ),
+                      onPressed: _loading
+                          ? null
+                          : () => _oauth(auth.signInWithGoogle),
+                      icon: Text(
+                        'G',
+                        style: label.copyWith(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 20,
+                          color: context.scheme.onSurface,
+                        ),
+                      ),
+                      label: const Text('Continua con Google'),
+                    ),
+                    // Login con Apple: pulsante rimosso finché non è disponibile
+                    // un Apple Developer account. Il metodo
+                    // AuthService.signInWithApple resta pronto per riattivarlo.
+                  ],
                 ),
+              ),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+/// Poster dell'accesso: sole e onde. Si abbassa in "Crea account", così i campi
+/// in più restano in vista.
+class _AuthPoster extends StatelessWidget {
+  const _AuthPoster({required this.register});
+
+  final bool register;
+
+  @override
+  Widget build(BuildContext context) {
+    final top = MediaQuery.paddingOf(context).top;
+    final canPop = context.canPop();
+    final texts = context.texts;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlayStyleOn(Cartolina.cobalto),
+      child: AnimatedContainer(
+        duration: Motion.of(context, Motion.standard),
+        curve: Curves.easeOutCubic,
+        height: register ? 220 : 280,
+        clipBehavior: Clip.antiAlias,
+        decoration: const BoxDecoration(
+          color: Cartolina.cobalto,
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            CustomPaint(painter: _SunAndWavesPainter(topInset: top)),
+            Positioned(
+              top: top + 18,
+              left: canPop ? 4 : 20,
+              right: 120,
+              child: Row(
+                children: [
+                  // Aperta da Impostazioni: serve la via del ritorno.
+                  if (canPop) const BackButton(color: Colors.white),
+                  Flexible(
+                    child: Text(
+                      'Itinera',
+                      maxLines: 1,
+                      style: texts.displaySmall?.copyWith(
+                        fontSize: 44,
+                        height: 1.1,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              left: 20,
+              right: 20,
+              bottom: 16,
+              child: AnimatedSwitcher(
+                duration: Motion.of(context, Motion.fast),
+                layoutBuilder: (current, previous) => Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [...previous, ?current],
+                ),
+                child: Text(
+                  register ? 'Crea il tuo account' : 'Bentornato',
+                  key: ValueKey(register),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: texts.titleLarge?.copyWith(
+                    fontSize: 24,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Sole in alto a destra, onde ancorate in basso: quando il poster si abbassa il
+/// mare sale davanti al sole.
+class _SunAndWavesPainter extends CustomPainter {
+  const _SunAndWavesPainter({required this.topInset});
+
+  final double topInset;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    canvas.drawCircle(
+      Offset(w * 0.806, topInset + 50),
+      46,
+      Paint()..color = Cartolina.sole,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, h - 97)
+        ..cubicTo(w * 0.12, h - 118, w * 0.30, h - 118, w * 0.45, h - 100)
+        ..cubicTo(w * 0.60, h - 82, w * 0.82, h - 72, w, h - 97)
+        ..lineTo(w, h)
+        ..lineTo(0, h)
+        ..close(),
+      Paint()..color = Cartolina.laguna,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, h - 52)
+        ..cubicTo(w * 0.20, h - 40, w * 0.35, h - 52, w * 0.55, h - 60)
+        ..cubicTo(w * 0.72, h - 66, w * 0.88, h - 62, w, h - 52)
+        ..lineTo(w, h)
+        ..lineTo(0, h)
+        ..close(),
+      Paint()..color = Cartolina.cobaltoScuro,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_SunAndWavesPainter old) => old.topInset != topInset;
 }
 
 class _Banner extends StatelessWidget {
@@ -313,7 +485,7 @@ class _Banner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(
@@ -322,8 +494,10 @@ class _Banner extends StatelessWidget {
           Icon(icon, color: color, size: 20),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(text,
-                style: TextStyle(color: color, fontWeight: FontWeight.w500)),
+            child: Text(
+              text,
+              style: TextStyle(color: color, fontWeight: FontWeight.w500),
+            ),
           ),
         ],
       ),

@@ -270,7 +270,9 @@ class SyncEngine {
         }
         rethrow;
       }
-      await _dropOutbox(tbl, id);
+      // Una scrittura arrivata mentre questa era in volo (es. "Annulla" dopo
+      // un'eliminazione) resta in coda: va spinta al giro dopo.
+      await dropPushedOutboxEntry(db, tbl, id, op, r.data['at']);
     }
   }
 
@@ -381,3 +383,16 @@ class SyncEngine {
         [tbl, id],
       );
 }
+
+/// Toglie dalla coda la voce appena spinta, solo se nel frattempo non e' cambiata.
+@visibleForTesting
+Future<void> dropPushedOutboxEntry(
+  AppDatabase db,
+  String tbl,
+  String id,
+  String op,
+  Object? at,
+) => db.customStatement(
+  'DELETE FROM _outbox WHERE tbl = ? AND row_id = ? AND op = ? AND at = ?',
+  [tbl, id, op, at],
+);

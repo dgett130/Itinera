@@ -1,10 +1,18 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../core/enums.dart';
 import '../../core/format.dart';
 import '../../data/database.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
 import '../../ui/widgets.dart';
 import '../transport/routing_service.dart';
 import 'explore_ui.dart';
@@ -72,27 +80,156 @@ String warningText(AppLocalizations l10n, RouteWarning w) {
   };
 }
 
-/// Una riga di avviso (icona e testo nel colore "attenzione").
-class RouteWarningRow extends StatelessWidget {
-  const RouteWarningRow({super.key, required this.text});
-  final String text;
+String _capitalized(String s) =>
+    s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+/// "Sabato 24 ottobre".
+String routeDayLong(DateTime d) =>
+    _capitalized(DateFormat('EEEE d MMMM', Fmt.locale).format(d));
+
+/// "Sab 24 ott".
+String routeDayShort(DateTime d) => _capitalized(Fmt.dateShort(d));
+
+/// Come si dice il mezzo dopo una durata: "8 min a piedi".
+String routeModePhrase(RouteTravelMode m) => switch (m) {
+  RouteTravelMode.walk => 'a piedi',
+  RouteTravelMode.bike => 'in bici',
+  RouteTravelMode.car => 'in auto',
+};
+
+/// Tessera tonda del mezzo di un percorso.
+class RouteModeTile extends StatelessWidget {
+  const RouteModeTile(this.mode, {super.key, this.size = 44});
+
+  final RouteTravelMode mode;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
-    final color = context.tokens.warning;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return IconTile(
+      routeModeIcon(mode),
+      round: true,
+      size: size,
+      color: switch (mode) {
+        RouteTravelMode.walk => Cartolina.corallo,
+        RouteTravelMode.bike => Cartolina.sole,
+        RouteTravelMode.car => Cartolina.laguna,
+      },
+    );
+  }
+}
+
+/// Tessera tonda della categoria di un luogo.
+class PoiTile extends StatelessWidget {
+  const PoiTile(this.category, {super.key, this.size = 44});
+
+  final PoiCategory? category;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, color, onColor) = switch (category) {
+      PoiCategory.monument => (
+        Icons.castle,
+        Cartolina.sole,
+        Cartolina.inchiostro,
+      ),
+      PoiCategory.museum => (
+        Icons.account_balance,
+        Cartolina.laguna,
+        Cartolina.inchiostro,
+      ),
+      PoiCategory.nature => (
+        Icons.park,
+        Cartolina.laguna,
+        Cartolina.inchiostro,
+      ),
+      PoiCategory.viewpoint => (
+        Icons.landscape,
+        Cartolina.corallo,
+        Cartolina.inchiostro,
+      ),
+      PoiCategory.religious => (
+        Icons.church,
+        Cartolina.sole,
+        Cartolina.inchiostro,
+      ),
+      PoiCategory.attraction => (
+        Icons.attractions,
+        Cartolina.corallo,
+        Cartolina.inchiostro,
+      ),
+      _ => (Icons.place, Cartolina.cobalto, Colors.white),
+    };
+    return IconTile(
+      icon,
+      round: true,
+      size: size,
+      color: color,
+      iconColor: onColor,
+    );
+  }
+}
+
+/// Numero della tappa nelle righe degli elenchi: cobalto in chiaro e in scuro,
+/// come gli spilli sulla mappa.
+class StopNumber extends StatelessWidget {
+  const StopNumber(this.number, {super.key, this.size = 28});
+
+  final int number;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        color: Cartolina.cobalto,
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        '$number',
+        style: TextStyle(
+          fontFamily: context.tokens.displayFont,
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+          fontSize: size * 0.46,
+        ),
+      ),
+    );
+  }
+}
+
+/// Attesa del percorso: niente rotelline a tutta pagina.
+class RouteLoadingView extends StatelessWidget {
+  const RouteLoadingView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(Icons.warning_amber_rounded, size: 18, color: color),
-          const SizedBox(width: 6),
+          ModuleHeader(
+            style: ModuleStyle.luoghi,
+            title: AppLocalizations.of(context).exploreTitle,
+          ),
           Expanded(
-            child: Text(
-              text,
-              style: context.texts.bodySmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
+            child: EmptyState(
+              icon: Icons.route,
+              color: Cartolina.corallo,
+              iconColor: Cartolina.inchiostro,
+              title: 'Calcolo le strade…',
+              action: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: Motion.off(context) ? 0.5 : null,
+                  minHeight: 8,
+                  color: Cartolina.corallo,
+                  backgroundColor: context.tokens.hairline,
+                ),
               ),
             ),
           ),
@@ -114,20 +251,43 @@ class RouteWarningsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return ItineraCard(
-      accentEdge: context.tokens.warning,
+      color: Cartolina.sole.withValues(alpha: 0.2),
+      borderColor: Cartolina.sole,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l10n.warnTitle, style: context.texts.titleSmall),
+          Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                size: 22,
+                color: context.tokens.warning,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(l10n.warnTitle, style: context.texts.titleMedium),
+              ),
+            ],
+          ),
           const SizedBox(height: 6),
-          for (final w in warnings) RouteWarningRow(text: warningText(l10n, w)),
+          for (final w in warnings)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                warningText(l10n, w),
+                style: context.texts.bodyMedium,
+              ),
+            ),
           if (onSplit != null &&
               warnings.any((w) => w.kind == WarningKind.longDay)) ...[
-            const SizedBox(height: 6),
-            FilledButton.tonalIcon(
+            const SizedBox(height: 8),
+            OutlinedButton(
               onPressed: onSplit,
-              icon: const Icon(Icons.call_split),
-              label: Text(l10n.splitInTwo),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                minimumSize: const Size(0, 40),
+              ),
+              child: Text(l10n.splitInTwo),
             ),
           ],
         ],
@@ -170,11 +330,9 @@ class RouteLegRow extends StatelessWidget {
         '${formatDistance(l10n, leg.distanceMeters)}';
     final text = [?label, estimate ? l10n.flowAbout(value) : value].join(' · ');
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 0, 8),
+      padding: const EdgeInsets.fromLTRB(4, 0, 0, 10),
       child: Row(
         children: [
-          Icon(Icons.south, size: 16, color: color),
-          const SizedBox(width: 6),
           Icon(routeModeIcon(mode), size: 16, color: color),
           const SizedBox(width: 6),
           Expanded(
@@ -189,7 +347,8 @@ class RouteLegRow extends StatelessWidget {
   }
 }
 
-/// Pin numerato di una tappa sulla mappa.
+/// Spillo numerato di una tappa sulla mappa. Il cerchio è più piccolo
+/// dell'area che riceve il tocco.
 class RouteStopMarker extends StatelessWidget {
   const RouteStopMarker({super.key, required this.number, this.onTap});
   final int number;
@@ -197,23 +356,30 @@ class RouteStopMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: tokens.accent,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 2.5),
-          boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 4)],
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          '$number',
-          style: TextStyle(
-            color: tokens.onAccent,
-            fontWeight: FontWeight.w800,
-            fontSize: 14,
+      behavior: HitTestBehavior.opaque,
+      child: Center(
+        child: Container(
+          width: 30,
+          height: 30,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Cartolina.cobalto,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2.5),
+            boxShadow: const [
+              BoxShadow(color: Color(0x40000000), blurRadius: 4),
+            ],
+          ),
+          child: Text(
+            '$number',
+            style: TextStyle(
+              fontFamily: context.tokens.displayFont,
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
           ),
         ),
       ),
@@ -221,9 +387,192 @@ class RouteStopMarker extends StatelessWidget {
   }
 }
 
-/// Scaletta: orari di arrivo (con l'ora di partenza), tratti tra le tappe e
-/// durata di visita. Con [onEditVisit] la durata è modificabile; senza
-/// [schedule] (tempi da calcolare) mostra solo tappe e durate.
+/// Spillo che cade dall'alto la prima volta che compare. [seen] ricorda quelli
+/// già visti: la mappa toglie gli spilli fuori schermo e li ricrea, e quando
+/// rientrano non devono ricadere. La chiave del widget va legata a [id].
+class PinDrop extends StatefulWidget {
+  const PinDrop({
+    super.key,
+    required this.id,
+    required this.seen,
+    required this.child,
+    this.index = 0,
+  });
+
+  final String id;
+  final Set<String> seen;
+  final Widget child;
+
+  /// Posizione nella cascata, se ne cadono più insieme.
+  final int index;
+
+  @override
+  State<PinDrop> createState() => _PinDropState();
+}
+
+class _PinDropState extends State<PinDrop> with SingleTickerProviderStateMixin {
+  static const _height = 44.0;
+
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: Motion.standard,
+  );
+  Timer? _delay;
+  var _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    if (!widget.seen.add(widget.id) || Motion.off(context)) {
+      _c.value = 1;
+      return;
+    }
+    final steps = math.min(widget.index, Motion.staggerMax);
+    _delay = Timer(Motion.stagger * steps, () {
+      if (mounted) _c.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _delay?.cancel();
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (context, child) {
+        final v = _c.value;
+        if (v >= 1) return child!;
+        return Opacity(
+          opacity: math.min(v * 3, 1),
+          child: Transform.translate(
+            offset: Offset(0, -_height * (1 - Motion.pop.transform(v))),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Tracciato del percorso: si disegna per lunghezza quando entra o cambia.
+/// Ridisegna solo questo strato (mai le tile) e non rifà il calcolo delle
+/// strade. Se la nuova linea inizia come la vecchia, si traccia solo il pezzo
+/// nuovo. Un tocco sulla mappa lo completa subito ([RouteLineState.finish]).
+class RouteLine extends StatefulWidget {
+  const RouteLine({super.key, required this.points, required this.color});
+
+  final List<LatLng> points;
+  final Color color;
+
+  @override
+  State<RouteLine> createState() => RouteLineState();
+}
+
+class RouteLineState extends State<RouteLine> {
+  static const _draw = Duration(milliseconds: 700);
+
+  /// Lunghezza percorsa fino a ogni punto, in gradi (basta il rapporto).
+  late List<double> _lengths = _measure(widget.points);
+  double _from = 0;
+  var _run = 0;
+  var _done = false;
+
+  /// Porta subito il tracciato alla fine.
+  void finish() {
+    if (!_done && mounted) setState(() => _done = true);
+  }
+
+  @override
+  void didUpdateWidget(RouteLine oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final before = oldWidget.points;
+    if (listEquals(before, widget.points)) return;
+    final n = math.min(before.length, widget.points.length);
+    var same = 0;
+    while (same < n && before[same] == widget.points[same]) {
+      same++;
+    }
+    _lengths = _measure(widget.points);
+    final total = _lengths.last;
+    _from = same == 0 || total <= 0 ? 0 : _lengths[same - 1] / total;
+    _run++;
+    _done = false;
+  }
+
+  static List<double> _measure(List<LatLng> points) {
+    final out = List<double>.filled(points.length, 0);
+    for (var i = 1; i < points.length; i++) {
+      final a = points[i - 1];
+      final b = points[i];
+      final cos = math.cos(a.latitude * math.pi / 180);
+      final dx = (b.longitude - a.longitude) * cos;
+      final dy = b.latitude - a.latitude;
+      out[i] = out[i - 1] + math.sqrt(dx * dx + dy * dy);
+    }
+    return out;
+  }
+
+  /// I punti fino alla frazione [t] della lunghezza, con l'ultimo interpolato.
+  List<LatLng> _cut(double t) {
+    final points = widget.points;
+    if (t >= 1 || _lengths.last <= 0) return points;
+    final target = _lengths.last * t;
+    var lo = 1;
+    var hi = points.length - 1;
+    while (lo < hi) {
+      final mid = (lo + hi) ~/ 2;
+      if (_lengths[mid] < target) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    final a = points[lo - 1];
+    final b = points[lo];
+    final span = _lengths[lo] - _lengths[lo - 1];
+    final f = span <= 0 ? 0.0 : (target - _lengths[lo - 1]) / span;
+    return [
+      ...points.sublist(0, lo),
+      LatLng(
+        a.latitude + (b.latitude - a.latitude) * f,
+        a.longitude + (b.longitude - a.longitude) * f,
+      ),
+    ];
+  }
+
+  Widget _layer(List<LatLng> points) => PolylineLayer(
+    polylines: [Polyline(points: points, strokeWidth: 5, color: widget.color)],
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    if (_done || Motion.off(context) || _from >= 1) {
+      return _layer(widget.points);
+    }
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(_run),
+      tween: Tween(begin: _from, end: 1),
+      duration: _draw,
+      curve: Curves.easeInOut,
+      onEnd: () => _done = true,
+      builder: (context, t, _) => _layer(_cut(t)),
+    );
+  }
+}
+
+/// Scaletta: orari di arrivo (con l'ora di partenza) e durata di visita, con
+/// gli avvisi della tappa dentro la sua riga. Con [onEditVisit] la durata è
+/// modificabile; senza [schedule] (tempi da calcolare) mostra solo tappe e
+/// durate; senza ora di partenza mostra i tratti tra le tappe, che altrimenti
+/// si leggono dagli orari.
 class RouteScheduleList extends StatelessWidget {
   const RouteScheduleList({
     super.key,
@@ -239,7 +588,7 @@ class RouteScheduleList extends StatelessWidget {
   final List<(SightseeingRouteStop, Location)> refs;
   final RouteSchedule? schedule;
 
-  /// Avvisi: quelli di una tappa compaiono sotto la tappa.
+  /// Avvisi: quelli di una tappa compaiono dentro la riga della tappa.
   final List<RouteWarning> warnings;
   final void Function(SightseeingRouteStop stop, Location loc) onTapStop;
   final void Function(SightseeingRouteStop stop, Location loc, bool first)?
@@ -258,75 +607,85 @@ class RouteScheduleList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final (i, (stop, loc)) in refs.indexed) ...[
-          if (timings?[i].legBefore case final leg?)
-            RouteLegRow(leg: leg, mode: route.travelMode, estimate: estimate),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: ItineraCard(
-              onTap: () => onTapStop(stop, loc),
-              padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
-              child: Row(
-                children: [
-                  if (start != null && timings != null)
-                    SizedBox(
-                      width: 50,
-                      child: Text(
-                        Fmt.timeOfDayMinutes(
-                          RouteSchedule.clock(start, timings[i].arriveSeconds) %
-                              (24 * 60),
-                        ),
-                        style: TextStyle(
-                          fontFamily: tokens.monoFont,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  CircleAvatar(
-                    radius: 14,
-                    backgroundColor: tokens.accentSoft,
-                    child: Text(
-                      '${i + 1}',
-                      style: TextStyle(
-                        color: tokens.accent,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                    ),
+        for (final (i, (stop, loc)) in refs.indexed)
+          StaggerIn(
+            key: ValueKey(stop.id),
+            index: i,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (timings?[i].legBefore case final leg? when start == null)
+                  RouteLegRow(
+                    leg: leg,
+                    mode: route.travelMode,
+                    estimate: estimate,
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: ItineraCard(
+                    onTap: () => onTapStop(stop, loc),
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                    child: Row(
                       children: [
-                        Text(
-                          loc.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: context.texts.titleSmall,
-                        ),
-                        if (loc.latitude == null || loc.longitude == null)
-                          Text(
-                            l10n.placeNoCoords,
-                            style: context.texts.bodySmall?.copyWith(
-                              color: context.scheme.error,
+                        if (start != null && timings != null)
+                          SizedBox(
+                            width: 54,
+                            child: Text(
+                              Fmt.timeOfDayMinutes(
+                                RouteSchedule.clock(
+                                      start,
+                                      timings[i].arriveSeconds,
+                                    ) %
+                                    (24 * 60),
+                              ),
+                              style: TextStyle(
+                                fontFamily: tokens.labelFont,
+                                color: tokens.accent,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
+                        StopNumber(i + 1),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                loc.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: context.texts.titleMedium,
+                              ),
+                              if (loc.latitude == null || loc.longitude == null)
+                                Text(
+                                  l10n.placeNoCoords,
+                                  style: context.texts.bodySmall?.copyWith(
+                                    color: context.scheme.error,
+                                  ),
+                                ),
+                              _visit(context, l10n, stop, loc, i == 0, muted),
+                              for (final w in warnings.where(
+                                (w) => w.stopIndex == i,
+                              ))
+                                Text(
+                                  warningText(l10n, w),
+                                  style: context.texts.bodySmall?.copyWith(
+                                    color: tokens.warning,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  _visit(context, l10n, stop, loc, i == 0, muted),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          for (final w in warnings.where((w) => w.stopIndex == i))
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 0, 4),
-              child: RouteWarningRow(text: warningText(l10n, w)),
-            ),
-        ],
         if (schedule?.returnLeg case final back? when refs.isNotEmpty)
           RouteLegRow(
             leg: back,
@@ -352,24 +711,26 @@ class RouteScheduleList extends StatelessWidget {
       first: first,
     );
     final edit = onEditVisit;
-    if (edit == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Text(label, style: muted),
-      );
-    }
+    if (edit == null) return Text(label, style: muted);
     return TextButton(
       onPressed: () => edit(stop, loc, first),
+      style: TextButton.styleFrom(
+        foregroundColor: context.scheme.onSurfaceVariant,
+        padding: const EdgeInsets.only(right: 8),
+        minimumSize: const Size(0, 30),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        textStyle: muted,
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [Text(label), const Icon(Icons.expand_more, size: 18)],
+        children: [Text(label), const Icon(Icons.expand_more, size: 16)],
       ),
     );
   }
 }
 
 /// Riga finale: fine prevista (o durata totale senza orario) e ripartizione
-/// tra spostamenti e visite.
+/// tra spostamenti e visite. La fonte dei tempi si dice solo se sono stimati.
 class RouteScheduleFooter extends StatelessWidget {
   const RouteScheduleFooter({
     super.key,
@@ -391,36 +752,25 @@ class RouteScheduleFooter extends StatelessWidget {
               RouteSchedule.clock(start, schedule.endSeconds) % (24 * 60),
             ),
           );
-    final source = route.calcSource == DistanceSource.onlineRouting
-        ? l10n.routeSourceOnline
-        : l10n.routeSourceEstimate;
     final muted = context.texts.bodySmall?.copyWith(
       color: context.scheme.onSurfaceVariant,
     );
-    return ItineraCard(
-      child: Row(
-        children: [
-          Icon(Icons.sports_score, color: context.tokens.accent),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: context.texts.titleMedium),
-                Text(
-                  l10n.planBreakdown(
-                    formatDistance(l10n, schedule.distanceMeters),
-                    formatDuration(l10n, schedule.travelSeconds),
-                    formatDuration(l10n, schedule.visitSeconds),
-                  ),
-                  style: context.texts.bodySmall,
-                ),
-                Text(source, style: muted),
-              ],
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: context.texts.titleMedium),
+        const SizedBox(height: 2),
+        Text(
+          l10n.planBreakdown(
+            formatDistance(l10n, schedule.distanceMeters),
+            formatDuration(l10n, schedule.travelSeconds),
+            formatDuration(l10n, schedule.visitSeconds),
           ),
-        ],
-      ),
+          style: muted,
+        ),
+        if (route.calcSource != DistanceSource.onlineRouting)
+          Text(l10n.routeSourceEstimate, style: muted),
+      ],
     );
   }
 }

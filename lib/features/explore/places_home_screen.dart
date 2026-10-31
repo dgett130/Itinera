@@ -4,18 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../app.dart';
-import '../../core/enums.dart';
-import '../../core/format.dart';
 import '../../data/database.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers.dart';
 import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
 import '../../ui/widgets.dart';
 import '../itinerary/itinerary_providers.dart';
 import '../trip/trip_providers.dart';
 import 'explore_providers.dart';
 import 'explore_ui.dart';
+import 'route_schedule_view.dart';
 
 /// Pagina iniziale di "Luoghi e percorsi": i percorsi del viaggio raggruppati
 /// per giorno (le bozze in "Da programmare") e un grande "Nuovo percorso"
@@ -69,15 +68,8 @@ class _PlacesHomeScreenState extends ConsumerState<PlacesHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final trip = ref.watch(tripProvider(widget.tripId)).value;
-    final style = trip == null
-        ? TripStyle.atlante
-        : ItineraTheme.effectiveStyle(trip);
-    return TripThemeScope(style: style, child: _body(context));
-  }
-
-  Widget _body(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final trip = ref.watch(tripProvider(widget.tripId)).value;
     final routes = ref.watch(routesProvider(widget.tripId)).value;
     final stops = ref.watch(tripStopsProvider(widget.tripId)).value ?? const [];
     final days =
@@ -101,54 +93,90 @@ class _PlacesHomeScreenState extends ConsumerState<PlacesHomeScreen> {
       }
     }
     final orderedDays = sortDaysForPicker(byDay.keys.toList());
+    final hasRoutes = routes != null && routes.isNotEmpty;
+    final note = hasRoutes
+        ? [
+            routes.length == 1 ? '1 percorso' : '${routes.length} percorsi',
+            ?trip?.name,
+          ].join(' · ')
+        : null;
+
+    var row = 0;
+    Widget card(SightseeingRoute r, {bool draft = false}) => StaggerIn(
+      key: ValueKey(r.id),
+      index: row++,
+      child: _RouteCard(
+        route: r,
+        stops: stopCount[r.id] ?? 0,
+        draft: draft,
+        onTap: () => _open(r),
+      ),
+    );
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.exploreTitle)),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: SizedBox(
-          height: 56,
-          child: FilledButton.icon(
-            onPressed: routes == null || _creating
-                ? null
-                : () => _newRoute(routes.length),
-            icon: const Icon(Icons.add_road),
-            label: Text(l10n.routeNew),
-          ),
-        ),
-      ),
-      body: routes == null
-          ? const LoadingView()
-          : routes.isEmpty
-          ? EmptyState(
-              icon: Icons.route_outlined,
-              title: l10n.placesHomeEmptyTitle,
-              message: l10n.placesHomeEmptyMessage,
-            )
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              children: [
-                for (final d in orderedDays) ...[
-                  SectionHeader(_dayLabel(l10n, d)),
-                  for (final r in byDay[d]!)
-                    _RouteCard(
-                      route: r,
-                      stops: stopCount[r.id] ?? 0,
-                      onTap: () => _open(r),
-                    ),
-                ],
-                if (drafts.isNotEmpty) ...[
-                  SectionHeader(l10n.placesHomeDrafts),
-                  for (final r in drafts)
-                    _RouteCard(
-                      route: r,
-                      stops: stopCount[r.id] ?? 0,
-                      draft: true,
-                      onTap: () => _open(r),
-                    ),
-                ],
-              ],
+      bottomNavigationBar: !hasRoutes
+          ? null
+          : SafeArea(
+              minimum: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: SizedBox(
+                height: 56,
+                child: FilledButton(
+                  onPressed: _creating ? null : () => _newRoute(routes.length),
+                  child: Text(l10n.routeNew),
+                ),
+              ),
             ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ModuleHeader(
+            style: ModuleStyle.luoghi,
+            title: l10n.exploreTitle,
+            note: note,
+          ),
+          Expanded(
+            child: routes == null
+                ? const _HomeSkeleton()
+                : routes.isEmpty
+                ? EmptyState(
+                    icon: Icons.route,
+                    color: Cartolina.corallo,
+                    iconColor: Cartolina.inchiostro,
+                    title: l10n.placesHomeEmptyTitle,
+                    message: l10n.placesHomeEmptyMessage,
+                    action: SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: FilledButton(
+                        onPressed: _creating
+                            ? null
+                            : () => _newRoute(routes.length),
+                        child: Text(l10n.routeNew),
+                      ),
+                    ),
+                  )
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                    children: [
+                      for (final d in orderedDays) ...[
+                        SectionHeader(
+                          _dayLabel(l10n, d),
+                          padding: const EdgeInsets.fromLTRB(0, 20, 0, 10),
+                        ),
+                        for (final r in byDay[d]!) card(r),
+                      ],
+                      if (drafts.isNotEmpty) ...[
+                        SectionHeader(
+                          l10n.placesHomeDrafts,
+                          padding: const EdgeInsets.fromLTRB(0, 20, 0, 10),
+                        ),
+                        for (final r in drafts) card(r, draft: true),
+                      ],
+                    ],
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -158,8 +186,32 @@ class _PlacesHomeScreenState extends ConsumerState<PlacesHomeScreen> {
 
   String _dayLabel(AppLocalizations l10n, ItineraryDay d) {
     if (d.title?.trim().isNotEmpty == true) return d.title!;
-    if (d.date != null) return Fmt.dateShort(d.date!);
+    if (d.date != null) return routeDayLong(d.date!);
     return l10n.routeDayUnplanned;
+  }
+}
+
+/// Segnaposto che respirano mentre arrivano i percorsi.
+class _HomeSkeleton extends StatelessWidget {
+  const _HomeSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+      children: const [
+        Skeleton(width: 180, height: 20),
+        SizedBox(height: 14),
+        Skeleton(height: 72, radius: 20),
+        SizedBox(height: 10),
+        Skeleton(height: 72, radius: 20),
+        SizedBox(height: 26),
+        Skeleton(width: 140, height: 20),
+        SizedBox(height: 14),
+        Skeleton(height: 72, radius: 20),
+      ],
+    );
   }
 }
 
@@ -179,7 +231,6 @@ class _RouteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final tokens = context.tokens;
     final details = [
       l10n.routeStopsCount(stops),
       if (stops >= 2 &&
@@ -195,17 +246,10 @@ class _RouteCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: ItineraCard(
         onTap: onTap,
-        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+        padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: tokens.accentSoft,
-              child: Icon(
-                routeModeIcon(route.travelMode),
-                color: tokens.accent,
-              ),
-            ),
+            RouteModeTile(route.travelMode),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -220,6 +264,8 @@ class _RouteCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     details,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: context.texts.bodySmall?.copyWith(
                       color: context.scheme.onSurfaceVariant,
                     ),
@@ -229,7 +275,23 @@ class _RouteCard extends StatelessWidget {
             ),
             if (draft) ...[
               const SizedBox(width: 8),
-              InfoPill(Icons.edit_outlined, l10n.placesDraftBadge),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: Cartolina.sole,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  l10n.placesDraftBadge,
+                  style: context.texts.labelSmall?.copyWith(
+                    color: Cartolina.inchiostro,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
             ],
             const SizedBox(width: 4),
             Icon(Icons.chevron_right, color: context.scheme.onSurfaceVariant),

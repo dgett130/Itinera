@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../../app.dart';
 import '../../core/format.dart';
 import '../../data/database.dart';
 import '../../l10n/app_localizations.dart';
@@ -40,7 +39,7 @@ class RouteSummaryScreen extends ConsumerWidget {
     final routeAsync = ref.watch(routeByIdProvider(routeId));
     final route = routeAsync.value;
     if (trip == null || (route == null && routeAsync.isLoading)) {
-      return const Scaffold(body: LoadingView());
+      return const RouteLoadingView();
     }
     if (route == null) {
       return Scaffold(
@@ -76,94 +75,87 @@ class RouteSummaryScreen extends ConsumerWidget {
         if (w.stopIndex == null) w,
     ];
 
-    return TripThemeScope(
-      style: ItineraTheme.effectiveStyle(trip),
-      child: Builder(
-        builder: (context) {
-          void openPlace(SightseeingRouteStop s, Location loc) =>
-              showPlaceSheet(
-                context,
-                place: PlaceInfo.fromLocation(
-                  loc,
-                  visitMinutes: s.visitMinutes,
-                ),
-              );
-          final when = [
-            if (day != null)
-              day.title?.trim().isNotEmpty == true
-                  ? day.title!
-                  : day.date != null
-                  ? Fmt.dateShort(day.date!)
-                  : l10n.routeDayUnplanned,
-            if (route.startMinutes != null)
-              Fmt.timeOfDayMinutes(route.startMinutes),
-            l10n.routeStopsCount(refs.length),
-            routeModeLabel(l10n, route.travelMode),
-          ].join(' · ');
-          return Scaffold(
-            appBar: AppBar(title: Text(route.name)),
-            bottomNavigationBar: SafeArea(
-              minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: SizedBox(
-                height: 56,
-                child: FilledButton.icon(
-                  onPressed: () => context.push('/trip/$tripId/route/$routeId'),
-                  icon: const Icon(Icons.edit_outlined),
-                  label: Text(l10n.commonEdit),
-                ),
-              ),
-            ),
-            body: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+    void openPlace(SightseeingRouteStop s, Location loc) => showPlaceSheet(
+      context,
+      place: PlaceInfo.fromLocation(loc, visitMinutes: s.visitMinutes),
+    );
+    final when = [
+      if (day != null)
+        day.title?.trim().isNotEmpty == true
+            ? day.title!
+            : day.date != null
+            ? routeDayLong(day.date!)
+            : l10n.routeDayUnplanned,
+      if (route.startMinutes != null) Fmt.timeOfDayMinutes(route.startMinutes),
+      l10n.routeStopsCount(refs.length),
+      routeModeLabel(l10n, route.travelMode).toLowerCase(),
+    ].join(' · ');
+    return Scaffold(
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+        child: SizedBox(
+          height: 56,
+          child: FilledButton(
+            onPressed: () => context.push('/trip/$tripId/route/$routeId'),
+            child: Text(l10n.commonEdit),
+          ),
+        ),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PlainHeader(title: route.name, note: when, size: 30),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: 24),
               children: [
-                Text(
-                  when,
-                  style: context.texts.bodyMedium?.copyWith(
-                    color: context.scheme.onSurfaceVariant,
+                SizedBox(
+                  height: 260,
+                  child: _SummaryMap(
+                    trip: trip,
+                    route: route,
+                    refs: refs,
+                    onTapStop: openPlace,
                   ),
                 ),
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: SizedBox(
-                    height: 260,
-                    child: _SummaryMap(
-                      trip: trip,
-                      route: route,
-                      refs: refs,
-                      onTapStop: openPlace,
-                    ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SectionHeader(
+                        l10n.planScheduleTitle,
+                        padding: const EdgeInsets.fromLTRB(0, 18, 0, 10),
+                      ),
+                      RouteScheduleList(
+                        route: route,
+                        refs: refs,
+                        schedule: schedule,
+                        onTapStop: openPlace,
+                        warnings: warnings,
+                      ),
+                      if (dayWarnings.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        RouteWarningsCard(warnings: dayWarnings),
+                        const SizedBox(height: 8),
+                      ],
+                      if (schedule != null) ...[
+                        const SizedBox(height: 6),
+                        RouteScheduleFooter(route: route, schedule: schedule),
+                      ],
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                Text(l10n.planScheduleTitle, style: context.texts.titleSmall),
-                const SizedBox(height: 8),
-                RouteScheduleList(
-                  route: route,
-                  refs: refs,
-                  schedule: schedule,
-                  onTapStop: openPlace,
-                  warnings: warnings,
-                ),
-                if (dayWarnings.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  RouteWarningsCard(warnings: dayWarnings),
-                  const SizedBox(height: 8),
-                ],
-                if (schedule != null) ...[
-                  const SizedBox(height: 4),
-                  RouteScheduleFooter(route: route, schedule: schedule),
-                ],
               ],
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
 }
 
-class _SummaryMap extends StatelessWidget {
+class _SummaryMap extends StatefulWidget {
   const _SummaryMap({
     required this.trip,
     required this.route,
@@ -177,13 +169,22 @@ class _SummaryMap extends StatelessWidget {
   final void Function(SightseeingRouteStop stop, Location loc) onTapStop;
 
   @override
+  State<_SummaryMap> createState() => _SummaryMapState();
+}
+
+class _SummaryMapState extends State<_SummaryMap> {
+  final _line = GlobalKey<RouteLineState>();
+  final _seenPins = <String>{};
+
+  @override
   Widget build(BuildContext context) {
+    final trip = widget.trip;
     final pts = [
-      for (final (i, r) in refs.indexed)
+      for (final (i, r) in widget.refs.indexed)
         if (r.$2.latitude != null && r.$2.longitude != null)
           (i, r, LatLng(r.$2.latitude!, r.$2.longitude!)),
     ];
-    final geometry = decodeGeometry(route.geometry);
+    final geometry = decodeGeometry(widget.route.geometry);
     final line = geometry.length >= 2 ? geometry : [for (final p in pts) p.$3];
     final center = pts.isNotEmpty
         ? pts.first.$3
@@ -191,6 +192,8 @@ class _SummaryMap extends StatelessWidget {
         ? LatLng(trip.destinationLat!, trip.destinationLng!)
         : const LatLng(41.9028, 12.4964);
     return FlutterMap(
+      // Le tappe arrivano dopo il percorso: l'inquadratura iniziale va rifatta.
+      key: ValueKey(pts.length),
       options: MapOptions(
         initialCenter: center,
         initialZoom: pts.isEmpty ? 12 : 15,
@@ -204,22 +207,18 @@ class _SummaryMap extends StatelessWidget {
         interactionOptions: const InteractionOptions(
           flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
         ),
+        onPointerDown: (_, _) => _line.currentState?.finish(),
       ),
       children: [
         TileLayer(
+          tileBuilder: Theme.of(context).brightness == Brightness.dark
+              ? darkModeTileBuilder
+              : null,
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'org.itinera.app',
         ),
         if (line.length >= 2)
-          PolylineLayer(
-            polylines: [
-              Polyline(
-                points: line,
-                strokeWidth: 5,
-                color: context.tokens.accent.withValues(alpha: 0.85),
-              ),
-            ],
-          ),
+          RouteLine(key: _line, points: line, color: context.tokens.accent),
         MarkerLayer(
           markers: [
             for (final (i, r, p) in pts)
@@ -227,9 +226,15 @@ class _SummaryMap extends StatelessWidget {
                 point: p,
                 width: 40,
                 height: 40,
-                child: RouteStopMarker(
-                  number: i + 1,
-                  onTap: () => onTapStop(r.$1, r.$2),
+                child: PinDrop(
+                  key: ValueKey(r.$1.id),
+                  id: r.$1.id,
+                  seen: _seenPins,
+                  index: i,
+                  child: RouteStopMarker(
+                    number: i + 1,
+                    onTap: () => widget.onTapStop(r.$1, r.$2),
+                  ),
                 ),
               ),
           ],
