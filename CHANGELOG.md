@@ -10,6 +10,8 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ## [Non rilasciato]
 
+## [2.0.0] - 2026-10-31
+
 ### Aggiunto
 - **Nuova identità "Cartolina"**, ispirata ai manifesti turistici italiani
   degli anni '50: nuovi colori e caratteri, tema chiaro e scuro. Ogni viaggio
