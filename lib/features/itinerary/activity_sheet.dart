@@ -4,6 +4,8 @@ import 'package:latlong2/latlong.dart';
 
 import '../../core/format.dart';
 import '../../data/database.dart';
+import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
 import '../../ui/widgets.dart';
 import '../places/geocoding_service.dart';
 import '../places/map_picker_screen.dart';
@@ -16,7 +18,7 @@ String dayLabel(ItineraryDay day) {
   return Fmt.dateShort(day.date!);
 }
 
-/// Foglio di aggiunta/modifica di un'attivita'.
+/// Foglio di aggiunta/modifica di un'attività.
 Future<void> showActivitySheet(
   BuildContext context, {
   required String tripId,
@@ -25,12 +27,15 @@ Future<void> showActivitySheet(
   required List<ActivityCategory> categories,
   Activity? existing,
   Location? existingLocation,
+  bool fromFab = false,
 }) {
-  return showModalBottomSheet<void>(
+  return showCartolinaSheet<void>(
     context: context,
-    isScrollControlled: true,
+    fromFab: fromFab,
     builder: (context) => Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: _ActivityForm(
         tripId: tripId,
         dayId: dayId,
@@ -89,8 +94,9 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
     if (e != null) {
       _titleCtrl.text = e.title;
       if (e.costCents != null) {
-        _costCtrl.text =
-            (e.costCents! / 100).toStringAsFixed(2).replaceAll('.', ',');
+        _costCtrl.text = (e.costCents! / 100)
+            .toStringAsFixed(2)
+            .replaceAll('.', ',');
       }
       _notesCtrl.text = e.notes ?? '';
     }
@@ -138,7 +144,14 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
     final initial = current != null
         ? TimeOfDay(hour: current ~/ 60, minute: current % 60)
         : const TimeOfDay(hour: 9, minute: 0);
-    final picked = await showTimePicker(context: context, initialTime: initial);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      helpText: isStart ? 'Inizio' : 'Fine',
+      cancelText: 'Annulla',
+      confirmText: 'Conferma',
+      builder: _timePickerTheme,
+    );
     if (picked == null) return;
     setState(() {
       final minutes = picked.hour * 60 + picked.minute;
@@ -155,7 +168,7 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
     if (!_formKey.currentState!.validate()) return;
     if (_start != null && _end != null && _end! < _start!) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('La fine non puo precedere l\'inizio')),
+        const SnackBar(content: Text('La fine non può precedere l\'inizio')),
       );
       return;
     }
@@ -163,7 +176,9 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
     final cost = _costCtrl.text.trim().isEmpty
         ? null
         : Fmt.parseMoneyToCents(_costCtrl.text);
-    final notes = _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim();
+    final notes = _notesCtrl.text.trim().isEmpty
+        ? null
+        : _notesCtrl.text.trim();
     final locationId = await repo.upsertLocationLabel(
       widget.tripId,
       widget.existing?.locationId,
@@ -200,11 +215,37 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
     if (mounted) Navigator.pop(context);
   }
 
+  Future<void> _delete() async {
+    final repo = ref.read(itineraryRepositoryProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    final removed = await repo.deleteActivity(widget.existing!.id);
+    if (!mounted) return;
+    if (removed != null) {
+      showUndoSnackBar(
+        context,
+        message: 'Attività eliminata',
+        onUndo: () async {
+          final restored = await repo.restoreActivity(removed);
+          if (restored) return;
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Non si può ripristinare: il giorno non esiste più.',
+              ),
+            ),
+          );
+        },
+      );
+    }
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.existing != null;
+    final warning = context.tokens.warning;
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       child: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -213,7 +254,7 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SheetHeader(isEdit ? 'Modifica attività' : 'Nuova attività'),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               TextFormField(
                 controller: _titleCtrl,
                 autofocus: !isEdit,
@@ -223,25 +264,52 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
                     : null,
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _dayId,
-                decoration: const InputDecoration(labelText: 'Giorno'),
-                items: [
-                  for (final d in widget.days)
-                    DropdownMenuItem(value: d.id, child: Text(dayLabel(d))),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _dayId,
+                      isExpanded: true,
+                      style: context.texts.bodyLarge,
+                      decoration: const InputDecoration(labelText: 'Giorno'),
+                      items: [
+                        for (final d in widget.days)
+                          DropdownMenuItem(
+                            value: d.id,
+                            child: Text(
+                              dayLabel(d),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => _dayId = v ?? _dayId),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: DropdownButtonFormField<String?>(
+                      initialValue: _categoryId,
+                      isExpanded: true,
+                      style: context.texts.bodyLarge,
+                      decoration: const InputDecoration(labelText: 'Categoria'),
+                      items: [
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('Nessuna'),
+                        ),
+                        for (final c in widget.categories)
+                          DropdownMenuItem(
+                            value: c.id,
+                            child: Text(
+                              c.name,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => _categoryId = v),
+                    ),
+                  ),
                 ],
-                onChanged: (v) => setState(() => _dayId = v ?? _dayId),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String?>(
-                initialValue: _categoryId,
-                decoration: const InputDecoration(labelText: 'Categoria'),
-                items: [
-                  const DropdownMenuItem(value: null, child: Text('Nessuna')),
-                  for (final c in widget.categories)
-                    DropdownMenuItem(value: c.id, child: Text(c.name)),
-                ],
-                onChanged: (v) => setState(() => _categoryId = v),
               ),
               const SizedBox(height: 12),
               Row(
@@ -254,7 +322,7 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
                       onClear: () => setState(() => _start = null),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: _TimeField(
                       label: 'Fine',
@@ -266,63 +334,66 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
                 ],
               ),
               const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: PlaceAutocompleteField(
-                      controller: _locationCtrl,
-                      label: 'Luogo (opzionale)',
-                      onSelected: (place) {
-                        _locLat = place.latitude;
-                        _locLng = place.longitude;
-                      },
-                      onManualEdit: (_) {
-                        _locLat = null;
-                        _locLng = null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: IconButton.filledTonal(
-                      onPressed: _pickOnMap,
-                      icon: const Icon(Icons.map),
-                      tooltip: 'Scegli sulla mappa',
-                    ),
-                  ),
-                ],
+              PlaceAutocompleteField(
+                controller: _locationCtrl,
+                label: 'Luogo',
+                onSelected: (place) {
+                  _locLat = place.latitude;
+                  _locLng = place.longitude;
+                },
+                onManualEdit: (_) {
+                  _locLat = null;
+                  _locLng = null;
+                },
               ),
-              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: _pickOnMap,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    minimumSize: const Size(0, 40),
+                  ),
+                  child: const Text('Scegli sulla mappa'),
+                ),
+              ),
+              const SizedBox(height: 4),
               TextFormField(
                 controller: _costCtrl,
-                decoration: const InputDecoration(labelText: 'Costo (EUR)'),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Costo (€)'),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _notesCtrl,
                 decoration: const InputDecoration(labelText: 'Note'),
                 maxLines: 2,
+                minLines: 1,
               ),
               const SizedBox(height: 16),
               Row(
                 children: [
-                  if (isEdit)
-                    TextButton.icon(
-                      onPressed: () async {
-                        await ref
-                            .read(itineraryRepositoryProvider)
-                            .deleteActivity(widget.existing!.id);
-                        if (context.mounted) Navigator.pop(context);
-                      },
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('Elimina'),
+                  if (isEdit) ...[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _delete,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: warning,
+                          side: BorderSide(color: warning, width: 1.5),
+                        ),
+                        child: const Text('Elimina'),
+                      ),
                     ),
-                  const Spacer(),
-                  FilledButton(onPressed: _save, child: const Text('Salva')),
+                    const SizedBox(width: 10),
+                  ],
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _save,
+                      child: const Text('Salva'),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -331,6 +402,62 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
       ),
     );
   }
+}
+
+/// Aspetto Cartolina del selettore dell'ora: ore e minuti in tessere, la
+/// voce attiva gialla.
+Widget _timePickerTheme(BuildContext context, Widget? child) {
+  final theme = Theme.of(context);
+  final scheme = context.scheme;
+  final tokens = context.tokens;
+  final button = theme.filledButtonTheme.style;
+  final card = scheme.surfaceContainerLow;
+  Color pick(Set<WidgetState> states, Color on, Color off) =>
+      states.contains(WidgetState.selected) ? on : off;
+  return Theme(
+    data: theme.copyWith(
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: scheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        helpTextStyle: context.texts.titleLarge?.copyWith(fontSize: 20),
+        hourMinuteShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: tokens.hairline),
+        ),
+        hourMinuteColor: WidgetStateColor.resolveWith(
+          (s) => pick(s, Cartolina.sole, card),
+        ),
+        hourMinuteTextColor: WidgetStateColor.resolveWith(
+          (s) => pick(s, Cartolina.inchiostro, scheme.onSurface),
+        ),
+        hourMinuteTextStyle: TextStyle(
+          fontFamily: tokens.displayFont,
+          fontWeight: FontWeight.w800,
+          fontSize: 48,
+        ),
+        dialBackgroundColor: card,
+        dialHandColor: Cartolina.sole,
+        dialTextColor: WidgetStateColor.resolveWith(
+          (s) => pick(s, Cartolina.inchiostro, scheme.onSurface),
+        ),
+        dialTextStyle: TextStyle(
+          fontFamily: tokens.labelFont,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+        cancelButtonStyle: TextButton.styleFrom(
+          foregroundColor: scheme.onSurface,
+        ),
+        confirmButtonStyle: TextButton.styleFrom(
+          backgroundColor: button?.backgroundColor?.resolve(const {}),
+          foregroundColor: button?.foregroundColor?.resolve(const {}),
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          shape: const StadiumBorder(),
+        ),
+      ),
+    ),
+    child: child!,
+  );
 }
 
 class _TimeField extends StatelessWidget {
@@ -350,6 +477,7 @@ class _TimeField extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: label,
@@ -357,6 +485,7 @@ class _TimeField extends StatelessWidget {
               ? const Icon(Icons.schedule, size: 18)
               : IconButton(
                   icon: const Icon(Icons.clear, size: 18),
+                  tooltip: 'Togli l\'orario',
                   onPressed: onClear,
                 ),
         ),

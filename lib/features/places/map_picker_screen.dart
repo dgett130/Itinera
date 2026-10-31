@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
+
 /// Schermata di selezione di un punto sulla mappa (OpenStreetMap).
 ///
 /// Ritorna il [LatLng] scelto via Navigator.pop, oppure null se annullato.
 /// I tile richiedono rete; offline la mappa resta grigia ma il resto dell'app
-/// funziona (il luogo si puo' inserire a mano).
+/// funziona (il luogo si può inserire a mano).
 class MapPickerScreen extends StatefulWidget {
   const MapPickerScreen({super.key, this.initial});
 
@@ -21,15 +24,22 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final scheme = context.scheme;
+    final selected = _selected;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Scegli sulla mappa'),
         actions: [
-          if (_selected != null)
-            TextButton(
-              onPressed: () => Navigator.pop(context, _selected),
-              child: const Text('Conferma'),
+          if (selected != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: TextButton(
+                onPressed: () => Navigator.pop(context, selected),
+                child: const Text(
+                  'Conferma',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
             ),
         ],
       ),
@@ -43,51 +53,80 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
             ),
             children: [
               TileLayer(
+                tileBuilder: Theme.of(context).brightness == Brightness.dark
+                    ? darkModeTileBuilder
+                    : null,
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'org.itinera.app',
               ),
-              if (_selected != null)
+              if (selected != null)
                 MarkerLayer(
                   markers: [
                     Marker(
-                      point: _selected!,
+                      point: selected,
                       width: 44,
                       height: 44,
                       alignment: Alignment.topCenter,
-                      child: Icon(Icons.location_pin,
-                          size: 44, color: scheme.error),
+                      child: _DroppingPin(key: ValueKey(selected)),
                     ),
                   ],
                 ),
-              const RichAttributionWidget(
-                attributions: [
-                  TextSourceAttribution('OpenStreetMap contributors'),
-                ],
+              Align(
+                alignment: Alignment.bottomLeft,
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Text(
+                    'OpenStreetMap contributors',
+                    style: context.texts.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
-          if (_selected == null)
+          if (selected == null)
             Positioned(
-              left: 0,
-              right: 0,
-              bottom: 24,
+              left: 16,
+              right: 16,
+              bottom: 44,
               child: Center(
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
-                    color: scheme.inverseSurface,
+                    color: scheme.onSurface,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     'Tocca la mappa per scegliere un punto',
-                    style: TextStyle(color: scheme.onInverseSurface),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: scheme.surface),
                   ),
                 ),
               ),
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Lo spillo cade dall'alto a ogni punto scelto.
+class _DroppingPin extends StatelessWidget {
+  const _DroppingPin({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Motion.of(context, Motion.standard),
+      curve: Motion.pop,
+      builder: (context, v, child) =>
+          Transform.translate(offset: Offset(0, -44 * (1 - v)), child: child),
+      child: const Icon(Icons.location_pin, size: 44, color: Cartolina.corallo),
     );
   }
 }

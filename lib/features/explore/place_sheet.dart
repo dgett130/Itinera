@@ -11,11 +11,14 @@ import '../../core/visit_duration.dart';
 import '../../data/database.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
+import '../../ui/widgets.dart';
 import 'explore_providers.dart';
 import 'explore_repository.dart';
 import 'explore_ui.dart';
 import 'opening_hours.dart';
 import 'poi_parser.dart';
+import 'route_schedule_view.dart';
 
 /// Dati mostrati dalla scheda luogo, indipendenti dalla provenienza
 /// (suggerimento OSM non ancora scelto oppure luogo già nel viaggio).
@@ -111,8 +114,9 @@ class PlaceSheetAction {
   final bool destructive;
 }
 
-/// Apre la scheda luogo: pannello trascinabile a tre altezze (essenziale →
-/// orari e visita → descrizione, sito e note). La mappa resta visibile dietro.
+/// Apre la scheda luogo: pannello trascinabile a tre altezze. Un luogo da
+/// aggiungere parte basso (nome e azione); una tappa parte più alta, con foto,
+/// stato e azioni. La mappa resta visibile dietro.
 Future<void> showPlaceSheet(
   BuildContext context, {
   required PlaceInfo place,
@@ -122,22 +126,21 @@ Future<void> showPlaceSheet(
   PlaceSheetAction? extraAction,
 }) {
   // Il pannello vive in una route separata: riporto il tema dello schermo
-  // chiamante, così resta nello stile del viaggio.
+  // chiamante.
   final theme = Theme.of(context);
-  return showModalBottomSheet<void>(
+  final adding = action != null && secondaryAction == null;
+  final initial = adding ? 0.38 : 0.52;
+  return showCartolinaSheet<void>(
     context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
     builder: (_) => Theme(
       data: theme,
       child: DraggableScrollableSheet(
         expand: false,
-        initialChildSize: 0.42,
+        initialChildSize: initial,
         minChildSize: 0.25,
         maxChildSize: 0.92,
         snap: true,
-        snapSizes: const [0.42, 0.7],
+        snapSizes: [initial, 0.83],
         builder: (context, scroll) => PlaceSheet(
           place: place,
           distanceLabel: distanceLabel,
@@ -171,10 +174,12 @@ class PlaceSheet extends StatelessWidget {
   /// "Togli").
   final PlaceSheetAction? secondaryAction;
 
-  /// Azione meno frequente, come bottone di testo sotto le altre (es.
-  /// "Dividi da qui").
+  /// Terza azione, in fila con le altre (es. "Dividi da qui").
   final PlaceSheetAction? extraAction;
   final ScrollController? scrollController;
+
+  /// Luogo non ancora nel percorso: una sola azione, per aggiungerlo.
+  bool get _adding => action != null && secondaryAction == null;
 
   @override
   Widget build(BuildContext context) {
@@ -182,9 +187,6 @@ class PlaceSheet extends StatelessWidget {
     final tokens = context.tokens;
     final scheme = context.scheme;
     final category = place.category;
-    final catColor = category != null
-        ? poiCategoryColor(category)
-        : tokens.accent;
     final hours = place.openingHours != null
         ? humanizeOpeningHours(place.openingHours!)
         : const <String>[];
@@ -192,10 +194,51 @@ class PlaceSheet extends StatelessWidget {
       if (category != null) poiCategoryLabel(l10n, category),
       ?distanceLabel,
     ].join(' · ');
+    final status = _openStatus(l10n, tokens, scheme);
+    final canOpenMaps = place.hasCoords || place.address != null;
+    final mapsButton = SizedBox(
+      height: 52,
+      child: OutlinedButton.icon(
+        onPressed: () => _openInMaps(place),
+        icon: const Icon(Icons.open_in_new),
+        label: Text(l10n.placeOpenInMaps),
+      ),
+    );
+
+    // Tessera, categoria e stato; col luogo da aggiungere anche il nome.
+    Widget identity({String? name}) => Row(
+      children: [
+        PoiTile(category, size: 48),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (name != null) Text(name, style: context.texts.titleMedium),
+              if (subtitle.isNotEmpty)
+                Text(
+                  subtitle,
+                  style: context.texts.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              if (status case (final text, final color))
+                Text(
+                  text,
+                  style: context.texts.bodyMedium?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
 
     return Material(
       color: scheme.surface,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       clipBehavior: Clip.antiAlias,
       child: ListView(
         controller: scrollController,
@@ -212,147 +255,120 @@ class PlaceSheet extends StatelessWidget {
               ),
             ),
           ),
-          if (place.wikidata != null) _PlacePhotoHeader(place.wikidata!),
-          // --- Essenziale (sempre visibile) ---------------------------------
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: catColor.withValues(alpha: 0.15),
-                child: Icon(
-                  category != null ? poiCategoryIcon(category) : Icons.place,
-                  color: catColor,
+          if (_adding) ...[
+            // --- Luogo da aggiungere: prima l'azione, poi i dettagli ----------
+            Text(
+              'Luogo non ancora nel percorso',
+              style: context.texts.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            identity(name: place.name),
+            const SizedBox(height: 14),
+            SizedBox(
+              height: 56,
+              child: FilledButton.icon(
+                onPressed: () => _run(context, action!),
+                icon: Icon(action!.icon),
+                label: Text(
+                  action!.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(place.name, style: context.texts.titleLarge),
-                    if (subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: context.texts.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                    if (_openStatus(l10n, tokens, scheme) case (
-                      final text,
-                      final color,
-                    )) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        text,
-                        style: context.texts.bodyMedium?.copyWith(
-                          color: color,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+            ),
+            if (canOpenMaps) ...[const SizedBox(height: 10), mapsButton],
+            const SizedBox(height: 16),
+            if (place.wikidata != null) _PlaceHead(wikidata: place.wikidata),
+          ] else ...[
+            // --- Tappa: foto, nome, stato e azioni in fila --------------------
+            _PlaceHead(wikidata: place.wikidata, name: place.name),
+            const SizedBox(height: 12),
+            if (category != null || subtitle.isNotEmpty || status != null)
+              identity(),
+            if (action != null) ...[
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  for (final (i, a) in [
+                    ?secondaryAction,
+                    action!,
+                    ?extraAction,
+                  ].indexed) ...[
+                    if (i > 0) const SizedBox(width: 10),
+                    Expanded(child: _button(context, a)),
                   ],
-                ),
+                ],
               ),
             ],
-          ),
-          if (action != null) ...[
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                if (secondaryAction != null) ...[
-                  Expanded(child: _button(context, secondaryAction!)),
-                  const SizedBox(width: 10),
-                ],
-                Expanded(child: _button(context, action!)),
-              ],
-            ),
-            if (extraAction != null)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: () => _run(context, extraAction!),
-                  icon: Icon(extraAction!.icon),
-                  label: Text(extraAction!.label),
-                ),
-              ),
+            const SizedBox(height: 14),
           ],
-          const SizedBox(height: 12),
-          // --- Orari e visita -------------------------------------------------
-          _InfoRow(
-            icon: Icons.schedule,
-            title: l10n.placeOpeningHours,
-            lines: hours.isNotEmpty ? hours : [l10n.placeHoursUnknown],
-            muted: hours.isEmpty,
-          ),
-          if (place.visitMinutes != 0)
-            _InfoRow(
-              icon: Icons.hourglass_bottom,
-              title: l10n.placeVisitAbout(
-                formatDuration(
-                  l10n,
-                  (place.visitMinutes ?? defaultVisitMinutes(category)) * 60,
+          // --- Orari, visita, ingresso, indirizzo e sito ----------------------
+          ItineraCard(
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _InfoRow(
+                  icon: Icons.schedule,
+                  title: l10n.placeOpeningHours,
+                  lines: hours.isNotEmpty ? hours : [l10n.placeHoursUnknown],
                 ),
-              ),
-              lines: [
-                place.visitMinutes == null
-                    ? l10n.placeVisitHint
-                    : l10n.placeVisitChosen,
+                if (place.visitMinutes != 0)
+                  _InfoRow(
+                    icon: Icons.landscape,
+                    title: l10n.placeVisitAbout(
+                      formatDuration(
+                        l10n,
+                        (place.visitMinutes ?? defaultVisitMinutes(category)) *
+                            60,
+                      ),
+                    ),
+                  ),
+                if (_feeLabel(l10n, place.fee) case final fee?)
+                  _InfoRow(
+                    icon: Icons.euro,
+                    title: l10n.placeFee,
+                    lines: [fee],
+                  ),
+                if (place.address != null && place.address!.trim().isNotEmpty)
+                  _InfoRow(icon: Icons.place, title: place.address!),
+                if (place.website != null && place.website!.trim().isNotEmpty)
+                  InkWell(
+                    onTap: () => _openWebsite(place.website!),
+                    child: _InfoRow(
+                      icon: Icons.language,
+                      title: l10n.placeWebsite,
+                      lines: [place.website!],
+                      singleLine: true,
+                      trailing: Icons.open_in_new,
+                    ),
+                  ),
               ],
-              muted: true,
             ),
-          if (_feeLabel(l10n, place.fee) case final fee?)
-            _InfoRow(
-              icon: Icons.confirmation_number_outlined,
-              title: l10n.placeFee,
-              lines: [fee],
-            ),
-          if (place.address != null && place.address!.trim().isNotEmpty)
-            _InfoRow(icon: Icons.place_outlined, title: place.address!),
-          if (place.hasCoords || place.address != null)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => _openInMaps(place),
-                icon: const Icon(Icons.map_outlined),
-                label: Text(l10n.placeOpenInMaps),
-              ),
-            ),
+          ),
+          if (!_adding && canOpenMaps) ...[
+            const SizedBox(height: 12),
+            mapsButton,
+          ],
           // --- Approfondimento ------------------------------------------------
           if (place.description != null &&
               place.description!.trim().isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(l10n.placeAbout, style: context.texts.titleSmall),
-            const SizedBox(height: 4),
+            const SizedBox(height: 14),
             Text(place.description!, style: context.texts.bodyMedium),
           ],
-          if (place.website != null && place.website!.trim().isNotEmpty)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.language),
-              title: Text(l10n.placeWebsite),
-              subtitle: Text(
-                place.website!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              trailing: const Icon(Icons.open_in_new, size: 18),
-              onTap: () => _openWebsite(place.website!),
-            ),
-          const SizedBox(height: 12),
-          Text(l10n.placeNotes, style: context.texts.titleSmall),
-          const SizedBox(height: 6),
+          const SizedBox(height: 14),
           if (place.locationId != null)
             _NotesField(locationId: place.locationId!, initial: place.notes)
-          else
+          else ...[
+            Text(l10n.placeNotes, style: context.texts.titleSmall),
+            const SizedBox(height: 4),
             Text(
               l10n.placeNotesNeedSave,
               style: context.texts.bodySmall?.copyWith(
                 color: scheme.onSurfaceVariant,
               ),
             ),
+          ],
           if (place.fromOsm) ...[
             const SizedBox(height: 16),
             Text(
@@ -411,22 +427,21 @@ class PlaceSheet extends StatelessWidget {
         _ => null,
       };
 
+  /// Bottone della fila di azioni: tre stanno in una riga, il testo si
+  /// rimpicciolisce invece di tagliarsi.
   Widget _button(BuildContext context, PlaceSheetAction a) {
-    final icon = Icon(a.icon);
-    final label = Text(a.label, maxLines: 1, overflow: TextOverflow.ellipsis);
     return SizedBox(
       height: 48,
-      child: a.destructive
-          ? OutlinedButton.icon(
-              onPressed: () => _run(context, a),
-              icon: icon,
-              label: label,
-            )
-          : FilledButton.icon(
-              onPressed: () => _run(context, a),
-              icon: icon,
-              label: label,
-            ),
+      child: OutlinedButton(
+        onPressed: () => _run(context, a),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(a.label, maxLines: 1),
+        ),
+      ),
     );
   }
 
@@ -462,39 +477,51 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     required this.title,
     this.lines = const [],
-    this.muted = false,
+    this.singleLine = false,
+    this.trailing,
   });
 
   final IconData icon;
   final String title;
   final List<String> lines;
-  final bool muted;
+  final bool singleLine;
+  final IconData? trailing;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = context.scheme;
+    final muted = context.scheme.onSurfaceVariant;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 22, color: context.tokens.accent),
-          const SizedBox(width: 14),
+          Icon(icon, size: 22, color: muted),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: context.texts.bodyLarge),
+                Text(
+                  title,
+                  style: context.texts.bodyLarge?.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 for (final line in lines)
                   Text(
                     line,
-                    style: context.texts.bodyMedium?.copyWith(
-                      color: muted ? scheme.onSurfaceVariant : scheme.onSurface,
-                    ),
+                    maxLines: singleLine ? 1 : null,
+                    overflow: singleLine ? TextOverflow.ellipsis : null,
+                    style: context.texts.bodyMedium?.copyWith(color: muted),
                   ),
               ],
             ),
           ),
+          if (trailing != null) ...[
+            const SizedBox(width: 8),
+            Icon(trailing, size: 18, color: muted),
+          ],
         ],
       ),
     );
@@ -552,52 +579,58 @@ class _NotesFieldState extends ConsumerState<_NotesField> {
     return TextField(
       controller: _ctrl,
       onChanged: _onChanged,
-      minLines: 2,
+      minLines: 1,
       maxLines: 5,
       textCapitalization: TextCapitalization.sentences,
-      decoration: InputDecoration(hintText: l10n.placeNotesHint),
+      decoration: InputDecoration(
+        labelText: l10n.placeNotes,
+        hintText: l10n.placeNotesHint,
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+      ),
     );
   }
 }
 
-/// Foto del luogo da Wikimedia Commons con autore e licenza. Compare solo
-/// quando c'è (con la rete); altrimenti non occupa spazio.
-class _PlacePhotoHeader extends ConsumerStatefulWidget {
-  const _PlacePhotoHeader(this.wikidata);
-  final String wikidata;
+/// Testa della scheda: foto da Wikimedia Commons (compare solo quando c'è, con
+/// la rete; altrimenti non occupa spazio), [name] se c'è, poi autore e licenza.
+class _PlaceHead extends ConsumerStatefulWidget {
+  const _PlaceHead({this.wikidata, this.name});
+  final String? wikidata;
+  final String? name;
 
   @override
-  ConsumerState<_PlacePhotoHeader> createState() => _PlacePhotoHeaderState();
+  ConsumerState<_PlaceHead> createState() => _PlaceHeadState();
 }
 
-class _PlacePhotoHeaderState extends ConsumerState<_PlacePhotoHeader> {
+class _PlaceHeadState extends ConsumerState<_PlaceHead> {
   /// L'immagine non si è caricata (es. rete persa): niente foto né crediti.
   bool _failed = false;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final photo = ref.watch(placePhotoProvider(widget.wikidata)).value;
-    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final wikidata = widget.wikidata;
+    final photo = wikidata == null
+        ? null
+        : ref.watch(placePhotoProvider(wikidata)).value;
     final show = photo != null && !_failed;
-    return AnimatedSize(
-      duration: reduceMotion
-          ? Duration.zero
-          : const Duration(milliseconds: 250),
-      alignment: Alignment.topCenter,
-      child: !show
-          ? const SizedBox(width: double.infinity)
-          : Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
+    final duration = Motion.of(context, Motion.standard);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AnimatedSize(
+          duration: duration,
+          alignment: Alignment.topCenter,
+          child: !show
+              ? const SizedBox(width: double.infinity)
+              : Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
                     // Fascia bassa: all'apertura nome e azioni restano
                     // visibili sotto la foto.
                     child: AspectRatio(
-                      aspectRatio: 2.4,
+                      aspectRatio: 2.2,
                       child: ColoredBox(
                         color: context.tokens.accentSoft,
                         child: Image(
@@ -618,32 +651,43 @@ class _PlacePhotoHeaderState extends ConsumerState<_PlacePhotoHeader> {
                       ),
                     ),
                   ),
-                  InkWell(
-                    onTap: () => launchUrl(
-                      Uri.parse(photo.pageUrl),
-                      mode: LaunchMode.externalApplication,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Text(
-                        l10n.placePhotoCredit(
-                          [
-                            ?photo.author,
-                            ?photo.license,
-                            'Wikimedia Commons',
-                          ].join(' · '),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.texts.bodySmall?.copyWith(
-                          color: context.scheme.onSurfaceVariant,
-                        ),
+                ),
+        ),
+        if (widget.name != null)
+          Text(
+            widget.name!,
+            style: context.texts.titleLarge?.copyWith(fontSize: 26),
+          ),
+        AnimatedSize(
+          duration: duration,
+          alignment: Alignment.topCenter,
+          child: !show
+              ? const SizedBox(width: double.infinity)
+              : InkWell(
+                  onTap: () => launchUrl(
+                    Uri.parse(photo.pageUrl),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Text(
+                      l10n.placePhotoCredit(
+                        [
+                          ?photo.author,
+                          ?photo.license,
+                          'Wikimedia Commons',
+                        ].join(' · '),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.texts.bodySmall?.copyWith(
+                        color: context.scheme.onSurfaceVariant,
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
+        ),
+      ],
     );
   }
 }

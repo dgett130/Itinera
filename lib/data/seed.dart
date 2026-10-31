@@ -196,7 +196,7 @@ final List<_Template> _templates = [
     ],
   ),
   _Template(
-    name: 'Citta',
+    name: 'Città',
     description: 'City break: musei, passeggiate e buon cibo.',
     tripType: TripType.city,
     items: [
@@ -210,7 +210,7 @@ final List<_Template> _templates = [
   ),
   _Template(
     name: 'Lavoro',
-    description: 'Trasferta di lavoro: sobrieta ed efficienza.',
+    description: 'Trasferta di lavoro: sobrietà ed efficienza.',
     tripType: TripType.business,
     items: [
       ..._essentials,

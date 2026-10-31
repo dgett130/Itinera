@@ -12,7 +12,7 @@ extension TripTypeLabel on TripType {
   String get label => switch (this) {
         TripType.sea => 'Mare',
         TripType.mountain => 'Montagna',
-        TripType.city => 'Citta',
+        TripType.city => 'Città',
         TripType.business => 'Lavoro',
         TripType.roadTrip => 'Road trip',
         TripType.backpacking => 'Zaino in spalla',
@@ -135,7 +135,7 @@ extension CostCategoryLabel on CostCategory {
         CostCategory.taxi => 'Taxi',
         CostCategory.accommodation => 'Alloggio',
         CostCategory.food => 'Cibo',
-        CostCategory.activity => 'Attivita',
+        CostCategory.activity => 'Attività',
         CostCategory.other => 'Altro',
       };
 

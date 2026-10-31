@@ -63,7 +63,9 @@ IconData routeModeIcon(RouteTravelMode m) => switch (m) {
 String formatDistance(AppLocalizations l10n, num meters) {
   if (meters < 1000) return '${meters.round()} ${l10n.unitMeter}';
   final km = meters / 1000.0;
-  final s = km >= 10 ? km.toStringAsFixed(0) : km.toStringAsFixed(1);
+  final s = km >= 10
+      ? km.toStringAsFixed(0)
+      : km.toStringAsFixed(1).replaceAll('.', ',');
   return '$s ${l10n.unitKm}';
 }
 

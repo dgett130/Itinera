@@ -42,7 +42,10 @@ subprojects {
             // (< 31), causando in release errori come "android:attr/lStar not
             // found". Forziamo un compileSdk moderno SOLO sulle librerie plugin,
             // lasciando invariato :app (che usa quello di Flutter).
-            if (project.plugins.hasPlugin("com.android.library")) {
+            // home_widget usa API di Android 15: tiene il suo compileSdk.
+            if (project.plugins.hasPlugin("com.android.library") &&
+                project.name != "home_widget"
+            ) {
                 androidExtension.withGroovyBuilder {
                     "compileSdkVersion"(34)
                 }

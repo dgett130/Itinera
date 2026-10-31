@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers.dart';
+import '../../ui/motion.dart';
 import 'whats_new_data.dart';
 import 'whats_new_sheet.dart';
 
@@ -34,13 +35,8 @@ class _WhatsNewGateState extends ConsumerState<WhatsNewGate> {
     final db = ref.read(databaseProvider);
     final seen = await db.getPref(_kSeenKey);
     if (seen == kWhatsNewVersion || !mounted) return;
-    await showModalBottomSheet<void>(
+    await showCartolinaSheet<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (_) => const WhatsNewSheet(),
     );
     await db.setPref(_kSeenKey, kWhatsNewVersion);

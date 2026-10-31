@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// IMPORTANTE: al rilascio, allineala alla versione di `pubspec.yaml` e
 /// aggiorna [kWhatsNewItems]. Il pannello "Novità" appare una sola volta quando
 /// questa stringa cambia rispetto a quella già vista sul dispositivo.
-const String kWhatsNewVersion = '1.5.0';
+const String kWhatsNewVersion = '2.0.0';
 
 /// Una voce dell'elenco novità (icona + titolo + descrizione breve).
 class WhatsNewItem {
@@ -18,27 +18,31 @@ class WhatsNewItem {
 /// Novità curate per la versione corrente (in italiano, testo per l'utente).
 const List<WhatsNewItem> kWhatsNewItems = [
   WhatsNewItem(
-    Icons.photo_outlined,
-    'Foto dei luoghi',
-    'Nella scheda di un luogo c’è la sua foto, con autore e licenza. Arriva da '
-        'Wikimedia Commons, quindi serve la rete.',
+    Icons.palette,
+    'Una veste tutta nuova',
+    'Colori, caratteri e icona nuovi. Ogni viaggio ha il suo manifesto, deciso '
+        'dal tipo di viaggio.',
   ),
   WhatsNewItem(
-    Icons.drive_file_move_outline,
-    'Sposta una tappa',
-    'Dalla scheda di una tappa, «Sposta» la porta in un altro percorso del '
-        'viaggio o in uno nuovo. Si può annullare.',
+    Icons.calendar_month,
+    'Il widget sulla Home',
+    'Il conto alla rovescia, la valigia e il programma del giorno, senza '
+        'aprire l’app. Toccalo per andare al punto giusto.',
   ),
   WhatsNewItem(
-    Icons.call_split,
-    'Dividi un percorso',
-    '«Dividi da qui» manda una tappa e le successive in un nuovo percorso. '
-        'Se la giornata è troppo lunga, «Dividi in 2 giorni» la taglia a metà.',
+    Icons.star,
+    'Più vita tra le schermate',
+    'Il sole all’apertura, il poster che si apre, gli spilli sulla mappa. E '
+        'quando la valigia è pronta si festeggia.',
   ),
   WhatsNewItem(
-    Icons.search,
-    'Ricerca per nome più completa',
-    'I luoghi trovati per nome hanno orari, ingresso e foto, come quelli '
-        'sulla mappa. E «Chiuso ora» ti dice quando riapre.',
+    Icons.delete,
+    '«Annulla» se elimini per sbaglio',
+    'Oggetti, bagagli, tratte, spese e attività tornano con un tocco.',
+  ),
+  WhatsNewItem(
+    Icons.dark_mode,
+    'Bello anche al buio',
+    'Il tema scuro è tutto nuovo, mappe comprese. Lo scegli nelle Impostazioni.',
   ),
 ];

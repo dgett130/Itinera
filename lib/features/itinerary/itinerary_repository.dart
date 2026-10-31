@@ -219,8 +219,63 @@ class ItineraryRepository {
     );
   }
 
-  Future<void> deleteActivity(String id) async {
-    await (_db.delete(_db.activities)..where((a) => a.id.equals(id))).go();
+  /// Elimina un'attivita'. Ritorna la riga cancellata, che serve a
+  /// [restoreActivity] (null se non esiste).
+  Future<Activity?> deleteActivity(String id) {
+    return _db.transaction(() async {
+      final row = await (_db.select(
+        _db.activities,
+      )..where((a) => a.id.equals(id))).getSingleOrNull();
+      if (row == null) return null;
+      await (_db.delete(_db.activities)..where((a) => a.id.equals(id))).go();
+      return row;
+    });
+  }
+
+  /// Annulla [deleteActivity]: rimette la riga con lo stesso id e lo stesso
+  /// ordine. Il trigger di insert trasforma la voce `_outbox` in un upsert, che
+  /// su Supabase azzera `deleted_at` e rinnova `updated_at` anche se la
+  /// cancellazione era gia' stata spinta.
+  ///
+  /// Se nel frattempo la riga e' tornata (arrivata da un altro membro) resta
+  /// quella, piu' recente. I riferimenti spariti diventano null, come farebbe
+  /// la FK. Ritorna false solo se il giorno non esiste piu'.
+  Future<bool> restoreActivity(Activity removed) {
+    return _db.transaction(() async {
+      final day = await (_db.select(
+        _db.itineraryDays,
+      )..where((d) => d.id.equals(removed.dayId))).getSingleOrNull();
+      if (day == null) return false;
+
+      final category = removed.categoryId == null
+          ? null
+          : await (_db.select(_db.activityCategories)
+                  ..where((c) => c.id.equals(removed.categoryId!)))
+                .getSingleOrNull();
+      final location = removed.locationId == null
+          ? null
+          : await (_db.select(_db.locations)
+                  ..where((l) => l.id.equals(removed.locationId!)))
+                .getSingleOrNull();
+      final route = removed.routeId == null
+          ? null
+          : await (_db.select(
+              _db.sightseeingRoutes,
+            )..where((r) => r.id.equals(removed.routeId!))).getSingleOrNull();
+
+      await _db
+          .into(_db.activities)
+          .insert(
+            removed.copyWith(
+              categoryId: Value(category?.id),
+              locationId: Value(location?.id),
+              routeId: Value(route?.id),
+              updatedAt: DateTime.now(),
+            ),
+            mode: InsertMode.insertOrIgnore,
+          );
+      return true;
+    });
   }
 
   /// Riscrive il sortIndex secondo il nuovo ordine visuale del giorno.

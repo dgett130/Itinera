@@ -133,7 +133,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get tripTypeMountain => 'Montagna';
 
   @override
-  String get tripTypeCity => 'Citta';
+  String get tripTypeCity => 'Città';
 
   @override
   String get tripTypeBusiness => 'Lavoro';

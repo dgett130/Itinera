@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/enum_labels.dart';
 import '../../core/format.dart';
 import '../../data/database.dart';
 import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
 import '../../ui/widgets.dart';
 import 'transport_providers.dart';
 
@@ -15,9 +17,8 @@ Future<void> showReimbursementSheet(
   required CostItem expense,
   required List<Traveler> travelers,
 }) {
-  return showModalBottomSheet<void>(
+  return showCartolinaSheet<void>(
     context: context,
-    isScrollControlled: true,
     builder: (context) => _ReimbursementSheet(
       tripId: tripId,
       expense: expense,
@@ -52,14 +53,17 @@ class _ReimbursementSheetState extends ConsumerState<_ReimbursementSheet> {
   }
 
   Future<void> _load() async {
-    final splits =
-        await ref.read(transportRepositoryProvider).getSplits(widget.expense.id);
+    final splits = await ref
+        .read(transportRepositoryProvider)
+        .getSplits(widget.expense.id);
     if (!mounted) return;
     setState(() => _splits = splits);
   }
 
   Future<void> _toggle(CostSplit split, bool value) async {
-    await ref.read(transportRepositoryProvider).setSplitSettled(split.id, value);
+    await ref
+        .read(transportRepositoryProvider)
+        .setSplitSettled(split.id, value);
     ref.invalidate(settlementProvider(widget.tripId));
     await _load();
   }
@@ -73,74 +77,126 @@ class _ReimbursementSheetState extends ConsumerState<_ReimbursementSheet> {
   }
 
   String _name(String id) =>
-      widget.travelers.where((t) => t.id == id).map((t) => t.name).firstOrNull ??
+      widget.travelers
+          .where((t) => t.id == id)
+          .map((t) => t.name)
+          .firstOrNull ??
       '?';
 
   @override
   Widget build(BuildContext context) {
-    final splits = _splits;
-    final allSettled = splits != null &&
-        splits.isNotEmpty &&
-        splits.every((s) => s.settled);
+    final expense = widget.expense;
+    final payerId = expense.paidByTravelerId;
+    // Il pagante non rimborsa se stesso: resta solo nel sottotitolo.
+    final due = _splits?.where((s) => s.travelerId != payerId).toList();
+    final allSettled = due != null && due.every((s) => s.settled);
+    final summary = [
+      expense.description ?? expense.category.label,
+      Fmt.currencyCents(expense.amountCents),
+      if (payerId != null) 'ha pagato ${_name(payerId)}',
+    ].join(' · ');
+
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 16,
-        right: 16,
-        top: 16,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SheetHeader('Rimborsi'),
-          const SizedBox(height: 4),
-          Text(
-            widget.expense.description ?? 'Spesa',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: context.scheme.onSurfaceVariant,
-                ),
-          ),
-          const SizedBox(height: 12),
-          if (splits == null)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (splits.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Questa spesa non e\' stata divisa.'),
-            )
-          else ...[
-            for (final s in splits)
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                value: s.settled,
-                onChanged: s.travelerId == widget.expense.paidByTravelerId
-                    ? null // il pagante non rimborsa se stesso
-                    : (v) => _toggle(s, v ?? false),
-                title: Text(_name(s.travelerId)),
-                subtitle: Text(
-                  s.travelerId == widget.expense.paidByTravelerId
-                      ? '${Fmt.currencyCents(s.shareAmountCents)} · ha pagato'
-                      : Fmt.currencyCents(s.shareAmountCents),
-                ),
-                secondary: s.settled
-                    ? Icon(Icons.check_circle, color: context.tokens.positive)
-                    : const Icon(Icons.pending_outlined),
-              ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SheetHeader('Rimborsi'),
             const SizedBox(height: 8),
-            FilledButton.tonalIcon(
-              onPressed: () => _settleAll(!allSettled),
-              icon: Icon(allSettled ? Icons.undo : Icons.done_all),
-              label: Text(allSettled
-                  ? 'Annulla tutti i rimborsi'
-                  : 'Segna intera spesa come rimborsata'),
+            Text(
+              summary,
+              style: context.texts.bodyMedium?.copyWith(
+                color: context.scheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (due == null) ...const [
+              Skeleton(height: 56, radius: 20),
+              SizedBox(height: 10),
+              Skeleton(height: 56, radius: 20),
+            ] else if (due.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Text('Questa spesa non è stata divisa.'),
+              )
+            else ...[
+              for (final s in due)
+                Padding(
+                  key: ValueKey(s.id),
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _SplitRow(
+                    name: _name(s.travelerId),
+                    cents: s.shareAmountCents,
+                    settled: s.settled,
+                    onTap: () => _toggle(s, !s.settled),
+                  ),
+                ),
+              OutlinedButton(
+                onPressed: () => _settleAll(!allSettled),
+                child: Text(
+                  allSettled
+                      ? 'Annulla tutti i rimborsi'
+                      : 'Segna intera spesa come rimborsata',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SplitRow extends StatelessWidget {
+  const _SplitRow({
+    required this.name,
+    required this.cents,
+    required this.settled,
+    required this.onTap,
+  });
+
+  final String name;
+  final int cents;
+  final bool settled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      checked: settled,
+      child: ItineraCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        onTap: onTap,
+        child: Row(
+          children: [
+            CheckDot(checked: settled),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: context.texts.titleSmall?.copyWith(fontSize: 15.5),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              Fmt.currencyCents(cents),
+              style: TextStyle(
+                fontFamily: context.tokens.displayFont,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+                color: context.scheme.onSurface,
+              ),
             ),
           ],
-          const SizedBox(height: 16),
-        ],
+        ),
       ),
     );
   }

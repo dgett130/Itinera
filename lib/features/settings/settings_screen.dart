@@ -12,100 +12,100 @@ import '../../core/supabase_config.dart';
 import '../../data/database.dart';
 import '../../providers.dart';
 import '../../ui/itinera_theme.dart';
+import '../../ui/motion.dart';
 import '../../ui/widgets.dart';
 import '../auth/auth_providers.dart';
 import '../notifications/notifications_providers.dart';
 import 'theme_controller.dart';
 
-/// Impostazioni: modalita', backup/ripristino, valori carburante.
+/// Impostazioni: modalità, backup/ripristino, valori carburante.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider).value;
+    final hasAccount = SupabaseConfig.hasCredentials && supabaseReady;
     return Scaffold(
-      appBar: AppBar(title: const Text('Impostazioni')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SectionHeader('Account'),
-          const _AccountCard(),
-          SectionHeader('Aspetto'),
-          const ItineraCard(child: _ThemeSelector()),
-          if (SupabaseConfig.hasCredentials && supabaseReady) ...[
-            SectionHeader('Notifiche'),
-            const _NotificationsSettingsCard(),
-          ],
-          SectionHeader('Percorsi e avvisi'),
-          ItineraCard(
-            padding: EdgeInsets.zero,
-            child: ListTile(
-              leading: Icon(
-                Icons.route_outlined,
-                color: context.tokens.accent,
-              ),
-              title: const Text('Avvisi sui percorsi'),
-              subtitle: const Text(
-                'Luoghi chiusi, giornate lunghe, tanta strada',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push('/settings/route-warnings'),
-            ),
-          ),
-          SectionHeader('Backup ed esporta'),
-          ItineraCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                ListTile(
-                  leading: Icon(Icons.upload_file, color: context.tokens.accent),
-                  title: const Text('Esporta backup'),
-                  subtitle: const Text('Salva tutti i dati in un file JSON'),
-                  onTap: () => _export(context, ref),
-                ),
-                Divider(height: 1, color: context.tokens.hairline),
-                ListTile(
-                  leading: Icon(Icons.download, color: context.tokens.accent),
-                  title: const Text('Importa backup'),
-                  subtitle:
-                      const Text('Incolla un backup JSON (sostituisce tutto)'),
-                  onTap: () => _import(context, ref),
-                ),
-              ],
-            ),
-          ),
-          SectionHeader('Valori predefiniti carburante'),
-          if (settings != null)
-            ItineraCard(child: _FuelDefaults(settings: settings))
-          else
-            const ItineraCard(child: Center(child: LoadingView())),
-          SectionHeader('Informazioni'),
-          ItineraCard(
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, color: context.scheme.onSurfaceVariant),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Itinera', style: context.texts.titleSmall),
-                      Text(
-                        'Organizzatore viaggi · offline-first',
-                        style: context.texts.bodySmall
-                            ?.copyWith(color: context.scheme.onSurfaceVariant),
-                      ),
-                    ],
+          const PlainHeader(title: 'Impostazioni'),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _Section('Account', first: true),
+                  const StaggerIn(child: _AccountCard()),
+                  const _Section('Aspetto'),
+                  const StaggerIn(index: 1, child: _ThemeSelector()),
+                  if (hasAccount) ...[
+                    const _Section('Notifiche'),
+                    const StaggerIn(index: 2, child: _NotificationsSettings()),
+                  ],
+                  const _Section('Percorsi e avvisi'),
+                  StaggerIn(
+                    index: 3,
+                    child: _NavCard(
+                      icon: Icons.route,
+                      color: Cartolina.corallo,
+                      title: 'Avvisi sui percorsi',
+                      onTap: () => context.push('/settings/route-warnings'),
+                    ),
                   ),
-                ),
-                Text('v1.5.0',
-                    style: TextStyle(
-                      fontFamily: context.tokens.monoFont,
-                      fontSize: 12,
-                      color: context.scheme.onSurfaceVariant,
-                    )),
-              ],
+                  const _Section('Backup ed esporta'),
+                  StaggerIn(
+                    index: 4,
+                    child: _NavCard(
+                      icon: Icons.file_upload,
+                      color: Cartolina.laguna,
+                      title: 'Esporta backup',
+                      onTap: () => _export(context, ref),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  StaggerIn(
+                    index: 5,
+                    child: _NavCard(
+                      icon: Icons.file_download,
+                      color: Cartolina.laguna,
+                      title: 'Importa backup',
+                      onTap: () => _import(context, ref),
+                    ),
+                  ),
+                  const _Section('Valori predefiniti carburante'),
+                  if (settings != null)
+                    _FuelDefaults(settings: settings)
+                  else
+                    const Skeleton(height: 56, radius: 16),
+                  const _Section('Informazioni'),
+                  ItineraCard(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Itinera', style: context.texts.titleMedium),
+                              Text(
+                                'Organizzatore viaggi · offline-first',
+                                style: context.texts.bodySmall?.copyWith(
+                                  color: context.scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        MonoTag('v2.0.0', background: context.tokens.hairline),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -141,23 +141,29 @@ class SettingsScreen extends ConsumerWidget {
 
   Future<void> _import(BuildContext context, WidgetRef ref) async {
     final controller = TextEditingController();
+    final warning = context.tokens.warning;
     final content = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Importa backup'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Incolla qui il contenuto del file di backup. '
               'Tutti i dati attuali verranno sostituiti.',
+              style: context.texts.bodyMedium?.copyWith(
+                color: context.scheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
+              minLines: 1,
               maxLines: 6,
               decoration: const InputDecoration(
+                labelText: 'Contenuto del backup',
                 hintText: '{ "app": "itinera", ... }',
               ),
             ),
@@ -165,10 +171,14 @@ class SettingsScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: context.scheme.onSurface,
+            ),
             onPressed: () => Navigator.pop(context),
             child: const Text('Annulla'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: warning),
             onPressed: () => Navigator.pop(context, controller.text.trim()),
             child: const Text('Importa'),
           ),
@@ -191,36 +201,81 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-class _NotificationsSettingsCard extends ConsumerWidget {
-  const _NotificationsSettingsCard();
+/// Titolo di sezione della pagina.
+class _Section extends StatelessWidget {
+  const _Section(this.title, {this.first = false});
+
+  final String title;
+  final bool first;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionHeader(
+      title,
+      padding: EdgeInsets.fromLTRB(0, first ? 4 : 18, 0, 10),
+    );
+  }
+}
+
+/// Riga di navigazione: tessera con icona, titolo e freccia.
+class _NavCard extends StatelessWidget {
+  const _NavCard({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.onTap,
+    this.iconColor = Cartolina.inchiostro,
+  });
+
+  final IconData icon;
+  final Color color;
+  final Color iconColor;
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ItineraCard(
+      padding: const EdgeInsets.all(14),
+      onTap: onTap,
+      child: Row(
+        children: [
+          IconTile(icon, color: color, iconColor: iconColor, size: 40),
+          const SizedBox(width: 12),
+          Expanded(child: Text(title, style: context.texts.titleMedium)),
+          Icon(Icons.chevron_right, color: context.scheme.onSurfaceVariant),
+        ],
+      ),
+    );
+  }
+}
+
+class _NotificationsSettings extends ConsumerWidget {
+  const _NotificationsSettings();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = context.tokens;
     final isAdmin = ref.watch(isAdminProvider).value ?? false;
-    return ItineraCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          ListTile(
-            leading: Icon(Icons.notifications_none_outlined, color: tokens.accent),
-            title: const Text('Preferenze notifiche'),
-            subtitle: const Text('Scegli quali avvisi ricevere'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/settings/notifications'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _NavCard(
+          icon: Icons.notifications,
+          color: Cartolina.corallo,
+          title: 'Preferenze notifiche',
+          onTap: () => context.push('/settings/notifications'),
+        ),
+        if (isAdmin) ...[
+          const SizedBox(height: 12),
+          _NavCard(
+            icon: Icons.send,
+            color: Cartolina.cobalto,
+            iconColor: Colors.white,
+            title: 'Invia messaggio di sistema',
+            onTap: () => context.push('/admin/message'),
           ),
-          if (isAdmin) ...[
-            Divider(height: 1, color: tokens.hairline),
-            ListTile(
-              leading: Icon(Icons.campaign_outlined, color: tokens.accent),
-              title: const Text('Invia messaggio di sistema'),
-              subtitle: const Text('Solo amministratori'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push('/admin/message'),
-            ),
-          ],
         ],
-      ),
+      ],
     );
   }
 }
@@ -230,19 +285,22 @@ class _AccountCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = context.tokens;
-
     if (!SupabaseConfig.hasCredentials || !supabaseReady) {
       return ItineraCard(
+        padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            Icon(Icons.cloud_off_outlined, color: context.scheme.onSurfaceVariant),
-            const SizedBox(width: 14),
+            Icon(
+              Icons.cloud_off_outlined,
+              color: context.scheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 'Account non disponibile su questo dispositivo.',
-                style: context.texts.bodyMedium
-                    ?.copyWith(color: context.scheme.onSurfaceVariant),
+                style: context.texts.bodyMedium?.copyWith(
+                  color: context.scheme.onSurfaceVariant,
+                ),
               ),
             ),
           ],
@@ -252,15 +310,16 @@ class _AccountCard extends ConsumerWidget {
 
     final user = ref.watch(currentUserProvider);
     if (user == null) {
-      return ItineraCard(
-        padding: EdgeInsets.zero,
-        child: ListTile(
-          leading: Icon(Icons.account_circle_outlined, color: tokens.accent),
-          title: const Text('Accedi o registrati'),
-          subtitle: const Text('Sincronizza e condividi i tuoi viaggi'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.push('/auth'),
+      return _AccountRow(
+        leading: const IconTile(
+          Icons.person,
+          color: Cartolina.sole,
+          round: true,
+          size: 44,
         ),
+        title: 'Accedi o registrati',
+        subtitle: 'Sincronizza e condividi i tuoi viaggi',
+        onTap: () => context.push('/auth'),
       );
     }
 
@@ -268,38 +327,90 @@ class _AccountCard extends ConsumerWidget {
     final name = (profile?.displayName?.isNotEmpty == true)
         ? profile!.displayName!
         : (user.email ?? 'Account');
-    final initial = name.characters.first.toUpperCase();
+    final avatar = InitialAvatar(name, color: Cartolina.sole);
 
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _AccountRow(
+          leading: profile?.avatarUrl != null
+              ? ClipOval(
+                  child: Image.network(
+                    profile!.avatarUrl!,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => avatar,
+                  ),
+                )
+              : avatar,
+          title: name,
+          subtitle: user.email != name ? user.email : null,
+          onTap: () => context.push('/profile'),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(46),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+          ),
+          icon: const Icon(Icons.logout),
+          label: const Text('Esci'),
+          onPressed: () async {
+            await ref.read(authServiceProvider).signOut();
+            if (context.mounted) context.go('/');
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _AccountRow extends StatelessWidget {
+  const _AccountRow({
+    required this.leading,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+  });
+
+  final Widget leading;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return ItineraCard(
-      padding: EdgeInsets.zero,
-      child: Column(
+      padding: const EdgeInsets.all(14),
+      onTap: onTap,
+      child: Row(
         children: [
-          ListTile(
-            leading: CircleAvatar(
-              backgroundColor: tokens.accent,
-              foregroundColor: tokens.onAccent,
-              backgroundImage: profile?.avatarUrl != null
-                  ? NetworkImage(profile!.avatarUrl!)
-                  : null,
-              child: profile?.avatarUrl == null
-                  ? Text(initial,
-                      style: const TextStyle(fontWeight: FontWeight.w700))
-                  : null,
+          leading,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.texts.titleMedium,
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.texts.bodySmall?.copyWith(
+                      color: context.scheme.onSurfaceVariant,
+                    ),
+                  ),
+              ],
             ),
-            title: Text(name),
-            subtitle: user.email != null ? Text(user.email!) : null,
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/profile'),
           ),
-          Divider(height: 1, color: tokens.hairline),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Esci'),
-            onTap: () async {
-              await ref.read(authServiceProvider).signOut();
-              if (context.mounted) context.go('/');
-            },
-          ),
+          Icon(Icons.chevron_right, color: context.scheme.onSurfaceVariant),
         ],
       ),
     );
@@ -322,8 +433,10 @@ class _FuelDefaultsState extends ConsumerState<_FuelDefaults> {
   void initState() {
     super.initState();
     _consumption = TextEditingController(
-      text:
-          widget.settings.defaultFuelConsumption.toString().replaceAll('.', ','),
+      text: widget.settings.defaultFuelConsumption.toString().replaceAll(
+        '.',
+        ',',
+      ),
     );
     _price = TextEditingController(
       text: (widget.settings.defaultFuelPriceCents / 100)
@@ -350,42 +463,47 @@ class _FuelDefaultsState extends ConsumerState<_FuelDefaults> {
       ),
     );
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Valori salvati')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Valori salvati')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
             Expanded(
               child: TextField(
                 controller: _consumption,
-                decoration:
-                    const InputDecoration(labelText: 'Consumo (L/100km)'),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Consumo (L/100km)',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: TextField(
                 controller: _price,
-                decoration: const InputDecoration(labelText: 'Prezzo (EUR/L)'),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Prezzo (€/L)'),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton(onPressed: _save, child: const Text('Salva')),
+        const SizedBox(height: 10),
+        FilledButton(
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+          onPressed: _save,
+          child: const Text('Salva'),
         ),
       ],
     );
@@ -398,34 +516,14 @@ class _ThemeSelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final mode = ref.watch(themeModeProvider);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.brightness_6_outlined, color: context.tokens.accent),
-            const SizedBox(width: 12),
-            Text('Tema', style: context.texts.titleSmall),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: SegmentedButton<ThemeMode>(
-            segments: const [
-              ButtonSegment(value: ThemeMode.system, label: Text('Sistema')),
-              ButtonSegment(value: ThemeMode.light, label: Text('Chiaro')),
-              ButtonSegment(value: ThemeMode.dark, label: Text('Scuro')),
-            ],
-            selected: {mode},
-            showSelectedIcon: false,
-            onSelectionChanged: (s) =>
-                ref.read(themeModeProvider.notifier).setMode(s.first),
-          ),
-        ),
-      ],
+    return PillSelector<ThemeMode>(
+      items: const {
+        ThemeMode.system: 'Sistema',
+        ThemeMode.light: 'Chiaro',
+        ThemeMode.dark: 'Scuro',
+      },
+      selected: ref.watch(themeModeProvider),
+      onChanged: (m) => ref.read(themeModeProvider.notifier).setMode(m),
     );
   }
 }
-
