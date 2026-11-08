@@ -103,7 +103,7 @@ class SettingsScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        MonoTag('v2.0.0', background: context.tokens.hairline),
+                        MonoTag('v2.1.0', background: context.tokens.hairline),
                       ],
                     ),
                   ),

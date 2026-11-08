@@ -10,6 +10,8 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ## [Non rilasciato]
 
+## [2.1.0] - 2026-11-08
+
 ### Aggiunto
 - **Widget "Spesa rapida"** sulla Home di Android: mostra il viaggio in corso
   (o il prossimo) con il totale speso e quattro categorie rapide (Cibo,

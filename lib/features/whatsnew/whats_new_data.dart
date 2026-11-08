@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// IMPORTANTE: al rilascio, allineala alla versione di `pubspec.yaml` e
 /// aggiorna [kWhatsNewItems]. Il pannello "Novità" appare una sola volta quando
 /// questa stringa cambia rispetto a quella già vista sul dispositivo.
-const String kWhatsNewVersion = '2.0.0';
+const String kWhatsNewVersion = '2.1.0';
 
 /// Una voce dell'elenco novità (icona + titolo + descrizione breve).
 class WhatsNewItem {
@@ -18,31 +18,27 @@ class WhatsNewItem {
 /// Novità curate per la versione corrente (in italiano, testo per l'utente).
 const List<WhatsNewItem> kWhatsNewItems = [
   WhatsNewItem(
-    Icons.palette,
-    'Una veste tutta nuova',
-    'Colori, caratteri e icona nuovi. Ogni viaggio ha il suo manifesto, deciso '
-        'dal tipo di viaggio.',
+    Icons.today,
+    'In viaggio, la giornata a colpo d’occhio',
+    'Sotto il poster del viaggio in corso c’è la scheda «Oggi»: cosa fai adesso, '
+        'cosa viene dopo e quanto manca. «Vai» ti porta lì con Google Maps.',
   ),
   WhatsNewItem(
-    Icons.calendar_month,
-    'Il widget sulla Home',
-    'Il conto alla rovescia, la valigia e il programma del giorno, senza '
-        'aprire l’app. Toccalo per andare al punto giusto.',
+    Icons.wb_sunny,
+    'Il poster è vivo',
+    'Il cielo segue l’ora della destinazione e il meteo vero: tramonti, stelle, '
+        'pioggia e neve. Il meteo si spegne nelle Impostazioni.',
   ),
   WhatsNewItem(
-    Icons.star,
-    'Più vita tra le schermate',
-    'Il sole all’apertura, il poster che si apre, gli spilli sulla mappa. E '
-        'quando la valigia è pronta si festeggia.',
+    Icons.add_card,
+    'Spesa rapida',
+    'Un nuovo widget sulla Home del telefono: tocchi la categoria, scrivi '
+        'l’importo e la spesa è salvata.',
   ),
   WhatsNewItem(
-    Icons.delete,
-    '«Annulla» se elimini per sbaglio',
-    'Oggetti, bagagli, tratte, spese e attività tornano con un tocco.',
-  ),
-  WhatsNewItem(
-    Icons.dark_mode,
-    'Bello anche al buio',
-    'Il tema scuro è tutto nuovo, mappe comprese. Lo scegli nelle Impostazioni.',
+    Icons.pie_chart,
+    'Divisione per quota',
+    'Ora le quote si impostano davvero: un cursore per ciascuno, o il numero '
+        'scritto a mano. Gli altri si ricalcolano da soli.',
   ),
 ];
