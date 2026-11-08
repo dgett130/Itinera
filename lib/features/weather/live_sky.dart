@@ -37,6 +37,22 @@ WeatherWindow weatherWindow(DateTime? start, DateTime? end, DateTime today) {
   return WeatherWindow.none;
 }
 
+/// L'ora della destinazione a [now] (i campi sono l'ora del posto). Il fuso
+/// viene dal meteo ([offsetSeconds]); senza, si stima dalla longitudine, ma se
+/// la stima e' a un'ora dal telefono vale l'ora del telefono, che conosce
+/// l'ora legale.
+DateTime destinationNow(DateTime now, double lng, {int? offsetSeconds}) {
+  var offset = offsetSeconds != null
+      ? Duration(seconds: offsetSeconds)
+      : Duration(hours: (lng / 15).round());
+  if (offsetSeconds == null &&
+      (offset - now.timeZoneOffset).abs() <= const Duration(hours: 1)) {
+    offset = now.timeZoneOffset;
+  }
+  final t = now.toUtc().add(offset);
+  return DateTime(t.year, t.month, t.day, t.hour, t.minute);
+}
+
 String _hm(DateTime d) =>
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 

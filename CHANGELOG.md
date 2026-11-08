@@ -34,6 +34,18 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   schiariscono, le nuvole prendono un tono del cielo che lascia leggere il
   titolo bianco, la luna del campeggio è una falce senza disco d'ombra.
   Nuova opzione **"Meteo sul poster"** in Impostazioni per spegnere il meteo.
+- **Modalità «In viaggio»**: dal giorno di partenza a quello di rientro, sotto
+  il poster del viaggio in corso compare la scheda **«Oggi»**. Contiene le
+  attività del giorno su un binario, con l'indicatore «adesso» all'ora della
+  destinazione, e la prossima attività in evidenza con quanto manca. Il tasto
+  **Vai** apre le indicazioni in Google Maps. Durante un'attività il riquadro
+  dice «In corso», quanto manca alla fine e mostra una barra che avanza. A
+  fine giornata la scheda guarda a domani e la giornata si chiude in una riga.
+  Le attività senza orario si spuntano a mano toccandole. Il selettore
+  **Oggi | Domani** gira la scheda sul giorno dopo. Ci sono le scorciatoie
+  Spesa e Tabella di marcia; nella giornata libera, «+ Attività». Tutto
+  funziona offline. Il movimento è discreto e si spegne con «Riduci
+  animazioni». Fuori dalle date del viaggio la Home resta com'è.
 
 ### Corretto
 - **Divisione "Per quota"**: prima era uguale a "In parti uguali" perché le

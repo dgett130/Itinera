@@ -16,6 +16,7 @@ import '../packing/packing_providers.dart';
 import '../sync/sync_status_button.dart';
 import '../weather/weather_providers.dart';
 import 'trip_providers.dart';
+import 'today_card.dart';
 import 'trip_status.dart';
 
 /// Home: i viaggi in arrivo come grandi poster, i passati in piccolo.
@@ -68,7 +69,7 @@ class TripsScreen extends ConsumerWidget {
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 110),
                     sliver: SliverList.list(
                       children: [
-                        for (final (i, t) in upcoming.indexed)
+                        for (final (i, t) in upcoming.indexed) ...[
                           Padding(
                             padding: const EdgeInsets.only(bottom: 14),
                             child: StaggerIn(
@@ -76,6 +77,12 @@ class TripsScreen extends ConsumerWidget {
                               child: _BigPoster(trip: t, l10n: l10n),
                             ),
                           ),
+                          // Durante il viaggio, la giornata sotto il poster.
+                          StaggerIn(
+                            index: i + 1,
+                            child: TodayCard(trip: t),
+                          ),
+                        ],
                         if (past.isNotEmpty) ...[
                           SectionHeader(
                             l10n.tripsPast,

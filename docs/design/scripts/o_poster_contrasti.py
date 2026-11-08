@@ -34,7 +34,7 @@ p = card(0, "Volo · notte", "Aereo nuvola, scia pervinca, nuvole basse pervinca
 p.sky(NOTTE)
 p.stars(22, y_max=150)
 p.flight(plane=NUVOLA, trail=PERVINCA, clouds=dim(PERVINCA, 0.38), moon_sky=NOTTE)
-p.texts("Tokyo", "Tokyo, Giappone", "giorno 3 di 9", WHITE, WHITE, "moon", "12°")
+p.texts("Tokyo", "Tokyo, Giappone", "in corso", WHITE, WHITE, "moon", "12°")
 
 sky = PIOMBO
 p = card(1, "Volo · pioggia", "Basta il cielo scuro, anche di giorno. Le nuvole sono un tono del cielo: il titolo bianco resta leggibile anche sopra.")
@@ -49,7 +49,7 @@ p = card(2, "Zaino · notte", "La luna è una falce ritagliata e resta gialla, f
 p.sky(NOTTE)
 p.stars(14, y_max=120)
 p.camp(moon=SOLE, ground=dim(LAG, 0.38), tent=dim(FEN, 0.38), door=INK)
-p.texts("Cammino di Santiago", "Santiago de Compostela", "giorno 5 di 12", WHITE, WHITE, "moon", "11°")
+p.texts("Cammino di Santiago", "Santiago de Compostela", "in corso", WHITE, WHITE, "moon", "11°")
 
 sky = mix(COB, PIOMBO, 0.3)
 p = card(3, "Mare · nuvoloso", "Prima le nuvole erano bianche sotto un titolo bianco. Ora, sui cieli scuri, sono cielo schiarito verso il pervinca.")
@@ -58,6 +58,6 @@ p.cloud(200, TOP - 40, 1.25, cloud_on(sky))
 p.cloud(30, TOP - 84, 0.9, cloud_on(sky))
 p.cloud(120, TOP - 6, 0.8, cloud_on(sky))
 p.sea(sun=False, boat=True, waves=(dim(LAG, 0.14), dim(COBD, 0.14)))
-p.texts("Sardegna per il pupo", "Cagliari, Italia", "giorno 2 di 6", WHITE, WHITE, "cloud", "21°")
+p.texts("Sardegna per il pupo", "Cagliari, Italia", "in corso", WHITE, WHITE, "cloud", "21°")
 
 append(d, "O Contrasti col buio", "O · Poster vivo", TAG)

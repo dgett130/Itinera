@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers.dart';
@@ -39,10 +41,30 @@ final weatherServiceProvider = Provider<WeatherService>(
   (ref) => WeatherService(ref.watch(databaseProvider)),
 );
 
-/// L'ora, aggiornata ogni minuto: il sole si sposta piano.
-final minuteClockProvider = StreamProvider<DateTime>((ref) async* {
-  yield DateTime.now();
-  yield* Stream.periodic(const Duration(minutes: 1), (_) => DateTime.now());
+/// L'ora, aggiornata ogni minuto: il sole si sposta piano. Scatta allo
+/// scoccare del minuto, cosi' "adesso" e il conto alla rovescia della scheda
+/// Oggi cambiano insieme all'orologio del telefono.
+final minuteClockProvider = StreamProvider<DateTime>((ref) {
+  final clock = StreamController<DateTime>();
+  Timer? timer;
+  void next() {
+    final n = DateTime.now();
+    timer = Timer(
+      Duration(milliseconds: 60000 - n.second * 1000 - n.millisecond),
+      () {
+        clock.add(DateTime.now());
+        next();
+      },
+    );
+  }
+
+  clock.add(DateTime.now());
+  next();
+  ref.onDispose(() {
+    timer?.cancel();
+    clock.close();
+  });
+  return clock.stream;
 });
 
 /// Il meteo di un punto (coordinate arrotondate). Si richiede ogni 10 minuti:
@@ -88,4 +110,27 @@ final posterSkyProvider = Provider.family<PosterSky?, String>((ref, tripId) {
     start: trip.startDate,
     place: trip.destination,
   );
+});
+
+/// L'ora della destinazione di un viaggio, aggiornata ogni minuto (i campi
+/// sono l'ora del posto). Senza coordinate, quella del telefono.
+final tripLocalNowProvider = Provider.family<DateTime, String>((ref, tripId) {
+  final now = ref.watch(minuteClockProvider).value ?? DateTime.now();
+  final trip = ref.watch(tripProvider(tripId)).value;
+  final lat = trip?.destinationLat, lng = trip?.destinationLng;
+  if (lat == null || lng == null) {
+    return DateTime(now.year, now.month, now.day, now.hour, now.minute);
+  }
+  // Il meteo (e con lui il fuso) si chiede solo durante il viaggio, come il
+  // poster: per gli altri basta la stima.
+  final during =
+      weatherWindow(trip!.startDate, trip.endDate, now) == WeatherWindow.now;
+  final report = during && ref.watch(posterWeatherProvider)
+      ? ref
+            .watch(
+              weatherReportProvider((lat: _round2(lat), lng: _round2(lng))),
+            )
+            .value
+      : null;
+  return destinationNow(now, lng, offsetSeconds: report?.utcOffsetSeconds);
 });
