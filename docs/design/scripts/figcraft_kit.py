@@ -444,6 +444,28 @@ def publish(doc, label, page):
         c.close()
 
 
+def append(doc, label, page, tag):
+    """Aggiunge il doc a una pagina esistente senza toccare il resto.
+
+    I nodi di primo livello col nome che contiene `tag` vengono prima tolti,
+    cosi' lo script si puo' rilanciare. Serve per le pagine il cui script e'
+    andato perso (es. "K · Movimento")."""
+    c = Client()
+    try:
+        ensure_file(c)
+        t = json.loads(c.tool("inspect_document", {"allPages": True, "depth": 1, "fields": ["name"]}))
+        pg = next(p for p in t["pages"] if p["name"] == page)
+        old = [k["id"] for k in pg.get("children", []) if tag in k["name"]]
+        cmds = [{"command": "page.select", "params": {"id": pg["id"]}}]
+        if old:
+            cmds.append({"command": "edit.delete", "params": {"ids": old}})
+        ids = json.loads(c.tool("batch", {"commands": cmds + doc.cmds, "label": label}))
+        print(label, "ok", len(ids), "passi")
+        c.tool("save_file", {})
+    finally:
+        c.close()
+
+
 def frames(page_name):
     """Frame di primo livello di una pagina: lista di (id, nome)."""
     c = Client()

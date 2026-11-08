@@ -21,6 +21,19 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
   un tocco, viaggio cambiabile dalla testata. Dopo il salvataggio la conferma
   mostra il nuovo totale del viaggio, con "Aggiungi un'altra" e "Annulla la
   spesa"; "Fatto" riporta alla Home del telefono.
+- **Poster vivo**: il cielo del poster segue l'ora della destinazione (alba e
+  tramonto con bande calde e sole che scende, sera che scurisce, notte con
+  luna, stelle che luccicano e finestre accese) e il meteo vero da Open-Meteo
+  (nuvole che passano, pioggia, neve, nebbia, temporale con lampi). Il
+  paesaggio del tipo di viaggio resta. Meteo di adesso per i viaggi in corso,
+  previsione della partenza per quelli entro una settimana; sul poster della
+  Home compare la temperatura, nella pagina del viaggio una pillola col tempo
+  e una riga con ora locale, tramonto e meteo di domani. Alba e tramonto si
+  calcolano anche senza rete; con «Riduci animazioni» resta tutto fermo.
+  Col cielo scuro niente si confonde: l'aereo del Volo e la sua scia si
+  schiariscono, le nuvole prendono un tono del cielo che lascia leggere il
+  titolo bianco, la luna del campeggio è una falce senza disco d'ombra.
+  Nuova opzione **"Meteo sul poster"** in Impostazioni per spegnere il meteo.
 
 ### Corretto
 - **Divisione "Per quota"**: prima era uguale a "In parti uguali" perché le

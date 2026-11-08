@@ -20,7 +20,9 @@ import '../bacheca/bacheca_providers.dart';
 import '../explore/explore_providers.dart';
 import '../itinerary/itinerary_providers.dart';
 import '../packing/packing_providers.dart';
+import '../../ui/poster_sky.dart';
 import '../transport/transport_providers.dart';
+import '../weather/weather_providers.dart';
 import 'trip_providers.dart';
 import 'trip_status.dart';
 
@@ -92,7 +94,8 @@ class _TripDetailBodyState extends ConsumerState<_TripDetailBody> {
     final l10n = AppLocalizations.of(context);
     final trip = widget.trip;
     final tripId = trip.id;
-    final c = trip.tripType.posterColors;
+    final sky = ref.watch(posterSkyProvider(tripId));
+    final c = sky?.colorsFor(trip.tripType) ?? trip.tripType.posterColors;
     final overlay = c.overlayBrightness == Brightness.dark
         ? SystemUiOverlayStyle.light
         : SystemUiOverlayStyle.dark;
@@ -122,7 +125,7 @@ class _TripDetailBodyState extends ConsumerState<_TripDetailBody> {
               ),
             ),
             flexibleSpace: FlexibleSpaceBar(
-              background: _DetailPoster(trip: trip, sink: _sink),
+              background: _DetailPoster(trip: trip, sink: _sink, sky: sky),
             ),
             actions: [
               IconButton(
@@ -168,7 +171,10 @@ class _TripDetailBodyState extends ConsumerState<_TripDetailBody> {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
             sliver: SliverList.list(
               children: [
-                StaggerIn(index: 1, child: _FactsRow(trip: trip)),
+                StaggerIn(
+                  index: 1,
+                  child: _FactsRow(trip: trip, sky: sky),
+                ),
                 const SizedBox(height: 16),
                 StaggerIn(
                   index: 2,
@@ -287,13 +293,18 @@ class _TripDetailBodyState extends ConsumerState<_TripDetailBody> {
 
 /// Il poster del viaggio, a tutta larghezza.
 class _DetailPoster extends StatelessWidget {
-  const _DetailPoster({required this.trip, required this.sink});
+  const _DetailPoster({
+    required this.trip,
+    required this.sink,
+    required this.sky,
+  });
   final Trip trip;
   final ValueListenable<double> sink;
+  final PosterSky? sky;
 
   @override
   Widget build(BuildContext context) {
-    final c = trip.tripType.posterColors;
+    final c = sky?.colorsFor(trip.tripType) ?? trip.tripType.posterColors;
     final place = tripPlaceLine(trip);
     return LayoutBuilder(
       builder: (context, box) => Stack(
@@ -301,7 +312,12 @@ class _DetailPoster extends StatelessWidget {
         children: [
           PosterHero(
             tripId: trip.id,
-            child: PosterArt(type: trip.tripType, alive: true, sink: sink),
+            child: PosterArt(
+              type: trip.tripType,
+              alive: true,
+              sink: sink,
+              sky: sky,
+            ),
           ),
           Positioned(
             left: 20,
@@ -347,8 +363,11 @@ class _DetailPoster extends StatelessWidget {
 
 /// Stato, durata e persone del viaggio.
 class _FactsRow extends StatelessWidget {
-  const _FactsRow({required this.trip});
+  const _FactsRow({required this.trip, required this.sky});
   final Trip trip;
+
+  /// Il cielo vivo: pillola del meteo e riga con ora e tramonto.
+  final PosterSky? sky;
 
   @override
   Widget build(BuildContext context) {
@@ -356,12 +375,19 @@ class _FactsRow extends StatelessWidget {
     final e = trip.endDate;
     final days = s != null && e != null ? e.difference(s).inDays + 1 : null;
     final people = trip.travelerCount;
-    return SingleChildScrollView(
+    final sky = this.sky;
+    final weather = sky?.weather;
+    final temp = sky?.temperature;
+    final row = SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
           PosterPill(tripStatusLabel(trip)),
           const SizedBox(width: 8),
+          if (sky != null && weather != null && temp != null) ...[
+            _OutlinePill('$temp° · ${weather.label}', icon: sky.icon),
+            const SizedBox(width: 8),
+          ],
           if (days != null) ...[
             _OutlinePill(days == 1 ? '1 giorno' : '$days giorni'),
             const SizedBox(width: 8),
@@ -370,12 +396,28 @@ class _FactsRow extends StatelessWidget {
         ],
       ),
     );
+    final note = sky?.note;
+    if (note == null) return row;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        row,
+        const SizedBox(height: 10),
+        Text(
+          note,
+          style: context.texts.bodyMedium?.copyWith(
+            color: context.scheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
   }
 }
 
 class _OutlinePill extends StatelessWidget {
-  const _OutlinePill(this.text);
+  const _OutlinePill(this.text, {this.icon});
   final String text;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -386,15 +428,24 @@ class _OutlinePill extends StatelessWidget {
           side: BorderSide(color: context.scheme.onSurface, width: 1.5),
         ),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontFamily: context.tokens.displayFont,
-          fontWeight: FontWeight.w700,
-          fontSize: 15,
-          height: 1.2,
-          color: context.scheme.onSurface,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 18, color: context.scheme.onSurface),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              fontFamily: context.tokens.displayFont,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              height: 1.2,
+              color: context.scheme.onSurface,
+            ),
+          ),
+        ],
       ),
     );
   }
