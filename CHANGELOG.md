@@ -10,6 +10,29 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ## [Non rilasciato]
 
+### Aggiunto
+- **Widget "Spesa rapida"** sulla Home di Android: mostra il viaggio in corso
+  (o il prossimo) con il totale speso e quattro categorie rapide (Cibo,
+  Attività, Taxi, Altro). Un tocco apre l'app direttamente sul tastierino con
+  la categoria già scelta: si scrive l'importo e si salva. Nella versione
+  piccola c'è un solo tasto "+ Spesa"; senza viaggi propone di crearne uno.
+- **Schermata Spesa rapida**: importo grande con tastierino numerico,
+  descrizione facoltativa, pagante e divisione predefiniti ma modificabili con
+  un tocco, viaggio cambiabile dalla testata. Dopo il salvataggio la conferma
+  mostra il nuovo totale del viaggio, con "Aggiungi un'altra" e "Annulla la
+  spesa"; "Fatto" riporta alla Home del telefono.
+
+### Corretto
+- **Divisione "Per quota"**: prima era uguale a "In parti uguali" perché le
+  quote non si potevano impostare. Ora, scegliendola, compaiono i viaggiatori
+  con un cursore da 0 a 1 e quanto paga ciascuno: la quota è la frazione della
+  spesa (in tre, 0,33 = un terzo; 0 = escluso) e il totale resta sempre 1,
+  perché spostando un cursore il resto si divide tra gli altri. La quota si
+  può anche scrivere a mano toccando il numero (es. 0,4): confermando, gli
+  altri si ricalcolano allo stesso modo. Le quote
+  valgono per quella spesa e restano salvate quando la si modifica. Sia nella
+  Spesa rapida sia nel foglio della spesa.
+
 ## [2.0.0] - 2026-10-31
 
 ### Aggiunto

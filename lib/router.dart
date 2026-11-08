@@ -1,5 +1,7 @@
 import 'package:go_router/go_router.dart';
 
+import 'core/enums.dart';
+
 import 'features/auth/auth_screen.dart';
 import 'features/auth/password_reset_screen.dart';
 import 'features/auth/profile_screen.dart';
@@ -17,6 +19,7 @@ import 'features/onboarding/root_gate.dart';
 import 'features/packing/packing_screen.dart';
 import 'features/settings/route_warnings_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/transport/quick_expense_screen.dart';
 import 'features/transport/transport_screen.dart';
 import 'features/trip/trip_detail_screen.dart';
 import 'features/trip/trip_form_screen.dart';
@@ -82,6 +85,18 @@ final appRouter = GoRouter(
       path: '/trip/:id/transport',
       builder: (context, state) =>
           TransportScreen(tripId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/trip/:id/expense',
+      builder: (context, state) {
+        final q = state.uri.queryParameters;
+        return QuickExpenseScreen(
+          tripId: state.pathParameters['id']!,
+          category: CostCategory.values.asNameMap()[q['category']],
+          pickCategory: q['pick'] == '1',
+          fromWidget: q['from'] == 'widget',
+        );
+      },
     ),
     GoRoute(
       path: '/trip/:id/itinerary',
