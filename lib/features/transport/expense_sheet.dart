@@ -8,6 +8,8 @@ import '../../data/database.dart';
 import '../../ui/itinera_theme.dart';
 import '../../ui/motion.dart';
 import '../../ui/widgets.dart';
+import '../../core/calc/share_fractions.dart';
+import 'share_weights_editor.dart';
 import 'transport_providers.dart';
 
 /// Foglio di aggiunta/modifica di una spesa. Con [fromFab] si apre dal bottone
@@ -58,6 +60,9 @@ class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
   SplitMethod _split = SplitMethod.equal;
   CostStatus _status = CostStatus.actual;
 
+  /// Quote di questa spesa (solo "Per quota"); null = quelle predefinite.
+  Map<String, double>? _weights;
+
   @override
   void initState() {
     super.initState();
@@ -71,6 +76,7 @@ class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
       _payerId = e.paidByTravelerId;
       _split = e.splitMethod;
       _status = e.status;
+      if (e.splitMethod == SplitMethod.weighted) _loadWeights(e.id);
     } else {
       _payerId = widget.travelers
           .where((t) => t.isSelfUser)
@@ -79,6 +85,24 @@ class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
       if (widget.travelers.length < 2) _split = SplitMethod.none;
     }
   }
+
+  /// Le quote salvate sulla spesa da modificare.
+  Future<void> _loadWeights(String costId) async {
+    final splits = await ref
+        .read(transportRepositoryProvider)
+        .getSplits(costId);
+    if (!mounted || splits.isEmpty) return;
+    setState(() {
+      // Le spese salvate con pesi interi (2, 1, 1) diventano frazioni.
+      _weights = ShareFractions.normalize({
+        for (final s in splits) s.travelerId: s.shareWeight,
+      });
+    });
+  }
+
+  Map<String, double>? get _splitWeights => _split == SplitMethod.weighted
+      ? ShareWeightsEditor.resolve(widget.travelers, _weights)
+      : null;
 
   @override
   void dispose() {
@@ -103,6 +127,7 @@ class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
         payerId: _payerId,
         splitMethod: _split,
         status: _status,
+        weights: _splitWeights,
       );
     } else {
       await repo.updateExpense(
@@ -114,6 +139,7 @@ class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
         payerId: _payerId,
         splitMethod: _split,
         status: _status,
+        weights: _splitWeights,
       );
     }
     if (mounted) Navigator.pop(context);
@@ -253,6 +279,31 @@ class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
                     onTap: () => setState(() => _split = m),
                   ),
               ],
+            ),
+            AnimatedSize(
+              duration: Motion.of(context, Motion.standard),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child:
+                  _split == SplitMethod.weighted && widget.travelers.isNotEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 14),
+                      // L'anteprima segue l'importo mentre si scrive.
+                      child: ValueListenableBuilder(
+                        valueListenable: _amountCtrl,
+                        builder: (context, value, _) => ShareWeightsEditor(
+                          travelers: widget.travelers,
+                          shares: ShareWeightsEditor.resolve(
+                            widget.travelers,
+                            _weights,
+                          ),
+                          amountCents: Fmt.parseMoneyToCents(value.text) ?? 0,
+                          payerId: _payerId,
+                          onChanged: (w) => setState(() => _weights = w),
+                        ),
+                      ),
+                    )
+                  : const SizedBox(width: double.infinity),
             ),
             const SizedBox(height: 16),
             Row(

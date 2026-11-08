@@ -282,7 +282,10 @@ class TransportRepository {
 
   // --- Spese e divisione ---
 
-  Future<void> addExpense({
+  /// Aggiunge una spesa e ne ritorna l'id. Con [SplitMethod.weighted],
+  /// [weights] da' la quota di ciascun viaggiatore per questa spesa (chi manca
+  /// usa la sua quota predefinita; 0 = escluso).
+  Future<String> addExpense({
     required String tripId,
     required CostCategory category,
     String? description,
@@ -291,6 +294,7 @@ class TransportRepository {
     required SplitMethod splitMethod,
     CostStatus status = CostStatus.actual,
     String? segmentId,
+    Map<String, double>? weights,
   }) async {
     final costId = newId();
     await _db.transaction(() async {
@@ -308,8 +312,10 @@ class TransportRepository {
               date: Value(DateTime.now()),
             ),
           );
-      await _writeSplits(costId, tripId, amountCents, splitMethod, payerId);
+      await _writeSplits(
+          costId, tripId, amountCents, splitMethod, payerId, weights);
     });
+    return costId;
   }
 
   Future<void> updateExpense(
@@ -321,6 +327,7 @@ class TransportRepository {
     String? payerId,
     required SplitMethod splitMethod,
     required CostStatus status,
+    Map<String, double>? weights,
   }) async {
     await _db.transaction(() async {
       await (_db.update(_db.costItems)..where((c) => c.id.equals(costId)))
@@ -337,7 +344,8 @@ class TransportRepository {
       await (_db.delete(_db.costSplits)
             ..where((s) => s.costItemId.equals(costId)))
           .go();
-      await _writeSplits(costId, tripId, amountCents, splitMethod, payerId);
+      await _writeSplits(
+          costId, tripId, amountCents, splitMethod, payerId, weights);
     });
   }
 
@@ -347,13 +355,18 @@ class TransportRepository {
     int amountCents,
     SplitMethod method,
     String? payerId,
+    Map<String, double>? weights,
   ) async {
     if (method == SplitMethod.none) return;
     final travelers = await watchTravelers(tripId).first;
     if (travelers.isEmpty) return;
-    final shares = travelers
-        .map((t) => SplitShare(travelerId: t.id, weight: t.shareWeight))
-        .toList();
+    final weightOf = {
+      for (final t in travelers) t.id: weights?[t.id] ?? t.shareWeight,
+    };
+    final shares = [
+      for (final t in travelers)
+        SplitShare(travelerId: t.id, weight: weightOf[t.id]!),
+    ];
     final split = CostSplitter.split(
       amountCents: amountCents,
       shares: shares,
@@ -368,6 +381,9 @@ class TransportRepository {
             id: newId(),
             costItemId: costId,
             travelerId: travelerId,
+            shareWeight: Value(
+              method == SplitMethod.weighted ? weightOf[travelerId]! : 1.0,
+            ),
             shareAmountCents: Value(cents),
           ),
         );

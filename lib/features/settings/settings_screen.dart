@@ -14,6 +14,7 @@ import '../../providers.dart';
 import '../../ui/itinera_theme.dart';
 import '../../ui/motion.dart';
 import '../../ui/widgets.dart';
+import '../weather/weather_providers.dart';
 import '../auth/auth_providers.dart';
 import '../notifications/notifications_providers.dart';
 import 'theme_controller.dart';
@@ -41,6 +42,8 @@ class SettingsScreen extends ConsumerWidget {
                   const StaggerIn(child: _AccountCard()),
                   const _Section('Aspetto'),
                   const StaggerIn(index: 1, child: _ThemeSelector()),
+                  const SizedBox(height: 12),
+                  const StaggerIn(index: 1, child: _PosterWeatherSwitch()),
                   if (hasAccount) ...[
                     const _Section('Notifiche'),
                     const StaggerIn(index: 2, child: _NotificationsSettings()),
@@ -524,6 +527,44 @@ class _ThemeSelector extends ConsumerWidget {
       },
       selected: ref.watch(themeModeProvider),
       onChanged: (m) => ref.read(themeModeProvider.notifier).setMode(m),
+    );
+  }
+}
+
+/// "Meteo sul poster": il cielo del poster segue il meteo della destinazione.
+class _PosterWeatherSwitch extends ConsumerWidget {
+  const _PosterWeatherSwitch();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final on = ref.watch(posterWeatherProvider);
+    return ItineraCard(
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      onTap: () => ref.read(posterWeatherProvider.notifier).set(!on),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Meteo sul poster', style: context.texts.titleMedium),
+                const SizedBox(height: 2),
+                Text(
+                  'Il cielo del poster segue il meteo della destinazione '
+                  '(Open-Meteo, solo con la rete). Spento resta l\'ora del giorno.',
+                  style: context.texts.bodySmall?.copyWith(
+                    color: context.scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: on,
+            onChanged: (v) => ref.read(posterWeatherProvider.notifier).set(v),
+          ),
+        ],
+      ),
     );
   }
 }

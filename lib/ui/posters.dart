@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../core/enums.dart';
 import 'itinera_theme.dart';
 import 'motion.dart';
+import 'poster_sky.dart';
 
 /// I poster dei viaggi: scene a forme piatte, una per tipo di viaggio.
 /// Disegnate in codice (niente immagini), quindi leggere e sempre offline.
@@ -90,7 +91,11 @@ class PosterPainter extends CustomPainter {
     this.sink,
     this.paintBackground = true,
     this.decor = true,
-  }) : super(repaint: Listenable.merge([drift, sink]));
+    this.sky,
+    this.skyFrom,
+    this.weather,
+    this.fade,
+  }) : super(repaint: Listenable.merge([drift, sink, weather, fade]));
 
   final TripType type;
 
@@ -107,23 +112,83 @@ class PosterPainter extends CustomPainter {
   /// (la barca nel cielo del mare).
   final bool decor;
 
+  /// Il cielo vivo (ora e meteo della destinazione); null = poster di sempre.
+  final PosterSky? sky;
+
+  /// Il cielo di prima, mentre [fade] lo porta a [sky].
+  final PosterSky? skyFrom;
+
+  /// Giro di [PosterSky.loop] per nuvole, pioggia, neve e stelle (0..1).
+  final Animation<double>? weather;
+
+  /// Dissolvenza da [skyFrom] a [sky] (0..1).
+  final Animation<double>? fade;
+
   /// Larghezza e altezza su cui e' disegnata ogni scena.
   static const double _designWidth = 372;
   static const double _sceneHeight = 240;
 
+  double get _fade => fade?.value ?? 1;
+
   @override
   void paint(Canvas canvas, Size size) {
+    final sky = this.sky;
     if (paintBackground) {
-      canvas.drawRect(
-        Offset.zero & size,
-        Paint()..color = type.posterColors.background,
-      );
+      if (sky == null) {
+        canvas.drawRect(
+          Offset.zero & size,
+          Paint()..color = type.posterColors.background,
+        );
+      } else {
+        // Il cielo nuovo sfuma sopra quello di prima.
+        final from = skyFrom;
+        if (from != null && _fade < 1) {
+          from.paintSky(canvas, size, type);
+          canvas.saveLayer(
+            Offset.zero & size,
+            Paint()..color = Color.fromRGBO(0, 0, 0, _fade),
+          );
+          sky.paintSky(canvas, size, type);
+          canvas.restore();
+        } else {
+          sky.paintSky(canvas, size, type);
+        }
+      }
     }
     final s = size.width / _designWidth;
+    final above = size.height / s - _sceneHeight;
+    final t = weather?.value ?? 0.37;
     canvas.save();
     canvas.clipRect(Offset.zero & size);
     canvas.translate(0, size.height - _sceneHeight * s);
     canvas.scale(s);
+    sky?.paintBehind(canvas, type, above, t, _fade);
+    // Col buio (e sotto la pioggia) la scena si scurisce un poco.
+    final dim = sky == null
+        ? 0.0
+        : math.max(
+            0.38 * sky.moment.darkness,
+            (sky.weather?.overcast ?? false) ? 0.14 : 0.0,
+          );
+    if (dim > 0) {
+      canvas.saveLayer(
+        const Rect.fromLTRB(-40, -600, 412, 240),
+        Paint()
+          ..colorFilter = ColorFilter.mode(
+            Cartolina.inchiostro.withValues(alpha: dim),
+            BlendMode.srcATop,
+          ),
+      );
+    }
+    _scene(canvas);
+    if (dim > 0) canvas.restore();
+    _paintMoons(canvas);
+    if (sky != null) _overDim(canvas, sky);
+    sky?.paintFront(canvas, above, t, _fade);
+    canvas.restore();
+  }
+
+  void _scene(Canvas canvas) {
     switch (type) {
       case TripType.sea:
         _sea(canvas);
@@ -140,8 +205,79 @@ class PosterPainter extends CustomPainter {
       case TripType.generic:
         _flight(canvas);
     }
-    canvas.restore();
   }
+
+  /// Il sole (o, col buio, la luna) di una scena: scende con l'ora, si fa
+  /// grande al tramonto e sparisce sotto un cielo coperto.
+  void _sun(Canvas c, double x, double y, double r, [Color? color]) {
+    final paint = _fill(color ?? Cartolina.sole);
+    final sky = this.sky;
+    if (sky == null) {
+      c.drawCircle(Offset(x, y + _sunDown), r, paint);
+      return;
+    }
+    if (sky.weather?.overcast ?? false) return;
+    final m = sky.moment;
+    // Dopo il tramonto il sole affonda dietro la scena mentre scurisce.
+    final drop = m.sunDrop * 34 + m.darkness * 90;
+    if (m.darkness < 1) {
+      c.drawCircle(
+        Offset(x, y + _sunDown + drop),
+        r * (1 + 0.18 * m.warmth),
+        paint,
+      );
+    }
+    if (m.darkness > 0.05) {
+      // La luna si disegna dopo, fuori dal velo che scurisce la scena.
+      _moons.add((Offset(x, y + _sunDown - 40), r * 0.65));
+    }
+  }
+
+  /// Lune in attesa di [_paintMoons] (una per scena).
+  final List<(Offset, double)> _moons = [];
+
+  /// Falce di luna ritagliata: niente disco d'ombra da intonare al cielo.
+  void _paintMoons(Canvas c) {
+    final a = sky?.moment.darkness ?? 0;
+    for (final (center, r) in _moons) {
+      final moon = Path.combine(
+        PathOperation.difference,
+        Path()..addOval(Rect.fromCircle(center: center, radius: r)),
+        Path()..addOval(
+          Rect.fromCircle(
+            center: center + Offset(r * 0.45, -r * 0.3),
+            radius: r * 0.9,
+          ),
+        ),
+      );
+      c.drawPath(moon, _fill(PosterSky.luna.withValues(alpha: a)));
+    }
+    _moons.clear();
+  }
+
+  /// Sopra il velo che scurisce la scena: cio' che deve restare acceso o
+  /// staccarsi dal cielo scuro.
+  void _overDim(Canvas c, PosterSky sky) {
+    switch (type) {
+      // Di notte le finestre accese tornano gialle.
+      case TripType.city when sky.isNight:
+        final lit = _fill(Cartolina.sole);
+        for (final w in _cityWindows) {
+          c.drawRect(w & const Size(7, 11), lit);
+        }
+      case TripType.business when sky.isNight:
+        _skylineWindows(c, litOnly: true);
+      case TripType.backpacking:
+        _campMoon(c);
+      case TripType.generic when _darkSky:
+        _plane(c, PosterSky.nuvola, PosterSky.pervinca);
+      default:
+        break;
+    }
+  }
+
+  /// Cielo scuro (titolo bianco): l'aereo e la scia si schiariscono.
+  bool get _darkSky => sky?.darkSky(type) ?? false;
 
   static Paint _fill(Color c) => Paint()..color = c;
 
@@ -149,9 +285,9 @@ class PosterPainter extends CustomPainter {
   double get _sunDown => (sink?.value ?? 0) * 150;
 
   void _sea(Canvas c) {
-    c.drawCircle(Offset(290, 100 + _sunDown), 54, _fill(Cartolina.sole));
+    _sun(c, 290, 100, 54);
     final wave = math.sin((drift?.value ?? 0) * 2 * math.pi);
-    if (decor) {
+    if (decor && !(sky?.isNight ?? false)) {
       c.save();
       c.translate(0, wave * 2);
       c.drawPath(
@@ -207,7 +343,7 @@ class PosterPainter extends CustomPainter {
   }
 
   void _city(Canvas c) {
-    c.drawCircle(Offset(300, 62 + _sunDown), 38, _fill(Cartolina.sole));
+    _sun(c, 300, 62, 38);
     // Sullo sfondo: case, cupola con lanterna e campanile.
     c.drawPath(
       Path()
@@ -305,26 +441,27 @@ class PosterPainter extends CustomPainter {
         ..close(),
       _fill(Cartolina.cobaltoScuro),
     );
-    const windows = [
-      Offset(12, 136),
-      Offset(30, 136),
-      Offset(62, 130),
-      Offset(80, 130),
-      Offset(110, 136),
-      Offset(126, 136),
-      Offset(156, 132),
-      Offset(172, 132),
-      Offset(202, 128),
-      Offset(218, 128),
-      Offset(284, 130),
-      Offset(298, 130),
-      Offset(330, 130),
-      Offset(350, 130),
-    ];
-    for (final w in windows) {
+    for (final w in _cityWindows) {
       c.drawRect(w & const Size(7, 11), _fill(Cartolina.sole));
     }
   }
+
+  static const _cityWindows = [
+    Offset(12, 136),
+    Offset(30, 136),
+    Offset(62, 130),
+    Offset(80, 130),
+    Offset(110, 136),
+    Offset(126, 136),
+    Offset(156, 132),
+    Offset(172, 132),
+    Offset(202, 128),
+    Offset(218, 128),
+    Offset(284, 130),
+    Offset(298, 130),
+    Offset(330, 130),
+    Offset(350, 130),
+  ];
 
   void _mountain(Canvas c) {
     c.drawPath(
@@ -359,7 +496,7 @@ class PosterPainter extends CustomPainter {
   }
 
   void _road(Canvas c) {
-    c.drawCircle(Offset(280, 64 + _sunDown), 44, _fill(Cartolina.sole));
+    _sun(c, 280, 64, 44);
     c.drawPath(
       Path()
         ..moveTo(0, 120)
@@ -399,8 +536,8 @@ class PosterPainter extends CustomPainter {
     ]) {
       c.drawCircle(Offset(x, y), r, star);
     }
-    c.drawCircle(Offset(304, 84 + _sunDown), 34, _fill(Cartolina.sole));
-    c.drawCircle(Offset(290, 76 + _sunDown), 30, _fill(Cartolina.cobaltoScuro));
+    // Col cielo vivo la luna si disegna sopra il velo della notte.
+    if (sky == null) _campMoon(c);
     c.drawPath(
       Path()
         ..moveTo(0, 170)
@@ -428,29 +565,27 @@ class PosterPainter extends CustomPainter {
     );
   }
 
+  /// La falce del campeggio, ritagliata: niente disco d'ombra che si veda su
+  /// un cielo diverso dal suo.
+  void _campMoon(Canvas c) {
+    final y = 84 + _sunDown;
+    c.drawPath(
+      Path.combine(
+        PathOperation.difference,
+        Path()..addOval(Rect.fromCircle(center: Offset(304, y), radius: 34)),
+        Path()
+          ..addOval(Rect.fromCircle(center: Offset(290, y - 8), radius: 30)),
+      ),
+      _fill(Cartolina.sole),
+    );
+  }
+
   void _skyline(Canvas c) {
-    c.drawCircle(Offset(70, 70 + _sunDown), 36, _fill(Cartolina.corallo));
-    const towers = [
-      (0.0, 120.0, 64.0),
-      (70.0, 60.0, 58.0),
-      (134.0, 132.0, 52.0),
-      (192.0, 28.0, 66.0),
-      (264.0, 96.0, 50.0),
-      (320.0, 64.0, 52.0),
-    ];
-    for (final (x, top, w) in towers) {
+    _sun(c, 70, 70, 36, Cartolina.corallo);
+    for (final (x, top, w) in _towers) {
       c.drawRect(Rect.fromLTWH(x, top, w, 240 - top), _fill(Cartolina.cobalto));
-      for (var yy = top + 14; yy < 228; yy += 26) {
-        for (var xx = x + 10; xx < x + w - 12; xx += 18) {
-          // Alcune finestre accese, in modo stabile.
-          final lit = ((xx * 7 + yy * 3).toInt() % 5) < 2;
-          c.drawRect(
-            Rect.fromLTWH(xx, yy, 9, 13),
-            _fill(lit ? Cartolina.sole : Cartolina.cobaltoScuro),
-          );
-        }
-      }
     }
+    _skylineWindows(c);
     // Fascia bassa pulita, per i testi.
     c.drawRect(
       const Rect.fromLTWH(0, 152, 372, 88),
@@ -458,9 +593,38 @@ class PosterPainter extends CustomPainter {
     );
   }
 
+  static const _towers = [
+    (0.0, 120.0, 64.0),
+    (70.0, 60.0, 58.0),
+    (134.0, 132.0, 52.0),
+    (192.0, 28.0, 66.0),
+    (264.0, 96.0, 50.0),
+    (320.0, 64.0, 52.0),
+  ];
+
+  /// Le finestre dei grattacieli (sopra la fascia bassa); [litOnly] per
+  /// ridisegnare solo quelle accese.
+  void _skylineWindows(Canvas c, {bool litOnly = false}) {
+    for (final (x, top, w) in _towers) {
+      for (var yy = top + 14; yy < 228; yy += 26) {
+        if (litOnly && yy + 13 > 152) continue;
+        for (var xx = x + 10; xx < x + w - 12; xx += 18) {
+          // Alcune finestre accese, in modo stabile.
+          final lit = ((xx * 7 + yy * 3).toInt() % 5) < 2;
+          if (litOnly && !lit) continue;
+          c.drawRect(
+            Rect.fromLTWH(xx, yy, 9, 13),
+            _fill(lit ? Cartolina.sole : Cartolina.cobaltoScuro),
+          );
+        }
+      }
+    }
+  }
+
   void _flight(Canvas c) {
-    c.drawCircle(Offset(66, 116 + _sunDown), 54, _fill(Cartolina.sole));
-    final cloud = _fill(Colors.white);
+    _sun(c, 66, 116, 54);
+    // Col cielo scuro le nuvole si fanno pervinca: le scritte bianche sopra.
+    final cloud = _fill(_darkSky ? PosterSky.pervinca : Colors.white);
     for (final (x, y, r) in const [
       (0.0, 228.0, 44.0),
       (64.0, 214.0, 52.0),
@@ -471,8 +635,13 @@ class PosterPainter extends CustomPainter {
     ]) {
       c.drawCircle(Offset(x, y), r, cloud);
     }
-    // Scia tratteggiata che sale verso l'aereo.
-    final trail = _fill(Cartolina.cobalto);
+    // Col cielo scuro aereo e scia chiari, sopra il velo (_overDim).
+    if (!_darkSky) _plane(c, Cartolina.inchiostro, Cartolina.cobalto);
+  }
+
+  /// Scia tratteggiata che sale verso l'aereo, e l'aereo.
+  void _plane(Canvas c, Color color, Color trailColor) {
+    final trail = _fill(trailColor);
     for (var i = 0; i < 7; i++) {
       final t = i / 7;
       final x = 96 + t * 170;
@@ -493,7 +662,7 @@ class PosterPainter extends CustomPainter {
     c.save();
     c.translate(300, 46);
     c.rotate(-0.42);
-    final plane = _fill(Cartolina.inchiostro);
+    final plane = _fill(color);
     c.drawRRect(
       RRect.fromRectAndRadius(
         const Rect.fromLTWH(-34, -6, 68, 12),
@@ -537,7 +706,11 @@ class PosterPainter extends CustomPainter {
       oldDelegate.drift != drift ||
       oldDelegate.sink != sink ||
       oldDelegate.paintBackground != paintBackground ||
-      oldDelegate.decor != decor;
+      oldDelegate.decor != decor ||
+      oldDelegate.sky != sky ||
+      oldDelegate.skyFrom != skyFrom ||
+      oldDelegate.weather != weather ||
+      oldDelegate.fade != fade;
 }
 
 /// La scena del viaggio a tutta area (senza testi).
@@ -548,9 +721,13 @@ class PosterArt extends StatefulWidget {
     this.alive = false,
     this.sink,
     this.paintBackground = true,
+    this.sky,
   });
 
   final TripType type;
+
+  /// Il cielo vivo; null = poster di sempre.
+  final PosterSky? sky;
 
   /// Il poster e' vivo: il mare deriva lentamente finche' resta in vista.
   final bool alive;
@@ -563,21 +740,43 @@ class PosterArt extends StatefulWidget {
   State<PosterArt> createState() => _PosterArtState();
 }
 
-class _PosterArtState extends State<PosterArt>
-    with SingleTickerProviderStateMixin {
+class _PosterArtState extends State<PosterArt> with TickerProviderStateMixin {
   late final AnimationController _drift = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 14),
   );
 
+  /// Nuvole, pioggia, neve e stelle.
+  late final AnimationController _weather = AnimationController(
+    vsync: this,
+    duration: PosterSky.loop,
+  );
+
+  /// Dissolvenza quando il cielo cambia aspetto (arriva il meteo, scende la
+  /// sera...).
+  late final AnimationController _fade = AnimationController(
+    vsync: this,
+    duration: Motion.scene,
+    value: 1,
+  );
+  PosterSky? _from;
+
   bool get _moves =>
       widget.alive && widget.type == TripType.sea && !Motion.off(context);
+
+  bool get _weatherMoves =>
+      widget.alive && (widget.sky?.moves ?? false) && !Motion.off(context);
 
   void _sync() {
     if (_moves) {
       if (!_drift.isAnimating) _drift.repeat();
     } else {
       _drift.stop();
+    }
+    if (_weatherMoves) {
+      if (!_weather.isAnimating) _weather.repeat();
+    } else {
+      _weather.stop();
     }
   }
 
@@ -590,12 +789,22 @@ class _PosterArtState extends State<PosterArt>
   @override
   void didUpdateWidget(PosterArt old) {
     super.didUpdateWidget(old);
+    final before = old.sky, now = widget.sky;
+    if (before != null &&
+        now != null &&
+        before.look != now.look &&
+        !Motion.off(context)) {
+      _from = before;
+      _fade.forward(from: 0);
+    }
     _sync();
   }
 
   @override
   void dispose() {
     _drift.dispose();
+    _weather.dispose();
+    _fade.dispose();
     super.dispose();
   }
 
@@ -608,6 +817,10 @@ class _PosterArtState extends State<PosterArt>
           drift: widget.alive && widget.type == TripType.sea ? _drift : null,
           sink: widget.sink,
           paintBackground: widget.paintBackground,
+          sky: widget.sky,
+          skyFrom: _from,
+          weather: widget.sky == null ? null : _weather,
+          fade: widget.sky == null ? null : _fade,
         ),
         child: const SizedBox.expand(),
       ),

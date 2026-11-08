@@ -10,6 +10,54 @@ Tutte le modifiche rilevanti di **Itinera**. Formato ispirato a
 
 ## [Non rilasciato]
 
+### Aggiunto
+- **Widget "Spesa rapida"** sulla Home di Android: mostra il viaggio in corso
+  (o il prossimo) con il totale speso e quattro categorie rapide (Cibo,
+  Attività, Taxi, Altro). Un tocco apre l'app direttamente sul tastierino con
+  la categoria già scelta: si scrive l'importo e si salva. Nella versione
+  piccola c'è un solo tasto "+ Spesa"; senza viaggi propone di crearne uno.
+- **Schermata Spesa rapida**: importo grande con tastierino numerico,
+  descrizione facoltativa, pagante e divisione predefiniti ma modificabili con
+  un tocco, viaggio cambiabile dalla testata. Dopo il salvataggio la conferma
+  mostra il nuovo totale del viaggio, con "Aggiungi un'altra" e "Annulla la
+  spesa"; "Fatto" riporta alla Home del telefono.
+- **Poster vivo**: il cielo del poster segue l'ora della destinazione (alba e
+  tramonto con bande calde e sole che scende, sera che scurisce, notte con
+  luna, stelle che luccicano e finestre accese) e il meteo vero da Open-Meteo
+  (nuvole che passano, pioggia, neve, nebbia, temporale con lampi). Il
+  paesaggio del tipo di viaggio resta. Meteo di adesso per i viaggi in corso,
+  previsione della partenza per quelli entro una settimana; sul poster della
+  Home compare la temperatura, nella pagina del viaggio una pillola col tempo
+  e una riga con ora locale, tramonto e meteo di domani. Alba e tramonto si
+  calcolano anche senza rete; con «Riduci animazioni» resta tutto fermo.
+  Col cielo scuro niente si confonde: l'aereo del Volo e la sua scia si
+  schiariscono, le nuvole prendono un tono del cielo che lascia leggere il
+  titolo bianco, la luna del campeggio è una falce senza disco d'ombra.
+  Nuova opzione **"Meteo sul poster"** in Impostazioni per spegnere il meteo.
+- **Modalità «In viaggio»**: dal giorno di partenza a quello di rientro, sotto
+  il poster del viaggio in corso compare la scheda **«Oggi»**. Contiene le
+  attività del giorno su un binario, con l'indicatore «adesso» all'ora della
+  destinazione, e la prossima attività in evidenza con quanto manca. Il tasto
+  **Vai** apre le indicazioni in Google Maps. Durante un'attività il riquadro
+  dice «In corso», quanto manca alla fine e mostra una barra che avanza. A
+  fine giornata la scheda guarda a domani e la giornata si chiude in una riga.
+  Le attività senza orario si spuntano a mano toccandole. Il selettore
+  **Oggi | Domani** gira la scheda sul giorno dopo. Ci sono le scorciatoie
+  Spesa e Tabella di marcia; nella giornata libera, «+ Attività». Tutto
+  funziona offline. Il movimento è discreto e si spegne con «Riduci
+  animazioni». Fuori dalle date del viaggio la Home resta com'è.
+
+### Corretto
+- **Divisione "Per quota"**: prima era uguale a "In parti uguali" perché le
+  quote non si potevano impostare. Ora, scegliendola, compaiono i viaggiatori
+  con un cursore da 0 a 1 e quanto paga ciascuno: la quota è la frazione della
+  spesa (in tre, 0,33 = un terzo; 0 = escluso) e il totale resta sempre 1,
+  perché spostando un cursore il resto si divide tra gli altri. La quota si
+  può anche scrivere a mano toccando il numero (es. 0,4): confermando, gli
+  altri si ricalcolano allo stesso modo. Le quote
+  valgono per quella spesa e restano salvate quando la si modifica. Sia nella
+  Spesa rapida sia nel foglio della spesa.
+
 ## [2.0.0] - 2026-10-31
 
 ### Aggiunto

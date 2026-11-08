@@ -8,12 +8,15 @@ import '../../data/database.dart';
 import '../../l10n/app_localizations.dart';
 import '../../ui/itinera_theme.dart';
 import '../../ui/motion.dart';
+import '../../ui/poster_sky.dart';
 import '../../ui/posters.dart';
 import '../../ui/widgets.dart';
 import '../notifications/notifications_providers.dart';
 import '../packing/packing_providers.dart';
 import '../sync/sync_status_button.dart';
+import '../weather/weather_providers.dart';
 import 'trip_providers.dart';
+import 'today_card.dart';
 import 'trip_status.dart';
 
 /// Home: i viaggi in arrivo come grandi poster, i passati in piccolo.
@@ -66,7 +69,7 @@ class TripsScreen extends ConsumerWidget {
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 110),
                     sliver: SliverList.list(
                       children: [
-                        for (final (i, t) in upcoming.indexed)
+                        for (final (i, t) in upcoming.indexed) ...[
                           Padding(
                             padding: const EdgeInsets.only(bottom: 14),
                             child: StaggerIn(
@@ -74,6 +77,12 @@ class TripsScreen extends ConsumerWidget {
                               child: _BigPoster(trip: t, l10n: l10n),
                             ),
                           ),
+                          // Durante il viaggio, la giornata sotto il poster.
+                          StaggerIn(
+                            index: i + 1,
+                            child: TodayCard(trip: t),
+                          ),
+                        ],
                         if (past.isNotEmpty) ...[
                           SectionHeader(
                             l10n.tripsPast,
@@ -233,7 +242,8 @@ class _BigPoster extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final c = trip.tripType.posterColors;
+    final sky = ref.watch(posterSkyProvider(trip.id));
+    final c = sky?.colorsFor(trip.tripType) ?? trip.tripType.posterColors;
     final items = ref.watch(packingItemsProvider(trip.id)).value ?? const [];
     final packed = items
         .where((i) => i.packedCount >= i.quantity && i.quantity > 0)
@@ -257,7 +267,11 @@ class _BigPoster extends ConsumerWidget {
                   Positioned.fill(
                     child: PosterHero(
                       tripId: trip.id,
-                      child: PosterArt(type: trip.tripType, alive: true),
+                      child: PosterArt(
+                        type: trip.tripType,
+                        alive: true,
+                        sky: sky,
+                      ),
                     ),
                   ),
                   Positioned(
@@ -305,20 +319,23 @@ class _BigPoster extends ConsumerWidget {
                         Row(
                           children: [
                             PosterPill(tripStatusLabel(trip), color: c.pill),
-                            if (items.isNotEmpty) ...[
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'valigia $packed/${items.length}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: context.texts.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                    color: c.lowerForeground,
-                                  ),
-                                ),
-                              ),
-                            ],
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: items.isEmpty
+                                  ? const SizedBox.shrink()
+                                  : Text(
+                                      'valigia $packed/${items.length}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: context.texts.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.w500,
+                                        color: c.lowerForeground,
+                                      ),
+                                    ),
+                            ),
+                            if (sky?.weather != null &&
+                                sky?.temperature != null)
+                              _WeatherChip(sky: sky!, color: c.lowerForeground),
                           ],
                         ),
                       ],
@@ -474,5 +491,51 @@ class _TripMenu extends ConsumerWidget {
       ),
     );
     return result ?? false;
+  }
+}
+
+/// Il meteo sul poster: icona e temperatura su un velo chiaro o scuro.
+class _WeatherChip extends StatelessWidget {
+  const _WeatherChip({required this.sky, required this.color});
+
+  final PosterSky sky;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final light = color.computeLuminance() > 0.5;
+    return TweenAnimationBuilder<double>(
+      // Compare con lo scatto delle spunte quando arriva il meteo.
+      tween: Tween(begin: 0, end: 1),
+      duration: Motion.of(context, Motion.standard),
+      curve: Motion.pop,
+      builder: (context, t, child) => Transform.scale(scale: t, child: child),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(9, 6, 12, 6),
+        decoration: ShapeDecoration(
+          color: (light ? Colors.white : Cartolina.inchiostro).withValues(
+            alpha: light ? 0.18 : 0.12,
+          ),
+          shape: const StadiumBorder(),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(sky.icon, size: 18, color: color),
+            const SizedBox(width: 5),
+            Text(
+              '${sky.temperature}°',
+              style: TextStyle(
+                fontFamily: context.tokens.displayFont,
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                height: 1.2,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -72,6 +72,33 @@ void main() {
         homeWidgetLinkToPath(Uri.parse('itinera-widget://trip/abc/itinerary')),
         '/trip/abc/itinerary',
       );
+      expect(
+        homeWidgetLinkToPath(Uri.parse('itinera-widget://trip/abc/transport')),
+        '/trip/abc/transport',
+      );
+      expect(
+        homeWidgetLinkToPath(Uri.parse('itinera-widget://new-trip')),
+        '/trip/new',
+      );
+    });
+
+    test('la spesa rapida porta categoria e scelta', () {
+      expect(
+        homeWidgetLinkToPath(
+          Uri.parse('itinera-widget://trip/abc/expense?category=food'),
+        ),
+        '/trip/abc/expense?from=widget&category=food',
+      );
+      expect(
+        homeWidgetLinkToPath(
+          Uri.parse('itinera-widget://trip/abc/expense?pick=1'),
+        ),
+        '/trip/abc/expense?from=widget&pick=1',
+      );
+      expect(
+        homeWidgetLinkToPath(Uri.parse('itinera-widget://trip/abc/expense')),
+        '/trip/abc/expense?from=widget',
+      );
     });
 
     test('ignorano tutto il resto', () {
@@ -101,5 +128,22 @@ void main() {
     expect(data['packing'], 'valigia 23/40');
     expect(data['color_headline'], '#ffc21a');
     expect(jsonDecode(data['agenda']!)['2026-10-03'][0][1], 'Spiaggia');
+  });
+
+  test('il widget spesa mostra il totale in euro interi', () {
+    final snap = WidgetSnapshot(
+      tripId: 'x',
+      name: 'Sardegna',
+      type: TripType.sea,
+      start: DateTime(2026, 10, 3),
+      end: DateTime(2026, 10, 8),
+      packed: 0,
+      total: 0,
+      agenda: const {},
+      spent: 123456,
+    );
+    final data = snap.expenseData();
+    expect(data['trip_id'], 'x');
+    expect(data['spent']!.replaceAll(' ', ' '), '1.234 €');
   });
 }

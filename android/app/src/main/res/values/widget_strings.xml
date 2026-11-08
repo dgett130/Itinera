@@ -9,4 +9,13 @@
     <string name="widget_sample_headline">tra 9 giorni</string>
     <string name="widget_sample_lower">valigia 23/40</string>
     <string name="widget_sample_agenda">Oggi</string>
+    <string name="expense_widget_label">Spesa rapida</string>
+    <string name="expense_widget_title">Spesa rapida</string>
+    <string name="expense_widget_description">Fissa una spesa del viaggio in due tocchi</string>
+    <string name="expense_widget_spent">spesi</string>
+    <string name="expense_widget_add">Spesa</string>
+    <string name="expense_widget_new_trip">Nuovo viaggio</string>
+    <string name="expense_widget_empty">Nessun viaggio in corso</string>
+    <string name="expense_widget_empty_body">Le spese si fissano su un viaggio: creane uno per iniziare.</string>
+    <string name="expense_widget_sample_total">412 €</string>
 </resources>

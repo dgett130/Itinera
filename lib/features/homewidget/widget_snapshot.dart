@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/enums.dart';
 import '../../data/database.dart';
@@ -35,6 +36,7 @@ class WidgetSnapshot {
     required this.packed,
     required this.total,
     required this.agenda,
+    this.spent = 0,
   });
 
   final String tripId;
@@ -47,6 +49,22 @@ class WidgetSnapshot {
 
   /// Per giorno ('2026-10-23'): righe [orario, titolo] in ordine.
   final Map<String, List<List<String>>> agenda;
+
+  /// Speso davvero nel viaggio, in centesimi (widget "Spesa rapida").
+  final int spent;
+
+  static final _euros = NumberFormat.currency(
+    locale: 'it_IT',
+    symbol: '€',
+    decimalDigits: 0,
+  );
+
+  /// Dati del widget "Spesa rapida": il totale in euro interi.
+  Map<String, String> expenseData() => {
+    'trip_id': tripId,
+    'trip_name': name,
+    'spent': _euros.format(spent ~/ 100),
+  };
 
   static String dayKey(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-'
@@ -87,6 +105,7 @@ class WidgetSnapshot {
     required List<PackingItem> items,
     required List<ItineraryDay> days,
     required List<Activity> activities,
+    List<CostItem> expenses = const [],
   }) {
     final start = trip.startDate!;
     final dateOf = {
@@ -124,6 +143,9 @@ class WidgetSnapshot {
           .length,
       total: items.length,
       agenda: agenda,
+      spent: expenses
+          .where((e) => e.status == CostStatus.actual)
+          .fold(0, (a, e) => a + e.amountCents),
     );
   }
 }

@@ -9,10 +9,11 @@ class MainActivity : FlutterActivity() {
     super.configureFlutterEngine(flutterEngine)
     MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "itinera/widget")
       .setMethodCallHandler { call, result ->
-        if (call.method == "takePendingLink") {
-          result.success(WidgetLinkActivity.takePending(this))
-        } else {
-          result.notImplemented()
+        when (call.method) {
+          "takePendingLink" -> result.success(WidgetLinkActivity.takePending(this))
+          // Spesa rapida aperta dal widget: finito, si torna alla Home.
+          "moveToBack" -> result.success(moveTaskToBack(true))
+          else -> result.notImplemented()
         }
       }
   }
